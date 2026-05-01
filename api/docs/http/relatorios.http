@@ -1,0 +1,34 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+
+### Extrato de movimentações
+GET {{baseUrl}}/extrato?dataInicio=2026-01-01T00:00:00Z&dataFim=2026-12-31T23:59:59Z&tipo=debito&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Exportar extrato em CSV
+GET {{baseUrl}}/extrato?format=csv&dataInicio=2026-01-01T00:00:00Z&dataFim=2026-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Saldo atual
+GET {{baseUrl}}/extrato/saldo
+Authorization: Bearer {{token}}
+
+### Relatório de permutas
+GET {{baseUrl}}/relatorios/permutas?dataInicio=2026-01-01T00:00:00Z&dataFim=2026-12-31T23:59:59Z&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Relatório de comissões da plataforma (BRL)
+GET {{baseUrl}}/relatorios/comissoes?dataInicio=2026-01-01T00:00:00Z&dataFim=2026-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Relatório de comissões de gerentes
+GET {{baseUrl}}/relatorios/comissoes-gerentes?dataInicio=2026-01-01T00:00:00Z&dataFim=2026-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Uso do plano (limite RT)
+GET {{baseUrl}}/relatorios/uso-plano
+Authorization: Bearer {{token}}
+
+### Consolidado de associados
+GET {{baseUrl}}/relatorios/associados?page=1&limit=20
+Authorization: Bearer {{token}}

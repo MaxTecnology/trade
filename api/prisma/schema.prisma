@@ -1,0 +1,398 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum TipoAgencia {
+  master
+  comum
+}
+
+enum RoleUsuario {
+  superadmin
+  agency_admin
+  agency_operator
+  gerente
+  associate_admin
+  associate_operator
+}
+
+enum EntityType {
+  matriz
+  agencia
+  associado
+}
+
+enum StatusGeral {
+  ativo
+  inativo
+  suspenso
+}
+
+enum StatusLoja {
+  aberta
+  fechada
+  pausada
+}
+
+enum StatusOferta {
+  aberta
+  fechada
+  pausada
+}
+
+enum TipoAtendimento {
+  presencial
+  online
+  voucher
+}
+
+enum TipoTransacao {
+  permuta
+  transferencia
+  credito
+  estorno
+}
+
+enum TipoMovimentacao {
+  credito
+  debito
+}
+
+enum StatusTransacao {
+  pendente
+  concluida
+  estornada
+  falha
+}
+
+enum Periodicidade {
+  mensal
+  anual
+}
+
+// ─────────────────────────────────────────
+// PLANO
+// ─────────────────────────────────────────
+
+model Plano {
+  id                 String        @id @default(uuid())
+  nome               String        @unique
+  limiteRT           Decimal       @db.Decimal(15, 2)
+  percentualComissao Decimal       @db.Decimal(5, 2)
+  periodicidade      Periodicidade
+  maxParcelas        Int           @default(1)
+  ativo              Boolean       @default(true)
+  criadoEm          DateTime      @default(now())
+  atualizadoEm      DateTime      @updatedAt
+
+  associados Associado[]
+
+  @@map("plano")
+}
+
+// ─────────────────────────────────────────
+// AGÊNCIA
+// ─────────────────────────────────────────
+
+model Agencia {
+  id               String      @id @default(uuid())
+  nome             String
+  cnpj             String      @unique
+  tipo             TipoAgencia
+  email            String      @unique
+  telefone         String?
+  status           StatusGeral @default(ativo)
+  agenciaParenteId String?
+  criadoEm        DateTime    @default(now())
+  atualizadoEm    DateTime    @updatedAt
+
+  logradouro String?
+  cidade     String
+  estado     String  @db.Char(2)
+  cep        String?
+
+  agenciaParente Agencia?  @relation("AgenciaHierarquia", fields: [agenciaParenteId], references: [id])
+  agenciasFilhas Agencia[] @relation("AgenciaHierarquia")
+  associados     Associado[]
+  usuarios       Usuario[]
+  conta          Conta?
+
+  @@map("agencia")
+}
+
+// ─────────────────────────────────────────
+// ASSOCIADO
+// ─────────────────────────────────────────
+
+model Associado {
+  id              String            @id @default(uuid())
+  nome            String
+  cnpj            String            @unique
+  email           String            @unique
+  telefone        String?
+  status          StatusGeral       @default(ativo)
+  statusLoja      StatusLoja        @default(aberta)
+  tipoAtendimento TipoAtendimento[]
+  agenciaId       String
+  planoId         String
+  gerenteId       String
+  criadoEm       DateTime          @default(now())
+  atualizadoEm   DateTime          @updatedAt
+
+  logradouro String?
+  cidade     String
+  estado     String  @db.Char(2)
+  cep        String?
+
+  agencia          Agencia     @relation(fields: [agenciaId], references: [id])
+  plano            Plano       @relation(fields: [planoId], references: [id])
+  gerente          Usuario     @relation("GerenteAssociados", fields: [gerenteId], references: [id])
+  conta            Conta?
+  usuarios         Usuario[]
+  ofertas          Oferta[]
+  transacoesCompra Transacao[] @relation("Comprador")
+  transacoesVenda  Transacao[] @relation("Vendedor")
+
+  @@map("associado")
+}
+
+// ─────────────────────────────────────────
+// CONTA RT
+// ─────────────────────────────────────────
+
+model Conta {
+  id           String     @id @default(uuid())
+  numero       String     @unique
+  saldo        Decimal    @default(0) @db.Decimal(15, 2)
+  entityType   EntityType
+  ativo        Boolean    @default(true)
+  criadoEm    DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
+
+  associadoId String? @unique
+  agenciaId   String? @unique
+
+  associado Associado? @relation(fields: [associadoId], references: [id])
+  agencia   Agencia?   @relation(fields: [agenciaId], references: [id])
+
+  movimentacoes     MovimentacaoConta[]
+  transacoesOrigem  Transacao[]         @relation("ContaOrigem")
+  transacoesDestino Transacao[]         @relation("ContaDestino")
+
+  @@index([numero])
+  @@map("conta")
+}
+
+// ─────────────────────────────────────────
+// MOVIMENTAÇÃO (Ledger imutável)
+// ─────────────────────────────────────────
+
+model MovimentacaoConta {
+  id            String           @id @default(uuid())
+  contaId       String
+  tipo          TipoMovimentacao
+  valor         Decimal          @db.Decimal(15, 2)
+  saldoApos     Decimal          @db.Decimal(15, 2)
+  descricao     String?
+  transacaoId   String?
+  numeroParcela Int?
+  totalParcelas Int?
+  vencimento    DateTime?
+  criadoEm     DateTime         @default(now())
+
+  conta     Conta      @relation(fields: [contaId], references: [id])
+  transacao Transacao? @relation(fields: [transacaoId], references: [id])
+
+  @@index([contaId, criadoEm])
+  @@map("movimentacao_conta")
+}
+
+// ─────────────────────────────────────────
+// USUÁRIO
+// ─────────────────────────────────────────
+
+model Usuario {
+  id                 String      @id @default(uuid())
+  nome               String
+  email              String      @unique
+  senhaHash          String
+  role               RoleUsuario
+  ativo              Boolean     @default(true)
+  codigoOperador     String?     @unique
+  entityType         EntityType
+  associadoId        String?
+  agenciaId          String?
+  tentativasLogin    Int         @default(0)
+  bloqueadoAte       DateTime?
+  criadoEm          DateTime    @default(now())
+  atualizadoEm      DateTime    @updatedAt
+  percentualComissao Decimal?    @db.Decimal(5, 2)
+
+  associado             Associado?        @relation(fields: [associadoId], references: [id])
+  agencia               Agencia?          @relation(fields: [agenciaId], references: [id])
+  refreshTokens         RefreshToken[]
+  transacoesIniciadas   Transacao[]       @relation("UsuarioIniciador")
+  associadosGerenciados Associado[]       @relation("GerenteAssociados")
+  comissoesGerente      ComissaoGerente[]
+
+  @@index([email])
+  @@map("usuario")
+}
+
+// ─────────────────────────────────────────
+// REFRESH TOKEN
+// ─────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  usuarioId String
+  expiresAt DateTime
+  revogado  Boolean  @default(false)
+  criadoEm DateTime  @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([token])
+  @@index([usuarioId])
+  @@map("refresh_token")
+}
+
+// ─────────────────────────────────────────
+// COMISSÃO DO GERENTE (imutável)
+// ─────────────────────────────────────────
+
+model ComissaoGerente {
+  id                    String   @id @default(uuid())
+  gerenteId             String
+  associadoId           String
+  transacaoId           String
+  valorTransacaoRT      Decimal  @db.Decimal(15, 2)
+  comissaoPlataformaBRL Decimal  @db.Decimal(15, 2)
+  percentualGerente     Decimal  @db.Decimal(5, 2)
+  comissaoGerenteBRL    Decimal  @db.Decimal(15, 2)
+  criadoEm             DateTime @default(now())
+
+  gerente   Usuario   @relation(fields: [gerenteId], references: [id])
+  transacao Transacao @relation(fields: [transacaoId], references: [id])
+
+  @@index([gerenteId, criadoEm])
+  @@index([transacaoId])
+  @@map("comissao_gerente")
+}
+
+// ─────────────────────────────────────────
+// CATEGORIA
+// ─────────────────────────────────────────
+
+model Categoria {
+  id                 String    @id @default(uuid())
+  nome               String
+  ativo              Boolean   @default(true)
+  categoriaParenteId String?
+  nivel              Int       @default(1)
+  criadoEm          DateTime  @default(now())
+  atualizadoEm      DateTime  @updatedAt
+
+  categoriaParente Categoria?  @relation("CategoriaHierarquia", fields: [categoriaParenteId], references: [id])
+  categoriasFilhas Categoria[] @relation("CategoriaHierarquia")
+  ofertas          Oferta[]
+
+  @@unique([nome, categoriaParenteId])
+  @@map("categoria")
+}
+
+// ─────────────────────────────────────────
+// OFERTA DE PERMUTA
+// ─────────────────────────────────────────
+
+model Oferta {
+  id                   String            @id @default(uuid())
+  titulo               String
+  descricao            String
+  valorRT              Decimal           @db.Decimal(15, 2)
+  quantidadeDisponivel Int
+  quantidadeTotal      Int
+  status               StatusOferta      @default(aberta)
+  tipoAtendimento      TipoAtendimento[]
+  categoriaId          String
+  associadoId          String
+  cidade               String
+  estado               String            @db.Char(2)
+  criadoEm            DateTime          @default(now())
+  atualizadoEm        DateTime          @updatedAt
+
+  categoria  Categoria   @relation(fields: [categoriaId], references: [id])
+  associado  Associado   @relation(fields: [associadoId], references: [id])
+  transacoes Transacao[]
+
+  @@index([status, cidade, estado])
+  @@index([categoriaId])
+  @@index([associadoId])
+  @@map("oferta")
+}
+
+// ─────────────────────────────────────────
+// TRANSAÇÃO
+// ─────────────────────────────────────────
+
+model Transacao {
+  id                  String          @id @default(uuid())
+  tipo                TipoTransacao
+  status              StatusTransacao @default(pendente)
+  valorRT             Decimal         @db.Decimal(15, 2)
+  comissaoBRL         Decimal?        @db.Decimal(15, 2)
+  descricao           String?
+  parcelas            Int             @default(1)
+  compradorId         String?
+  vendedorId          String?
+  contaOrigemId       String?
+  contaDestinoId      String?
+  usuarioIniciadorId  String?
+  ofertaId            String?
+  transacaoOriginalId String?
+  criadoEm           DateTime        @default(now())
+  atualizadoEm       DateTime        @updatedAt
+
+  comprador         Associado?  @relation("Comprador", fields: [compradorId], references: [id])
+  vendedor          Associado?  @relation("Vendedor", fields: [vendedorId], references: [id])
+  contaOrigem       Conta?      @relation("ContaOrigem", fields: [contaOrigemId], references: [id])
+  contaDestino      Conta?      @relation("ContaDestino", fields: [contaDestinoId], references: [id])
+  usuarioIniciador  Usuario?    @relation("UsuarioIniciador", fields: [usuarioIniciadorId], references: [id])
+  oferta            Oferta?     @relation(fields: [ofertaId], references: [id])
+  transacaoOriginal Transacao?  @relation("Estorno", fields: [transacaoOriginalId], references: [id])
+  estornos          Transacao[] @relation("Estorno")
+
+  movimentacoes    MovimentacaoConta[]
+  voucher          Voucher?
+  comissoesGerente ComissaoGerente[]
+
+  @@index([compradorId, criadoEm])
+  @@index([vendedorId, criadoEm])
+  @@index([status])
+  @@map("transacao")
+}
+
+// ─────────────────────────────────────────
+// VOUCHER
+// ─────────────────────────────────────────
+
+model Voucher {
+  id          String   @id @default(uuid())
+  codigo      String   @unique @default(uuid())
+  transacaoId String   @unique
+  pdfUrl      String?
+  emitidoEm  DateTime @default(now())
+
+  transacao Transacao @relation(fields: [transacaoId], references: [id])
+
+  @@map("voucher")
+}

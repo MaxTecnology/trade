@@ -1,0 +1,57 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@usuarioId = UUID_DO_USUARIO
+
+### Criar usuário
+POST {{baseUrl}}/usuarios
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Maria Oliveira",
+  "email": "maria@padariacentral.com",
+  "senha": "SenhaForte@456",
+  "role": "associate_operator",
+  "entityId": "UUID_DO_ASSOCIADO",
+  "entityType": "associado"
+}
+
+### Listar usuários da entidade
+GET {{baseUrl}}/usuarios
+Authorization: Bearer {{token}}
+
+### Detalhar usuário
+GET {{baseUrl}}/usuarios/{{usuarioId}}
+Authorization: Bearer {{token}}
+
+### Atualizar dados do usuário
+PUT {{baseUrl}}/usuarios/{{usuarioId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Maria Oliveira Silva"
+}
+
+### Alterar senha
+PATCH {{baseUrl}}/usuarios/{{usuarioId}}/senha
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "senhaAtual": "SenhaForte@456",
+  "novaSenha": "NovaSenha@789"
+}
+
+### Ativar/Desativar usuário
+PATCH {{baseUrl}}/usuarios/{{usuarioId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ativo": false
+}
+
+### Remover usuário
+DELETE {{baseUrl}}/usuarios/{{usuarioId}}
+Authorization: Bearer {{token}}

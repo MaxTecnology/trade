@@ -1,0 +1,44 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@planoId = UUID_DO_PLANO
+
+### Criar plano
+POST {{baseUrl}}/planos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Plano Premium",
+  "limiteRT": 100000,
+  "percentualComissao": 2.5,
+  "periodicidade": "mensal",
+  "maxParcelas": 6,
+  "ativo": true
+}
+
+### Listar planos
+GET {{baseUrl}}/planos
+Authorization: Bearer {{token}}
+
+### Detalhar plano
+GET {{baseUrl}}/planos/{{planoId}}
+Authorization: Bearer {{token}}
+
+### Atualizar plano
+PUT {{baseUrl}}/planos/{{planoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Plano Premium Plus",
+  "limiteRT": 150000
+}
+
+### Ativar/Desativar plano
+PATCH {{baseUrl}}/planos/{{planoId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ativo": false
+}

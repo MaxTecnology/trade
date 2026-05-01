@@ -1,0 +1,69 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@agenciaId = UUID_DA_AGENCIA
+
+### Criar agência master (superadmin)
+POST {{baseUrl}}/agencias
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Agência Central Norte",
+  "cnpj": "12.345.678/0001-99",
+  "tipo": "master",
+  "email": "contato@agencianorte.com",
+  "telefone": "82999998888",
+  "endereco": {
+    "logradouro": "Rua das Flores, 100",
+    "cidade": "Maceió",
+    "estado": "AL",
+    "cep": "57000-000"
+  },
+  "agenciaParenteId": null
+}
+
+### Listar agências
+GET {{baseUrl}}/agencias
+Authorization: Bearer {{token}}
+
+### Detalhar agência
+GET {{baseUrl}}/agencias/{{agenciaId}}
+Authorization: Bearer {{token}}
+
+### Atualizar agência
+PUT {{baseUrl}}/agencias/{{agenciaId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Agência Central Norte Atualizada",
+  "email": "novo@agencianorte.com",
+  "telefone": "82999997777",
+  "endereco": {
+    "logradouro": "Rua das Flores, 200",
+    "cidade": "Maceió",
+    "estado": "AL",
+    "cep": "57000-001"
+  }
+}
+
+### Ativar/Suspender agência
+PATCH {{baseUrl}}/agencias/{{agenciaId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "suspenso"
+}
+
+### Listar associados da agência
+GET {{baseUrl}}/agencias/{{agenciaId}}/associados?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Ver conta RT da agência
+GET {{baseUrl}}/agencias/{{agenciaId}}/conta
+Authorization: Bearer {{token}}
+
+### Listar gerentes da agência
+GET {{baseUrl}}/agencias/{{agenciaId}}/gerentes
+Authorization: Bearer {{token}}

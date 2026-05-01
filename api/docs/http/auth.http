@@ -1,0 +1,22 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic3VwZXJhZG1pbiIsImVudGl0eVR5cGUiOiJtYXRyaXoiLCJlbnRpdHlJZCI6Im1hdHJpeiIsImlhdCI6MTc3NzY2NTEwMCwiZXhwIjoxNzc3NjY2MDAwLCJzdWIiOiI0NWJkMThhNi0wMjAyLTRlNWYtOTlkMi01NzYwMWNkMjM5YmUifQ.O6BTKeBb3XA8t9YMXtgmMKf-ZiEelQTnpojFhNRaL-4
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@redetrade.com.br",
+  "senha": "Admin@123456"
+}
+
+### Renovar token (usa refreshToken do cookie)
+POST {{baseUrl}}/auth/refresh
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{token}}
+
+### Meu perfil
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}

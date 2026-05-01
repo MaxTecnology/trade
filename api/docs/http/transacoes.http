@@ -1,0 +1,48 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@transacaoId = UUID_DA_TRANSACAO
+
+### Realizar permuta (comprar oferta)
+POST {{baseUrl}}/transacoes/permuta
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofertaId": "UUID_DA_OFERTA",
+  "quantidade": 2,
+  "parcelas": 1
+}
+
+### Transferir RT entre contas
+POST {{baseUrl}}/transacoes/transferencia
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contaDestinoId": "UUID_DA_CONTA_DESTINO",
+  "valorRT": 200,
+  "descricao": "Pagamento de serviço"
+}
+
+### Injetar RT (Matriz → conta)
+POST {{baseUrl}}/transacoes/credito
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contaDestinoId": "UUID_DA_CONTA",
+  "valorRT": 10000,
+  "descricao": "Crédito inicial de ativação"
+}
+
+### Estornar transação
+POST {{baseUrl}}/transacoes/{{transacaoId}}/estorno
+Authorization: Bearer {{token}}
+
+### Listar transações
+GET {{baseUrl}}/transacoes?tipo=permuta&dataInicio=2026-01-01T00:00:00Z&dataFim=2026-12-31T23:59:59Z&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Detalhar transação
+GET {{baseUrl}}/transacoes/{{transacaoId}}
+Authorization: Bearer {{token}}

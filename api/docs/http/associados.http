@@ -1,0 +1,71 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@associadoId = UUID_DO_ASSOCIADO
+
+### Criar associado
+POST {{baseUrl}}/associados
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Padaria Central",
+  "cnpj": "98.765.432/0001-10",
+  "email": "contato@padariacentral.com",
+  "telefone": "82988887777",
+  "agenciaId": "UUID_DA_AGENCIA",
+  "gerenteId": "UUID_DO_GERENTE",
+  "planoId": "UUID_DO_PLANO",
+  "tipoAtendimento": ["presencial", "online"],
+  "endereco": {
+    "logradouro": "Av. Principal, 500",
+    "cidade": "Arapiraca",
+    "estado": "AL",
+    "cep": "57300-000"
+  }
+}
+
+### Listar associados
+GET {{baseUrl}}/associados?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Detalhar associado
+GET {{baseUrl}}/associados/{{associadoId}}
+Authorization: Bearer {{token}}
+
+### Atualizar associado
+PUT {{baseUrl}}/associados/{{associadoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Padaria Central Atualizada",
+  "telefone": "82988886666",
+  "endereco": {
+    "logradouro": "Av. Nova, 100",
+    "cidade": "Arapiraca",
+    "estado": "AL",
+    "cep": "57300-001"
+  }
+}
+
+### Ativar/Suspender associado
+PATCH {{baseUrl}}/associados/{{associadoId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "suspenso"
+}
+
+### Ver conta RT do associado
+GET {{baseUrl}}/associados/{{associadoId}}/conta
+Authorization: Bearer {{token}}
+
+### Abrir/Fechar loja
+PATCH {{baseUrl}}/associados/{{associadoId}}/loja
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "statusLoja": "fechada"
+}

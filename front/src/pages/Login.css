@@ -1,0 +1,121 @@
+.loginPage {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+}
+
+.loginPage .loginImage {
+    flex: 2.35;
+}
+
+.loginPage .loginImage img {
+    width: 100%;
+    /* Ajusta a imagem para ocupar 100% da largura do container */
+    height: 100%;
+    /* Mantém a proporção da imagem */
+    display: block;
+    /* Remove margens brancas ao redor da imagem */
+}
+
+.loginContainer {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.loginContainer form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.loginContainer form>* {
+    width: 90%;
+    max-width: 346px;
+    color: #979797;
+}
+
+.loginContainer form>div {
+    position: relative;
+}
+
+.passwordIcon {
+    position: absolute;
+    right: 4.7%;
+    color: blueviolet;
+    width: 18px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.loginContainer form>input,
+.loginContainer form>div>input {
+    background-color: #E6EEF9;
+    border: none;
+    outline: none;
+    height: 35px;
+    border-radius: 2px;
+    font-size: 15px;
+    padding-left: 12px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.loginContainer form>div>input::placeholder {
+    color: gray;
+    font-weight: 500;
+}
+
+.loginContainer form img {
+    width: 216px;
+    height: 46px;
+}
+
+
+.loginPage .loginContainer form div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+}
+
+.loginPage .loginContainer form .loginInputContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 5px;
+}
+
+.loginInputContainer {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+
+}
+
+.loginInputContainer p {
+    margin: 0;
+}
+
+.loginInputContainer div {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.loginContainer button {
+    background-color: #ff6600;
+    color: white;
+    border-radius: 5px;
+    font-size: 12px;
+    padding: 12px;
+}
+
+.loginContainer span {
+    color: #42066D;
+}

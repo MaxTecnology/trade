@@ -1,0 +1,52 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@gerenteId = UUID_DO_GERENTE
+
+### Cadastrar gerente
+POST {{baseUrl}}/gerentes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Carlos Mendes",
+  "email": "carlos@redetrade.com.br",
+  "senha": "SenhaForte@789",
+  "percentualComissao": 10.0,
+  "entityId": "UUID_DA_AGENCIA_OU_MATRIZ",
+  "entityType": "agencia"
+}
+
+### Listar gerentes
+GET {{baseUrl}}/gerentes
+Authorization: Bearer {{token}}
+
+### Detalhar gerente
+GET {{baseUrl}}/gerentes/{{gerenteId}}
+Authorization: Bearer {{token}}
+
+### Atualizar gerente
+PUT {{baseUrl}}/gerentes/{{gerenteId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Carlos Mendes Junior",
+  "percentualComissao": 12.5
+}
+
+### Ativar/Desativar gerente
+PATCH {{baseUrl}}/gerentes/{{gerenteId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ativo": false
+}
+
+### Associados cadastrados pelo gerente
+GET {{baseUrl}}/gerentes/{{gerenteId}}/associados?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Extrato de comissões do gerente
+GET {{baseUrl}}/gerentes/{{gerenteId}}/comissoes?page=1&limit=20
+Authorization: Bearer {{token}}

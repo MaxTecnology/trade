@@ -1,0 +1,15 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@voucherId = UUID_DO_VOUCHER
+@codigoVoucher = CODIGO_UUID_DO_VOUCHER
+
+### Detalhar voucher
+GET {{baseUrl}}/vouchers/{{voucherId}}
+Authorization: Bearer {{token}}
+
+### Download PDF do voucher
+GET {{baseUrl}}/vouchers/{{voucherId}}/pdf
+Authorization: Bearer {{token}}
+
+### Verificar autenticidade do voucher (público)
+GET {{baseUrl}}/vouchers/verificar/{{codigoVoucher}}

@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"] // Defina o seu alias e o caminho correspondente
+    }
+  },
+  "include": ["src/**/*"] // Ajuste o padrão de inclusão para corresponder à estrutura do seu projeto
+}

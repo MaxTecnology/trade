@@ -1,0 +1,451 @@
+### ============================================================
+### Rede Trade API — Documentação HTTP Completa
+### ============================================================
+
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+
+# ──────────────────────────────────────────────────────────────
+# 1. AUTENTICAÇÃO
+# ──────────────────────────────────────────────────────────────
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@redetrade.com.br",
+  "senha": "Admin@123456"
+}
+
+### Renovar token
+POST {{baseUrl}}/auth/refresh
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{token}}
+
+### Meu perfil
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+# ──────────────────────────────────────────────────────────────
+# 2. AGÊNCIAS
+# ──────────────────────────────────────────────────────────────
+
+### Criar agência master
+POST {{baseUrl}}/agencias
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Agência Central Norte",
+  "cnpj": "12.345.678/0001-99",
+  "tipo": "master",
+  "email": "contato@agencianorte.com",
+  "telefone": "82999998888",
+  "endereco": { "logradouro": "Rua das Flores, 100", "cidade": "Maceió", "estado": "AL", "cep": "57000-000" },
+  "agenciaParenteId": null
+}
+
+### Listar agências
+GET {{baseUrl}}/agencias
+Authorization: Bearer {{token}}
+
+### Detalhar agência
+GET {{baseUrl}}/agencias/UUID_DA_AGENCIA
+Authorization: Bearer {{token}}
+
+### Atualizar agência
+PUT {{baseUrl}}/agencias/UUID_DA_AGENCIA
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Agência Central Norte Atualizada" }
+
+### Suspender agência
+PATCH {{baseUrl}}/agencias/UUID_DA_AGENCIA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "suspenso" }
+
+### Associados da agência
+GET {{baseUrl}}/agencias/UUID_DA_AGENCIA/associados?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Conta RT da agência
+GET {{baseUrl}}/agencias/UUID_DA_AGENCIA/conta
+Authorization: Bearer {{token}}
+
+### Gerentes da agência
+GET {{baseUrl}}/agencias/UUID_DA_AGENCIA/gerentes
+Authorization: Bearer {{token}}
+
+# ──────────────────────────────────────────────────────────────
+# 3. ASSOCIADOS
+# ──────────────────────────────────────────────────────────────
+
+### Criar associado
+POST {{baseUrl}}/associados
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Padaria Central",
+  "cnpj": "98.765.432/0001-10",
+  "email": "contato@padariacentral.com",
+  "telefone": "82988887777",
+  "agenciaId": "UUID_DA_AGENCIA",
+  "gerenteId": "UUID_DO_GERENTE",
+  "planoId": "UUID_DO_PLANO",
+  "tipoAtendimento": ["presencial", "online"],
+  "endereco": { "logradouro": "Av. Principal, 500", "cidade": "Arapiraca", "estado": "AL", "cep": "57300-000" }
+}
+
+### Listar associados
+GET {{baseUrl}}/associados?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Detalhar associado
+GET {{baseUrl}}/associados/UUID_DO_ASSOCIADO
+Authorization: Bearer {{token}}
+
+### Atualizar associado
+PUT {{baseUrl}}/associados/UUID_DO_ASSOCIADO
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Padaria Central Atualizada" }
+
+### Suspender associado
+PATCH {{baseUrl}}/associados/UUID_DO_ASSOCIADO/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "suspenso" }
+
+### Conta RT do associado
+GET {{baseUrl}}/associados/UUID_DO_ASSOCIADO/conta
+Authorization: Bearer {{token}}
+
+### Fechar loja
+PATCH {{baseUrl}}/associados/UUID_DO_ASSOCIADO/loja
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "statusLoja": "fechada" }
+
+# ──────────────────────────────────────────────────────────────
+# 4. USUÁRIOS
+# ──────────────────────────────────────────────────────────────
+
+### Criar usuário operador
+POST {{baseUrl}}/usuarios
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Maria Oliveira",
+  "email": "maria@padariacentral.com",
+  "senha": "SenhaForte@456",
+  "role": "associate_operator",
+  "entityId": "UUID_DO_ASSOCIADO",
+  "entityType": "associado"
+}
+
+### Listar usuários
+GET {{baseUrl}}/usuarios
+Authorization: Bearer {{token}}
+
+### Detalhar usuário
+GET {{baseUrl}}/usuarios/UUID_DO_USUARIO
+Authorization: Bearer {{token}}
+
+### Atualizar usuário
+PUT {{baseUrl}}/usuarios/UUID_DO_USUARIO
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Maria Oliveira Silva" }
+
+### Alterar senha
+PATCH {{baseUrl}}/usuarios/UUID_DO_USUARIO/senha
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "senhaAtual": "SenhaForte@456", "novaSenha": "NovaSenha@789" }
+
+### Desativar usuário
+PATCH {{baseUrl}}/usuarios/UUID_DO_USUARIO/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "ativo": false }
+
+### Remover usuário
+DELETE {{baseUrl}}/usuarios/UUID_DO_USUARIO
+Authorization: Bearer {{token}}
+
+# ──────────────────────────────────────────────────────────────
+# 5. GERENTES
+# ──────────────────────────────────────────────────────────────
+
+### Cadastrar gerente
+POST {{baseUrl}}/gerentes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Carlos Mendes",
+  "email": "carlos@redetrade.com.br",
+  "senha": "SenhaForte@789",
+  "percentualComissao": 10.0,
+  "entityId": "UUID_DA_AGENCIA",
+  "entityType": "agencia"
+}
+
+### Listar gerentes
+GET {{baseUrl}}/gerentes
+Authorization: Bearer {{token}}
+
+### Detalhar gerente
+GET {{baseUrl}}/gerentes/UUID_DO_GERENTE
+Authorization: Bearer {{token}}
+
+### Atualizar gerente
+PUT {{baseUrl}}/gerentes/UUID_DO_GERENTE
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "percentualComissao": 12.5 }
+
+### Desativar gerente
+PATCH {{baseUrl}}/gerentes/UUID_DO_GERENTE/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "ativo": false }
+
+### Associados do gerente
+GET {{baseUrl}}/gerentes/UUID_DO_GERENTE/associados?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Comissões do gerente
+GET {{baseUrl}}/gerentes/UUID_DO_GERENTE/comissoes?page=1&limit=20
+Authorization: Bearer {{token}}
+
+# ──────────────────────────────────────────────────────────────
+# 6. PLANOS
+# ──────────────────────────────────────────────────────────────
+
+### Criar plano
+POST {{baseUrl}}/planos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Plano Premium",
+  "limiteRT": 100000,
+  "percentualComissao": 2.5,
+  "periodicidade": "mensal",
+  "maxParcelas": 6,
+  "ativo": true
+}
+
+### Listar planos
+GET {{baseUrl}}/planos
+Authorization: Bearer {{token}}
+
+### Detalhar plano
+GET {{baseUrl}}/planos/UUID_DO_PLANO
+Authorization: Bearer {{token}}
+
+### Atualizar plano
+PUT {{baseUrl}}/planos/UUID_DO_PLANO
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "limiteRT": 150000 }
+
+### Desativar plano
+PATCH {{baseUrl}}/planos/UUID_DO_PLANO/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "ativo": false }
+
+# ──────────────────────────────────────────────────────────────
+# 7. CATEGORIAS
+# ──────────────────────────────────────────────────────────────
+
+### Criar categoria raiz
+POST {{baseUrl}}/categorias
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Turismo", "categoriaParenteId": null, "ativo": true }
+
+### Listar árvore de categorias (público)
+GET {{baseUrl}}/categorias
+
+### Detalhar categoria (público)
+GET {{baseUrl}}/categorias/UUID_DA_CATEGORIA
+
+### Atualizar categoria
+PUT {{baseUrl}}/categorias/UUID_DA_CATEGORIA
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Turismo e Lazer" }
+
+### Desativar categoria
+PATCH {{baseUrl}}/categorias/UUID_DA_CATEGORIA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "ativo": false }
+
+# ──────────────────────────────────────────────────────────────
+# 8. OFERTAS DE PERMUTA
+# ──────────────────────────────────────────────────────────────
+
+### Criar oferta
+POST {{baseUrl}}/ofertas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Almoço Executivo",
+  "descricao": "Prato feito completo com sobremesa e suco.",
+  "categoriaId": "UUID_DA_CATEGORIA",
+  "valorRT": 50,
+  "quantidadeDisponivel": 100,
+  "tipoAtendimento": ["presencial"],
+  "cidade": "Arapiraca",
+  "estado": "AL"
+}
+
+### Buscar ofertas (público, com filtros)
+GET {{baseUrl}}/ofertas?categoria=UUID&cidade=Arapiraca&estado=AL&valorMin=10&valorMax=500&page=1&limit=20
+
+### Detalhar oferta (público)
+GET {{baseUrl}}/ofertas/UUID_DA_OFERTA
+
+### Minha loja
+GET {{baseUrl}}/ofertas/minha-loja?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Atualizar oferta
+PUT {{baseUrl}}/ofertas/UUID_DA_OFERTA
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "valorRT": 60, "quantidadeDisponivel": 150 }
+
+### Pausar oferta
+PATCH {{baseUrl}}/ofertas/UUID_DA_OFERTA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "pausada" }
+
+# ──────────────────────────────────────────────────────────────
+# 9. TRANSAÇÕES RT
+# ──────────────────────────────────────────────────────────────
+
+### Realizar permuta
+POST {{baseUrl}}/transacoes/permuta
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofertaId": "UUID_DA_OFERTA",
+  "quantidade": 2,
+  "parcelas": 1
+}
+
+### Transferir RT
+POST {{baseUrl}}/transacoes/transferencia
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contaDestinoId": "UUID_DA_CONTA_DESTINO",
+  "valorRT": 200,
+  "descricao": "Pagamento de serviço"
+}
+
+### Crédito pela Matriz
+POST {{baseUrl}}/transacoes/credito
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contaDestinoId": "UUID_DA_CONTA",
+  "valorRT": 10000,
+  "descricao": "Crédito inicial"
+}
+
+### Estornar transação
+POST {{baseUrl}}/transacoes/UUID_DA_TRANSACAO/estorno
+Authorization: Bearer {{token}}
+
+### Listar transações
+GET {{baseUrl}}/transacoes?tipo=permuta&dataInicio=2026-01-01T00:00:00Z&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Detalhar transação
+GET {{baseUrl}}/transacoes/UUID_DA_TRANSACAO
+Authorization: Bearer {{token}}
+
+# ──────────────────────────────────────────────────────────────
+# 10. VOUCHERS
+# ──────────────────────────────────────────────────────────────
+
+### Detalhar voucher
+GET {{baseUrl}}/vouchers/UUID_DO_VOUCHER
+Authorization: Bearer {{token}}
+
+### PDF do voucher
+GET {{baseUrl}}/vouchers/UUID_DO_VOUCHER/pdf
+Authorization: Bearer {{token}}
+
+### Verificar autenticidade (público)
+GET {{baseUrl}}/vouchers/verificar/CODIGO_UUID_DO_VOUCHER
+
+# ──────────────────────────────────────────────────────────────
+# 11. RELATÓRIOS E EXTRATOS
+# ──────────────────────────────────────────────────────────────
+
+### Extrato de movimentações
+GET {{baseUrl}}/extrato?dataInicio=2026-01-01T00:00:00Z&dataFim=2026-12-31T23:59:59Z&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Exportar extrato CSV
+GET {{baseUrl}}/extrato?format=csv
+Authorization: Bearer {{token}}
+
+### Saldo atual
+GET {{baseUrl}}/extrato/saldo
+Authorization: Bearer {{token}}
+
+### Relatório de permutas
+GET {{baseUrl}}/relatorios/permutas?dataInicio=2026-01-01T00:00:00Z&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Relatório de comissões (BRL)
+GET {{baseUrl}}/relatorios/comissoes?dataInicio=2026-01-01T00:00:00Z
+Authorization: Bearer {{token}}
+
+### Comissões de gerentes
+GET {{baseUrl}}/relatorios/comissoes-gerentes?dataInicio=2026-01-01T00:00:00Z
+Authorization: Bearer {{token}}
+
+### Uso do plano
+GET {{baseUrl}}/relatorios/uso-plano
+Authorization: Bearer {{token}}
+
+### Consolidado de associados
+GET {{baseUrl}}/relatorios/associados?page=1&limit=20
+Authorization: Bearer {{token}}

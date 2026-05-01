@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@ofertaId = UUID_DA_OFERTA
+
+### Criar oferta
+POST {{baseUrl}}/ofertas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Almoço Executivo",
+  "descricao": "Prato feito completo com sobremesa e suco.",
+  "categoriaId": "UUID_DA_CATEGORIA",
+  "valorRT": 50,
+  "quantidadeDisponivel": 100,
+  "tipoAtendimento": ["presencial"],
+  "cidade": "Arapiraca",
+  "estado": "AL"
+}
+
+### Listar ofertas (público, com filtros)
+GET {{baseUrl}}/ofertas?categoria=UUID&cidade=Arapiraca&estado=AL&valorMin=10&valorMax=500&tipoAtendimento=presencial&page=1&limit=20
+
+### Detalhar oferta (público)
+GET {{baseUrl}}/ofertas/{{ofertaId}}
+
+### Listar minhas ofertas (loja do associado)
+GET {{baseUrl}}/ofertas/minha-loja?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Atualizar oferta
+PUT {{baseUrl}}/ofertas/{{ofertaId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Almoço Executivo Premium",
+  "valorRT": 60,
+  "quantidadeDisponivel": 150
+}
+
+### Alterar status da oferta
+PATCH {{baseUrl}}/ofertas/{{ofertaId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "pausada"
+}

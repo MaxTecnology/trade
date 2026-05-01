@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@categoriaId = UUID_DA_CATEGORIA
+
+### Criar categoria
+POST {{baseUrl}}/categorias
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Turismo",
+  "categoriaParenteId": null,
+  "ativo": true
+}
+
+### Criar subcategoria
+POST {{baseUrl}}/categorias
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Hotéis",
+  "categoriaParenteId": "{{categoriaId}}",
+  "ativo": true
+}
+
+### Listar categorias (árvore — público)
+GET {{baseUrl}}/categorias
+
+### Detalhar categoria (público)
+GET {{baseUrl}}/categorias/{{categoriaId}}
+
+### Atualizar categoria
+PUT {{baseUrl}}/categorias/{{categoriaId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nome": "Turismo e Lazer"
+}
+
+### Ativar/Desativar categoria
+PATCH {{baseUrl}}/categorias/{{categoriaId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ativo": false
+}
