@@ -12,7 +12,14 @@ type Params = { id: string }
 type Query = { page?: number; limit?: number }
 
 export async function createController(request: FastifyRequest, reply: FastifyReply) {
-  const input = createAssociateSchema.parse(request.body)
+  const body = request.body as Record<string, unknown>
+  if (request.user.role === 'agency_admin') {
+    body.agenciaId = request.user.entityId
+  }
+  if (body.agenciaId === '' || body.agenciaId === null) delete body.agenciaId
+  if (body.gerenteId === '' || body.gerenteId === null) delete body.gerenteId
+  if (body.categoriaId === '' || body.categoriaId === null) delete body.categoriaId
+  const input = createAssociateSchema.parse(body)
   const associado = await associateService.create(input)
   return reply.status(201).send(success(associado))
 }

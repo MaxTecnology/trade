@@ -4,7 +4,7 @@ import state from "@/store";
 
 const SaldoPermutas = () => {
     const snap = useSnapshot(state);
-    const saldoPermuta = snap.user && snap.user.conta.saldoPermuta ? snap.user.conta.saldoPermuta : 0
+    const saldoPermuta = snap.user?.conta?.saldoPermuta ?? 0
     return (
         <div>
             Saldo em Permutas:

@@ -1,0 +1,21 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@arquivoId = UUID_DO_ARQUIVO
+
+### Upload de imagem (multipart/form-data) — qualquer usuário autenticado
+# Retorna: { url, id }
+# Use a URL retornada no campo imagemUrl ao criar/editar ofertas
+POST {{baseUrl}}/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----FormBoundary
+
+------FormBoundary
+Content-Disposition: form-data; name="file"; filename="imagem.jpg"
+Content-Type: image/jpeg
+
+< ./imagem.jpg
+------FormBoundary--
+
+### Deletar arquivo do B2 (superadmin)
+DELETE {{baseUrl}}/upload/{{arquivoId}}
+Authorization: Bearer {{token}}

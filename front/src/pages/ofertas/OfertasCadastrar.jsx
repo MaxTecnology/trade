@@ -19,7 +19,7 @@ const OfertasCadastrar = () => {
     const [reference, setReference] = useState(true)
     const [imagemReference, setImageReference] = useState(null);
     const revalidate = useRevalidate();
-    const url = "ofertas/criar-oferta"
+    const url = "ofertas"
     const navigate = useNavigate();
     const handleclick = () => {
         navigate("/ofertas")

@@ -44,7 +44,7 @@ const EditarCategoriaModal = ({ isOpen, modalToggle, url, info }) => {
                 <div className='modalFormContentContainer'>
                     <div className="form-group f1">
                         <label htmlFor="nome">Nome da Categoria</label>
-                        <input type="text" defaultValue={data.nomeCategoria} name="nomeCategoria" />
+                        <input type="text" defaultValue={data.nome} name="nome" />
                     </div>
                     <div className="form-group f1"></div>
                 </div>

@@ -19,7 +19,7 @@ const EditarUsuariosModal = ({ isOpen, modalToggle, associadoInfo }) => {
     const [error, setError] = useState(false)
     const [sucess, setSucess] = useState(false)
     const info = associadoInfo
-    const url = `usuarios/atualizar-usuario/${info.idUsuario}`
+    const url = `usuarios/${info.id}`
     console.log(url)
     const isURL = (str) => {
         try {

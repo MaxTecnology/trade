@@ -1,31 +1,30 @@
+const formatDate = (value) => {
+    if (!value) return '-'
+    return new Date(value).toLocaleDateString('pt-BR')
+}
+
 export const columns = [
+    { accessorKey: 'nome', header: 'Nome' },
+    { accessorKey: 'email', header: 'E-mail' },
     {
-        id: 'conta',
-        accessorKey: 'conta.numeroConta',
-        header: 'N° da Conta',
-    },
-    {
-        accessorKey: 'nomeFantasia',
-        header: 'Nome Fantasia',
-    },
-    {
-        accessorKey: 'conta.nomeFranquia',
+        id: 'agencia',
         header: 'Agência',
+        accessorFn: (row) => row.associado?.agencia?.nome ?? '-',
     },
     {
-        accessorKey: 'email',
-        header: 'E-mail',
+        id: 'plano',
+        header: 'Plano',
+        accessorFn: (row) => row.associado?.plano?.nome ?? '-',
     },
     {
-        accessorKey: 'status',
+        id: 'comissao',
+        header: 'Comissão %',
+        accessorFn: (row) => row.associado?.plano?.percentualComissao ?? '-',
+    },
+    {
+        id: 'status',
         header: 'Status',
+        accessorFn: (row) => (row.ativo ? 'Ativo' : 'Inativo'),
     },
-    {
-        accessorKey: 'tipo',
-        header: 'Tipo',
-    },
-    {
-        accessorKey: 'nome',
-        header: 'Nome',
-    },
+    { accessorKey: 'criadoEm', header: 'Data', cell: ({ getValue }) => formatDate(getValue()) },
 ]

@@ -56,7 +56,7 @@ const SubCategoriaTable = ({
                                     confirm="Deseja excluir essa Sub Categoria?"
                                     titulo="Sub Categoria"
                                     resultDelete="Sub Categoria excluida com sucesso!"
-                                    url={`categorias/deletar-subcategoria/${row.original.idSubcategoria}`}
+                                    url={`categorias/${row.original.id}`}
                                     revalidate={() => revalidate("categorias")}
                                 />
                                 <Buttons
@@ -64,7 +64,7 @@ const SubCategoriaTable = ({
                                     setId={setId}
                                     setInfo={setInfo}
                                     info={row.original}
-                                    value={row.original.idSubcategoria}
+                                    value={row.original.id}
                                     modal={modaltoggle}
                                 />
                             </td>

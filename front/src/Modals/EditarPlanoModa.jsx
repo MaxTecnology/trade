@@ -6,16 +6,14 @@ import { GrFormClose } from "react-icons/gr";
 import { toast } from 'sonner';
 import useRevalidate from '@/hooks/ReactQuery/useRevalidate';
 
-// Defina o elemento principal da sua aplicação (geralmente '#root' para um aplicativo React)
 const appElement = document.getElementById('root');
-
-// Configure o elemento principal para o react-modal
 Modal.setAppElement(appElement);
-const EditarPlanoModal = ({ isOpen, modalToggle, url, info, body, complex }) => {
+
+// tipoPlano: 'associado' | 'agencia' | 'gerente'
+const EditarPlanoModal = ({ isOpen, modalToggle, url, info, tipoPlano }) => {
     const [error, setError] = useState(false)
     const [sucess, setSucess] = useState(false)
     const data = info
-    const nomePlano = body
     const revalidate = useRevalidate()
 
     const formHandler = (event) => {
@@ -24,49 +22,49 @@ const EditarPlanoModal = ({ isOpen, modalToggle, url, info, body, complex }) => 
             success: () => {
                 modalToggle()
                 revalidate("planos")
-                return "Plano Editado com sucesso!"
+                return "Plano editado com sucesso!"
             },
             error: 'Erro ao editar!'
         })
     }
 
+    const labels = { associado: 'Associado', agencia: 'Agência', gerente: 'Gerente' }
+
     return (
         <Modal
             isOpen={isOpen}
             onRequestClose={() => closeModal(modalToggle, setSucess, setError)}
-            contentLabel="Editar Categoria"
+            contentLabel="Editar Plano"
             className={"modalEditPanel modalAnimationEdit"}
             overlayClassName={"modalOverlay modalAnimationOverlay"}
         >
             <div className='modalEditHeader'>
-                <p>Editar Plano {nomePlano.tipo}</p>
+                <p>Editar Plano {labels[tipoPlano] ?? ''}</p>
                 <GrFormClose onClick={() => closeModal(modalToggle, setSucess, setError)} />
             </div>
             <div className='modalDivider'></div>
-            <form onSubmit={(event) => formHandler(event)} className="containerForm">
-
+            <form onSubmit={formHandler} className="containerForm">
                 <div className="modalFormContentContainer">
+                    <input type="hidden" name="tipoPlano" value={tipoPlano} />
                     <div className="form-group f2">
-                        <label htmlFor="nomeCategoria">Nome do Plano</label>
-                        <input type="text" defaultValue={data.nomePlano} name="nomePlano" />
+                        <label>Nome do Plano</label>
+                        <input type="text" defaultValue={data.nome} name="nome" />
                     </div>
                     <div className="form-group f2">
-                        <label htmlFor="nome">Taxa de Comissão %</label>
-                        <input type="number" defaultValue={data.taxaComissao} name="taxaComissao" />
+                        <label>Taxa de Comissão %</label>
+                        <input type="number" step="0.01" defaultValue={data.percentualComissao} name="percentualComissao" />
                     </div>
-                    {complex ? <>
+                    {tipoPlano === 'associado' && <>
                         <div className="form-group f2">
-                            <label htmlFor="nome">Taxa de Inscrição</label>
-                            <input type="number" defaultValue={data.taxaInscricao} name="taxaInscricao" />
+                            <label>Taxa de Inscrição (RT$)</label>
+                            <input type="number" step="0.01" defaultValue={data.taxaInscricaoRT} name="taxaInscricaoRT" />
                         </div>
                         <div className="form-group f2">
-                            <label htmlFor="nome">Taxa de Manutenção Anual </label>
-                            <input type="number" defaultValue={data.taxaManutencaoAnual} name="taxaManutencaoAnual" />
+                            <label>Taxa de Manutenção Anual (RT$)</label>
+                            <input type="number" step="0.01" defaultValue={data.taxaManutencaoAnualRT} name="taxaManutencaoAnualRT" />
                         </div>
-                    </> : null}
+                    </>}
                 </div>
-
-
                 <div className='modalDivierForm'></div>
                 <div className="buttonContainer">
                     <button className='modalButtonClose' type='button'

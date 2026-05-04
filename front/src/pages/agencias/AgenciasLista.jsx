@@ -11,7 +11,6 @@ import useModal from "@/hooks/useModal";
 import { useQueryAgencias } from "@/hooks/ReactQuery/useQueryAgencias";
 import filters from "@/store/filters";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
-import { getType } from "@/hooks/getId";
 
 const AgenciasLista = () => {
     const { data } = useQueryAgencias()
@@ -24,12 +23,9 @@ const AgenciasLista = () => {
     }, []);
 
     const navigate = useNavigate();
-    const handleclick = () => {
-        navigate("/agenciasCadastrar")
-    }
+
     const handleSearch = (e) => {
         filters.table[e.target.name] = e.target.value
-        console.log(filters)
     }
 
     return (
@@ -42,42 +38,39 @@ const AgenciasLista = () => {
                     id={userId}
                 />
                 : null}
-            <div className="containerHeader">Agencias</div>
+            <div className="containerHeader">Agências</div>
             <form className="containerSearch">
                 <div className="searchRow">
                     <SearchInput />
                     <div className="form-group">
-                        <label htmlFor="porcentagem">Tipo</label>
+                        <label>Tipo</label>
                         <select className="form-control" name="tipo" onChange={handleSearch}>
                             <option value="">Selecionar</option>
-                            <option value="Comum">Associado</option>
-                            <option value="Master">Master</option>
-                            <option value="Filial">Filial</option>
-                            <option value="Matriz">Matriz</option>
+                            <option value="comum">Comum</option>
+                            <option value="master">Master</option>
                         </select>
                     </div>
                     <div className="form-group">
-                        <label htmlFor="nomePlano">Nome Fantasia</label>
-                        <input type="text" id="nomePlano" name="nomeFranquia" placeholder="Digite o nome fantasia" onChange={handleSearch} />
+                        <label>Nome</label>
+                        <input type="text" name="nome" placeholder="Nome da agência" onChange={handleSearch} />
                     </div>
                     <div className="form-group">
-                        <label htmlFor="nomePlano">N° da Conta</label>
-                        <input type="number" id="nomePlano" name="conta" placeholder="Digite o N° da Conta" onChange={handleSearch} />
+                        <label>N° da Conta</label>
+                        <input type="number" name="conta" placeholder="N° da Conta" onChange={handleSearch} />
                     </div>
                     <div className="buttonContainer">
-                        <ButtonMotion type="submit"><FaSearch />  Pesquisar</ButtonMotion>
-                        <ButtonMotion onClick={handleclick} className="purpleBtn" type="button"><FaPlus /> Nova Agência</ButtonMotion>
+                        <ButtonMotion type="submit"><FaSearch /> Pesquisar</ButtonMotion>
+                        <ButtonMotion onClick={() => navigate("/agenciasCadastrar")} className="purpleBtn" type="button"><FaPlus /> Nova Agência</ButtonMotion>
                     </div>
                 </div>
             </form>
             <div className="containerList">
                 <AgenciasTable
                     columns={columns}
-                    data={data && data.data ? data.data : []}
+                    data={data?.data ?? []}
                     setId={setUserId}
                     setInfo={setUserInfo}
                     modaltoggle={modalToggle}
-                    type={getType()}
                 />
             </div>
             <Footer />

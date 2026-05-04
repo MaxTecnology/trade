@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { postItem } from '../ListasHook';
+import api from '@/services/api';
+
 export const useQueryGerentes = () => {
-    const url = "usuarios/listar-tipo-usuarios";
-    const body = {
-        "tipoConta": ["Gerente"]
-    };
     return useQuery({
         queryKey: ['gerentes'],
-        queryFn: async () => postItem(url, body),
+        queryFn: async () => {
+            const res = await api.get('gerentes');
+            return res.data.data;
+        },
     });
 };

@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { postItem } from '@/hooks/ListasHook';
-import { getId } from '@/hooks/getId';
+import { getApiData } from '@/hooks/ListasHook';
+// TODO: API precisa de filtro de estorno por status
 export const useQueryEncaminhadasExtorno = () => {
     return useQuery({
         queryKey: ['encaminhadasExtorno'],
-        queryFn: async () => postItem(`transacoes/listar-encaminhadas-estorno/${getId()}?page=1&pageSize=30`, {}),
+        queryFn: async () => getApiData('transacoes?page=1&limit=30'),
     });
 };

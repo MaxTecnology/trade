@@ -18,7 +18,7 @@ const MinhasOfertasModal = ({ isOpen, modalToggle, setState, ofertaInfo }) => {
     const [error, setError] = useState(false)
     const [sucess, setSucess] = useState(false)
     const info = ofertaInfo
-    var urlOferta = `ofertas/atualizar-oferta/${info.idOferta}`
+    var urlOferta = `ofertas/${info.id}`
 
     const revalidate = useRevalidate();
 

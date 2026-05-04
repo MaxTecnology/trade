@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { getApiData } from '@/hooks/ListasHook';
-import { getId } from '@/hooks/getId';
 export const useQueryProximaFatura = () => {
     return useQuery({
         queryKey: ['proximaFatura'],
-        queryFn: async () => getApiData(`cobrancas/listar-proxima-fatura/${getId()}`),
+        queryFn: async () => getApiData('cobrancas/minhas?pago=false&page=1&limit=1'),
     });
 };

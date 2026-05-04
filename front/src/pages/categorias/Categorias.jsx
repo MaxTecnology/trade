@@ -14,11 +14,11 @@ import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 
 const columns = [
     {
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'Data',
     },
     {
-        accessorKey: 'nomeCategoria',
+        accessorKey: 'nome',
         header: 'Nome da Categoria',
     },
 ]
@@ -44,7 +44,7 @@ const Categorias = () => {
     // Handlers
     const formHandler = (event) => {
         event.preventDefault()
-        toast.promise(createItem(event, "categorias/criar-categoria"), {
+        toast.promise(createItem(event, "categorias"), {
             loading: 'Cadastrando dados...',
             success: () => {
                 event.target.reset()
@@ -60,7 +60,7 @@ const Categorias = () => {
             <EditarCategoriaModal
                 isOpen={modalIsOpen}
                 modalToggle={() => modalToggle()}
-                url={`categorias/atualizar-categoria/${id}`}
+                url={`categorias/${id}`}
                 info={info}
             />
             <div className="containerHeader">Categorias</div>
@@ -68,7 +68,7 @@ const Categorias = () => {
                 <div className="searchRow">
                     <div className="form-group">
                         <label htmlFor="nomePlano">Nome da Categoria</label>
-                        <input required type="text" name="nomeCategoria" />
+                        <input required type="text" name="nome" />
                     </div>
                     <div className="form-group">
                         <label htmlFor="data">Data:</label>
@@ -84,7 +84,7 @@ const Categorias = () => {
             <div className="containerList">
                 <CategoriasTable
                     columns={columns}
-                    data={data?.categorias || []}
+                    data={data || []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}

@@ -137,11 +137,58 @@ export async function me(userId: string) {
         ? usuario.agenciaId!
         : 'matriz'
 
-  let contaId: string | undefined
+  let entityName = 'Matriz'
+  let conta: { id: string; numero: string; saldo: number; limiteCredito: number } | null = null
+
   if (usuario.entityType === 'associado' && usuario.associadoId) {
-    const conta = await prisma.conta.findUnique({ where: { associadoId: usuario.associadoId } })
-    contaId = conta?.id
+    const associado = await prisma.associado.findUnique({
+      where: { id: usuario.associadoId },
+      select: {
+        nome: true,
+        plano: { select: { limiteRT: true } },
+        conta: { select: { id: true, numero: true, saldo: true } },
+      },
+    })
+    if (associado) {
+      entityName = associado.nome
+      if (associado.conta) {
+        conta = {
+          id: associado.conta.id,
+          numero: associado.conta.numero,
+          saldo: Number(associado.conta.saldo),
+          limiteCredito: Number(associado.plano?.limiteRT ?? 0),
+        }
+      }
+    }
+  } else if (usuario.entityType === 'agencia' && usuario.agenciaId) {
+    const agencia = await prisma.agencia.findUnique({
+      where: { id: usuario.agenciaId },
+      select: {
+        nome: true,
+        conta: { select: { id: true, numero: true, saldo: true } },
+      },
+    })
+    if (agencia) {
+      entityName = agencia.nome
+      if (agencia.conta) {
+        conta = {
+          id: agencia.conta.id,
+          numero: agencia.conta.numero,
+          saldo: Number(agencia.conta.saldo),
+          limiteCredito: 0,
+        }
+      }
+    }
   }
 
-  return { ...usuario, entityId, contaId }
+  return {
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    role: usuario.role,
+    entityType: usuario.entityType,
+    entityId,
+    entityName,
+    conta,
+  }
 }

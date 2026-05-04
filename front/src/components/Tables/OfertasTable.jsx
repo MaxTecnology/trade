@@ -82,7 +82,7 @@ const OfertasTable = ({
                                     confirm="Deseja excluir essa Oferta?"
                                     titulo="Oferta"
                                     resultDelete="Oferta excluida com sucesso!"
-                                    url={`ofertas/deletar-oferta/${row.original.idOferta}`}
+                                    url={`ofertas/${row.original.id}`}
                                     revalidate={() => revalidate("ofertas")}
                                 /> : null}
                                 <Buttons

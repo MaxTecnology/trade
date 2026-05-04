@@ -19,7 +19,7 @@ const Associados = () => {
         activePage("associados")
     }, []);
 
-    const filteredData = data && data.data ? data.data.filter(associado => associado.status === true && associado.id !== user.id) : [];
+    const filteredData = data && Array.isArray(data.data) ? data.data.filter(associado => associado.status === 'ativo') : [];
 
     const lastCardIndex = currentPage * cardsPerPage;
     const firstCardIndex = lastCardIndex - cardsPerPage;
@@ -34,7 +34,7 @@ const Associados = () => {
                     <AssociadosCard associado={filho} key={index} index={index} />
                 ))}
             </div>
-            <PaginationCards cardsPerPage={cardsPerPage} totalCards={data && data.data ? data.data.length : 0} setCurrentPage={setCurrentPage} currentPage={currentPage} />
+            <PaginationCards cardsPerPage={cardsPerPage} totalCards={filteredData.length} setCurrentPage={setCurrentPage} currentPage={currentPage} />
             <Footer />
         </div>
     )

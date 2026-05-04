@@ -1,23 +1,17 @@
 import { useQueryGerentes } from '@/hooks/ReactQuery/useQueryGerentes';
+
 const GerentesOptions = () => {
     const { data } = useQueryGerentes();
 
-    return (
-        <>
-            {data && data.data ?
-                data.data.map((item, index) => (
-                    <option
-                        value={item.idUsuario}
-                        id={item.nomeFantasia}
-                        key={index}
-                    >
-                        {item.nomeFantasia}
-                    </option>
-                ))
-                : <option disabled>Nenhuma Agência Disponivel</option>
-            }
-        </>
-    )
+    if (!Array.isArray(data) || data.length === 0) {
+        return <option disabled>Nenhum gerente disponível</option>;
+    }
+
+    return data.map((item) => (
+        <option key={item.id} value={item.id}>
+            {item.nome}
+        </option>
+    ));
 };
 
 export default GerentesOptions;

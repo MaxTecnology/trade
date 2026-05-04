@@ -18,7 +18,7 @@ export const associadoSchema = z.object({
     telefone: z.string().optional(),
     celular: z.string().min(14, "Obrigatório"),
     emailContato: z.string().email().min(5, "Obrigatório"),
-    emailSecundario: z.string().email().optional(),
+    emailSecundario: z.string().email().or(z.literal("")).optional(),
     site: z.string().optional(),
 
     // ENDEREÇO
@@ -35,21 +35,21 @@ export const associadoSchema = z.object({
     formaPagamento: z.string().min(1, "Obrigatório"),
     dataVencimentoFatura: z.string().min(1, "Obrigatório"),
     nomeFranquia: z.string().optional(),
+    valorInscricaoBRL: z.any().optional(),
+    valorInscricaoRT: z.any().optional(),
 
     // OPERAÇÕES
-    gerente: z.string().min(1, "Obrigatório"),
+    gerente: z.string().optional(),
     tipoOperacao: z.string().min(1, "Obrigatório"),
-    limiteCredito: z.string().min(3, "Obrigatório"),
-    limiteVendaMensal: z.string().min(3, "Obrigatório"),
-    limiteVendaTotal: z.string().min(3, "Obrigatório"),
+    limiteCredito: z.any().optional(),
+    limiteVendaMensal: z.any().optional(),
+    limiteVendaTotal: z.any().optional(),
     aceitaOrcamento: z.string().min(1, "Obrigatório"),
     aceitaVoucher: z.string().min(1, "Obrigatório"),
 
     // DADOS USUÁRIO
-    imagem: z.any().refine((files) => {
-        return files?.[0];
-    }, `Selecione uma imagem.`),
-    cpf: z.string().min(1, "Obrigatório"),
+    imagem: z.any().optional(),
+    cpf: z.string().optional(),
     senha: z.string().min(3, "Obrigatório"),
     nome: z.string().min(3, "Obrigatório"),
 
@@ -62,7 +62,7 @@ export const associadoSchema = z.object({
 
     // INVISIBLE
     reputacao: z.number().optional(),
-    usuarioCriadorId: z.number().optional(),
+    usuarioCriadorId: z.any().optional(),
     tipoDeMoeda: z.string().optional(),
     statusConta: z.boolean().optional(),
     taxaRepasseMatriz: z.any().optional(),

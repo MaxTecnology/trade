@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip"
 
 function truncarTexto(texto, comprimentoMaximo) {
+    if (!texto) return '';
     if (texto.length > comprimentoMaximo) {
         texto = texto.slice(0, comprimentoMaximo - 3) + "...";
     }
@@ -27,7 +28,8 @@ const AssociadosCard = ({ associado, index }) => {
     const navigate = useNavigate();
     const data = associado
 
-    const associadoCategoria = categorias && categorias.categorias ? categorias.categorias.find(categoria => categoria.idCategoria === data.categoriaId)?.nomeCategoria || "Sem Categoria" : "Sem Categoria"
+    const associadoCategoria = (Array.isArray(categorias) ? categorias : [])
+        .find(c => c.id === data.categoriaId)?.nome ?? "Sem Categoria"
 
     useEffect(() => {
         activePage("associados")
@@ -39,7 +41,7 @@ const AssociadosCard = ({ associado, index }) => {
     }
 
     const handleWhats = () => {
-        const celular = data?.conta?.gerenteConta?.telefone || data.celular;
+        const celular = data.contatos?.[0]?.celular || data.telefone;
 
         // Verifica se o dispositivo é móvel
         const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -58,9 +60,8 @@ const AssociadosCard = ({ associado, index }) => {
     };
 
     const websiteHandler = () => {
-        if (data.site) {
-            window.open(data.site, '_blank');  // Abre o site em uma nova aba
-        }
+        const site = data.contatos?.[0]?.site
+        if (site) window.open(site, '_blank')
     };
 
     return (
@@ -70,31 +71,35 @@ const AssociadosCard = ({ associado, index }) => {
             transition={{ duration: 0.3, delay: index * 0.3 }}
             className="associadoCard"
         >
-            <img src={data.imagem ? data.imagem : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} alt="" className="associadoCardImagem" />
+            <img src={data.imagemUrl ? data.imagemUrl : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} alt="" className="associadoCardImagem" />
             <div className="associadoCardTag">
                 <div >
                     <BsTagsFill />
                     {associadoCategoria}
                 </div>
                 <div >
-                    SC
+                    {data.estado || 'N/A'}
                     <img src={logoBrazil} alt="" />
                 </div>
             </div>
-            <div className="associadoCardName flex justify-between">
+            <div className="associadoCardName flex justify-between items-center gap-2">
                 <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger>{truncarTexto(data.nomeFantasia, 25)}</TooltipTrigger>
+                        <TooltipTrigger asChild>
+                            <span className="truncate min-w-0 flex-1 block">{data.nomeFantasia}</span>
+                        </TooltipTrigger>
                         <TooltipContent>
                             <p>{data.nomeFantasia}</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-                <StarRating rating={data.reputacao} />
+                <div className="shrink-0">
+                    <StarRating rating={data.reputacao} />
+                </div>
             </div>
 
-            <div className={data.status ? "associadoCardStatus" : "associadoCardStatus disabled"}>
-                {data.status ? "Atendendo" : "Não atendendo"}
+            <div className={data.status === 'ativo' ? "associadoCardStatus" : "associadoCardStatus disabled"}>
+                {data.status === 'ativo' ? "Atendendo" : "Não atendendo"}
             </div>
             <div className="associadoCardDesc">
                 {data.descricao}
@@ -102,19 +107,19 @@ const AssociadosCard = ({ associado, index }) => {
             <div className="associadoCardIconsContainer">
                 <div>
                     <BsGlobe />
-                    {truncarTexto(data.conta.nomeFranquia, 10) || truncarTexto(data.nomeFantasia, 10)}
+                    <span>{data.agencia?.nome || data.nomeFantasia || ''}</span>
                 </div>
                 <div className="flex2">
                     <BsUniversalAccessCircle />
-                    {truncarTexto(data?.conta?.gerenteConta?.nomeFranquia || data?.conta?.nomeFranquia || data?.nomeFantasia, 25)}
+                    <span>{data.gerente?.nome || data.agencia?.nome || data.nomeFantasia || ''}</span>
                 </div>
-                <div className="whats" onClick={data.celular ? handleWhats : null}>
+                <div className="whats" onClick={data.contatos?.[0]?.celular ? handleWhats : null}>
                     <BsWhatsapp />
-                    Contato
+                    <span>Contato</span>
                 </div>
-                <div onClick={websiteHandler} className={data.site ? "website" : ""}>
+                <div onClick={websiteHandler} className={data.contatos?.[0]?.site ? "website" : ""}>
                     <BsBrowserChrome />
-                    Site
+                    <span>Site</span>
                 </div>
             </div>
             <div className="buttonContainer">

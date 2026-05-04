@@ -1,12 +1,5 @@
-export const setPlano = (apiData, type) => {
-    if (apiData && apiData.planos) {
-        var plano = []
-        apiData.planos.map((planos) => {
-            if (planos.tipoDoPlano === type) {
-                plano.push(planos)
-            }
-        })
-        return plano
-    }
-    return []
+// type: 'agencia' | 'associado' | 'gerente'
+export const setPlano = (data, type) => {
+    if (!Array.isArray(data)) return []
+    return data.filter(p => p.tipoPlano === type?.toLowerCase() && p.ativo !== false)
 }

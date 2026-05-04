@@ -564,3 +564,101 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
   }
 }
 ```
+
+---
+
+## 12. Solicitações de Crédito RT
+
+Fluxo de solicitação de injeção de saldo RT para associados, com aprovação hierárquica.
+
+### Fluxo de Status
+
+```
+em_analise → encaminhado → aprovado | negado
+```
+
+### Endpoints
+
+| Método | Rota | Descrição | Role |
+|---|---|---|---|
+| POST | `/creditos` | Solicitar crédito | `associate_admin`, `associate_operator` |
+| GET | `/creditos/meus` | Minhas solicitações | `associate_admin`, `associate_operator` |
+| PUT | `/creditos/:id` | Atualizar solicitação (enquanto em_analise) | `associate_admin`, `associate_operator` |
+| DELETE | `/creditos/:id` | Excluir solicitação (enquanto em_analise) | `associate_admin`, `associate_operator` |
+| GET | `/creditos/filhos` | Solicitações dos associados da agência | `agency_admin`, `agency_operator` |
+| PATCH | `/creditos/:id/encaminhar` | Encaminhar para Matriz | `agency_admin`, `superadmin` |
+| GET | `/creditos/matriz` | Solicitações encaminhadas (Matriz) | `superadmin` |
+| PATCH | `/creditos/:id/aprovar` | Aprovar e injetar RT na conta | `superadmin` |
+| PATCH | `/creditos/:id/negar` | Negar solicitação | `superadmin` |
+| GET | `/creditos` | Todas as solicitações | `superadmin` |
+
+### Regras de Negócio
+
+- Aprovação injeta RT atomicamente via `prisma.$transaction` (movimentacao_conta + saldo).
+- Não é possível editar ou excluir solicitações com status `aprovado` ou `negado`.
+- O campo `valorSolicitado` é em RT.
+
+---
+
+## 13. Cobranças / Faturas BRL
+
+Registro de cobranças em BRL associadas a contas (taxas de plano, manutenção, inscrição).
+
+### Endpoints
+
+| Método | Rota | Descrição | Role |
+|---|---|---|---|
+| POST | `/cobrancas` | Criar cobrança | `superadmin` |
+| GET | `/cobrancas` | Todas as cobranças | `superadmin` |
+| GET | `/cobrancas/minhas` | Cobranças da entidade logada | qualquer autenticado |
+| PATCH | `/cobrancas/:id/quitar` | Marcar como paga | `superadmin`, `agency_admin` |
+| DELETE | `/cobrancas/:id` | Remover cobrança | `superadmin` |
+
+### Regras de Negócio
+
+- `GET /cobrancas/minhas` detecta automaticamente se é associado ou agência e retorna as cobranças correspondentes.
+- Agência vê cobranças próprias + dos seus associados.
+- Cobranças já quitadas não podem ser quitadas novamente.
+
+---
+
+## 14. Upload de Arquivos (Backblaze B2)
+
+Upload de imagens para ofertas e outros recursos via Backblaze B2 (API compatível com S3).
+
+### Endpoints
+
+| Método | Rota | Descrição | Role |
+|---|---|---|---|
+| POST | `/upload` | Upload de imagem (multipart/form-data) | qualquer autenticado |
+| DELETE | `/upload/:id` | Remover arquivo | `superadmin` |
+
+### Regras de Negócio
+
+- Tipos aceitos: `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
+- Tamanho máximo: 5 MB.
+- Retorna `{ url, id }` — a `url` deve ser salva no campo `imagemUrl` da oferta.
+- Chave configurada via variáveis de ambiente `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET_NAME`, `B2_ENDPOINT`, `B2_PUBLIC_URL`.
+
+---
+
+## 15. Extensões ao Módulo Plano
+
+Campos adicionados ao model `Plano` para suporte ao front:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `tipoPlano` | `TipoPlano` (agencia/associado/gerente) | Classifica o plano por tipo de entidade |
+| `taxaInscricaoRT` | Decimal | Taxa de inscrição em RT cobrada ao criar associado |
+| `taxaManutencaoAnualRT` | Decimal | Taxa de manutenção anual em RT |
+
+---
+
+## 16. Campo `imagemUrl` e `vencimento` em Ofertas
+
+Campos adicionados ao model `Oferta`:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `imagemUrl` | String? | URL da imagem no Backblaze B2 |
+| `vencimento` | DateTime? | Data de vencimento da oferta |

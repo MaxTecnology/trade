@@ -38,11 +38,7 @@ export async function permuta(input: PermutaInput, compradorAssociadoId: string,
   const limiteRT = Number(compradorAssociado.plano.limiteRT)
   if (totalMes + valorTotal > limiteRT) throw Errors.planLimitReached()
 
-  if (input.parcelas > compradorAssociado.plano.maxParcelas) {
-    throw new AppError('VALIDATION_ERROR', `Máximo de ${compradorAssociado.plano.maxParcelas} parcelas permitido.`, 400)
-  }
-
-  const vendedorConta = oferta.associado.conta
+const vendedorConta = oferta.associado.conta
   if (!vendedorConta) throw Errors.notFound('Conta do vendedor')
 
   const valorParcela = valorTotal / input.parcelas

@@ -17,7 +17,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { associadoSchema } from "@/models/schemas/associadoSchema";
-import { createUser } from "@/utils/functions/api";
+import api from "@/services/api";
+
+const tipoOperacaoMap = { "1": "compra", "2": "venda", "3": "compra_venda" }
+
+// FormInputMoney stores "RT$ 1.234,56" — convert back to float
+const parseMoney = (val) => {
+    if (!val) return undefined
+    const cleaned = String(val).replace(/[^0-9,]/g, '').replace(',', '.')
+    const num = parseFloat(cleaned)
+    return isNaN(num) ? undefined : num
+}
 
 const CadastrarAssociado = () => {
     const snap = useSnapshot(state);
@@ -59,24 +69,108 @@ const CadastrarAssociado = () => {
         },
     });
 
-    const formHandler = async (event) => {
-        event.imagem = imagem
-        console.table(event)
-        setLoading(true)
-        toast.promise(createUser(event, "usuarios/criar-usuario"), {
-            loading: 'Cadastrando Associado...',
-            success: () => {
-                setLoading(false)
-                form.reset()
-                revalidate("associados")
-                return "Associado Cadastrado com sucesso!"
-            },
-            error: (error) => {
-                setLoading(false)
-                return `Erro: ${error.message}`
-            },
-        })
+    const uploadImagem = async () => {
+        if (!imagem) return undefined
+        const fd = new FormData()
+        fd.append('file', imagem)
+        const res = await api.post('upload', fd)
+        return res.data?.data?.url ?? res.data?.url
     }
+
+    const formHandler = async (data) => {
+        setLoading(true)
+
+        // tipoAtendimento: presencial|online|voucher
+        const tipoAtendimento = ["presencial"]
+        if (data.aceitaVoucher === true || data.aceitaVoucher === "true") tipoAtendimento.push("voucher")
+
+        let imagemUrl
+        try {
+            imagemUrl = await uploadImagem()
+        } catch (err) {
+            setLoading(false)
+            toast.error(`Erro ao enviar imagem: ${err?.response?.data?.message ?? err.message}`)
+            return
+        }
+
+        const payload = {
+            imagemUrl,
+            // Empresa
+            nome: data.razaoSocial,
+            nomeFantasia: data.nomeFantasia || undefined,
+            cnpj: data.cnpj,
+            descricao: data.descricao || undefined,
+            inscEstadual: data.inscEstadual || undefined,
+            inscMunicipal: data.inscMunicipal || undefined,
+            restricao: data.restricao || undefined,
+            mostrarNoSite: data.mostrarNoSite === "true" || data.mostrarNoSite === true,
+            aceitaOrcamento: data.aceitaOrcamento === "true" || data.aceitaOrcamento === true,
+            categoriaId: data.subcategoriaId && data.subcategoriaId !== "null" ? data.subcategoriaId
+                : data.categoriaId && data.categoriaId !== "null" ? data.categoriaId
+                : undefined,
+
+            // Contato principal
+            email: data.email,
+            telefone: data.telefone || undefined,
+
+            // Contato secundário
+            nomeContato: data.nomeContato || undefined,
+            celular: data.celular || undefined,
+            emailContato: data.emailContato || undefined,
+            emailSecundario: data.emailSecundario || undefined,
+            site: data.site || undefined,
+
+            // Endereço
+            logradouro: data.logradouro || undefined,
+            numero: data.numero || undefined,
+            complemento: data.complemento || undefined,
+            bairro: data.bairro || undefined,
+            cidade: data.cidade,
+            estado: data.estado?.slice(0, 2),
+            cep: data.cep || undefined,
+            regiao: data.regiao || undefined,
+
+            // Vinculação
+            agenciaId: snap.user?.tipo === 'agency_admin' ? snap.user.entityId : (data.agenciaId || undefined),
+            gerenteId: data.gerente || undefined,
+            planoId: data.planoId,
+            tipoAtendimento,
+
+            // Operacional
+            tipoOperacao: tipoOperacaoMap[String(data.tipoOperacao)] || undefined,
+            formaPagamento: data.formaPagamento ? Number(data.formaPagamento) : undefined,
+            diaVencimentoFatura: data.dataVencimentoFatura ? Number(data.dataVencimentoFatura) : undefined,
+            valorInscricaoBRL: parseMoney(data.valorInscricaoBRL),
+            valorInscricaoRT: parseMoney(data.valorInscricaoRT),
+            limiteCredito: parseMoney(data.limiteCredito),
+            limiteVendaMensal: parseMoney(data.limiteVendaMensal),
+            limiteVendaTotal: parseMoney(data.limiteVendaTotal),
+
+            // Acesso
+            senha: data.senha,
+            cpf: data.cpf || undefined,
+        }
+
+        toast.promise(
+            api.post("associados", payload).catch((err) => {
+                throw new Error(err?.response?.data?.message ?? "Erro ao cadastrar")
+            }),
+            {
+                loading: 'Cadastrando Associado...',
+                success: () => {
+                    setLoading(false)
+                    form.reset()
+                    revalidate("associados")
+                    return "Associado Cadastrado com sucesso!"
+                },
+                error: (error) => {
+                    setLoading(false)
+                    return `Erro: ${error.message}`
+                },
+            }
+        )
+    }
+
     return (
         <div className="container">
             <div className="containerHeader">Novo Associado</div>

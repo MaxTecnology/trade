@@ -124,10 +124,10 @@ export async function relatorioComissoesGerentes(
       orderBy: { criadoEm: 'desc' },
     }),
     prisma.comissaoGerente.count({ where }),
-    prisma.comissaoGerente.aggregate({ where, _sum: { comissaoGerenteBRL: true } }),
+    prisma.comissaoGerente.aggregate({ where, _sum: { comissaoBRL: true } }),
   ])
 
-  return { items, total, page, limit, totalComissaoGerenteBRL: soma._sum.comissaoGerenteBRL ?? 0 }
+  return { items, total, page, limit, totalComissaoGerenteBRL: soma._sum?.comissaoBRL ?? 0 }
 }
 
 export async function relatorioUsoPlanoConta(associadoId: string) {
@@ -156,7 +156,6 @@ export async function relatorioUsoPlanoConta(associadoId: string) {
     usadoMes: usadoMes._sum.valor ?? 0,
     disponivelMes:
       Number(associado.plano.limiteRT) - Number(usadoMes._sum.valor ?? 0),
-    periodicidade: associado.plano.periodicidade,
   }
 }
 

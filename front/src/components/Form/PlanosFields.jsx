@@ -2,58 +2,66 @@ import { useEffect, useState } from "react";
 import PlanosOptions from "../Options/PlanosOptions";
 import { useQueryPlanos } from "@/hooks/ReactQuery/useQueryPlanos";
 
-const PlanosFields = ({ type, defaultValue }) => {
+const PlanosFields = ({ type, defaultValue, optional }) => {
     const { data } = useQueryPlanos()
     const [selected, setSelected] = useState(null);
     const [defaultPlano, setDefaultPlano] = useState(null);
 
     useEffect(() => {
-        if (defaultValue) {
-            const defaultPlan = data ? data.planos.find(p => p.idPlano === defaultValue.conta.planoId) : null
+        if (defaultValue && Array.isArray(data)) {
+            const defaultPlan = data.find(p => p.id === defaultValue?.planoId) ?? null
             setDefaultPlano(defaultPlan)
         }
-    }, [defaultValue, data, defaultPlano])
+    }, [defaultValue, data])
 
     return <>
         <div className="form-group">
             <label className="required">Plano de Inscrição</label>
-            <select id="planoAssociado" defaultValue={defaultValue && defaultValue.conta.planoId ? defaultValue.conta.planoId : ""} onChange={(e) => setSelected(JSON.parse(e.target.value))} required>
-                <option value="" disabled>
-                    Selecione
-                </option>
+            <select
+                id="planoAssociado"
+                defaultValue={defaultValue?.planoId ?? ""}
+                onChange={(e) => setSelected(JSON.parse(e.target.value))}
+                required={!optional}
+            >
+                <option value="" disabled>Selecione</option>
                 <PlanosOptions type={type} complex />
             </select>
         </div>
-        {type === "Associado" ?
+        {type === "associado" &&
             <div className="form-group">
-                <label className="required">Valor do Plano</label>
+                <label className="required">Valor do Plano (RT$)</label>
                 <input
                     type="text"
                     className="readOnly"
                     readOnly
                     required
-                    value={selected ? selected?.taxaInscricao
-                        : defaultPlano?.taxaInscricao}
+                    value={selected?.taxaInscricaoRT ?? defaultPlano?.taxaInscricaoRT ?? ''}
                 />
             </div>
-            :
-            <input type="hidden" value={selected?.idPlano} />
         }
         <div className="form-group">
-            <label className="required">Percentual de Comissão %</label>
+            <label className={optional ? '' : 'required'}>Percentual de Comissão %</label>
             <input
-                type="text" className="readOnly" readOnly required value={selected ? selected?.taxaComissao : defaultPlano?.taxaComissao} />
+                type="text"
+                className="readOnly"
+                readOnly
+                required={!optional}
+                value={selected?.percentualComissao ?? defaultPlano?.percentualComissao ?? ''}
+            />
         </div>
-        {type === "Associado" ?
+        {type === "associado" &&
             <div className="form-group">
-                <label className="required">Taxa Anual</label>
-                <input type="text" className="readOnly" readOnly required value={selected ? selected?.taxaManutencaoAnual : defaultPlano?.taxaManutencaoAnual} />
+                <label className="required">Taxa de Manutenção Anual (RT$)</label>
+                <input
+                    type="text"
+                    className="readOnly"
+                    readOnly
+                    required
+                    value={selected?.taxaManutencaoAnualRT ?? defaultPlano?.taxaManutencaoAnualRT ?? ''}
+                />
             </div>
-            :
-            <input type="hidden" value={selected?.idPlano} />
         }
-
-        <input type="hidden" name="planoId" value={selected ? selected?.idPlano : defaultValue?.conta.planoId} />
+        <input type="hidden" name="planoId" value={selected?.id ?? defaultValue?.planoId ?? ''} />
     </>
 };
 

@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 
-const ButtonMotion = ({ onClick, className, children, type }) => {
+const ButtonMotion = ({ onClick, className, children, type, ...rest }) => {
     return (
         <motion.button
             initial={{ scale: 0 }}
@@ -15,6 +15,7 @@ const ButtonMotion = ({ onClick, className, children, type }) => {
             onClick={onClick}
             className={className}
             type={type}
+            {...rest}
         >
             {children}
         </motion.button>

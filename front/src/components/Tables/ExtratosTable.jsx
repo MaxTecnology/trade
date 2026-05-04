@@ -107,7 +107,7 @@ const ExtratosTable = ({
                                 {myTable && type !== "Matriz" && row.original.status === "Concluída" ?
                                     <Buttons
                                         type="Undo"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja solicitar o extorno?"}
                                         titulo={"Extorno"}
                                         resultDelete={"Extorno solicitado com sucesso"}
@@ -118,7 +118,7 @@ const ExtratosTable = ({
                                 {type === "Agência" ?
                                     <Buttons
                                         type="Send"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja solicitar o extorno?"}
                                         titulo={"Extorno"}
                                         resultDelete={"Extorno solicitado com sucesso"}
@@ -129,7 +129,7 @@ const ExtratosTable = ({
                                 {type === "Matriz" ?
                                     <Buttons
                                         type="Aprove"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja aprovar o extorno?"}
                                         titulo={"Extorno"}
                                         resultDelete={"Extorno aprovado com sucesso"}

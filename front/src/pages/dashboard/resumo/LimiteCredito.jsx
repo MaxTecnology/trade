@@ -4,7 +4,7 @@ import state from "../../../store";
 
 const LimiteCredito = () => {
     const snap = useSnapshot(state);
-    const limiteCredito = snap.user && snap.user.conta.limiteCredito ? snap.user.conta.limiteCredito : 0
+    const limiteCredito = snap.user?.conta?.limiteCredito ?? 0
     return (
         <div>
             Limite de Crédito:

@@ -10,29 +10,22 @@ const FormPlano = ({ type, form }) => {
     const planoId = useWatch({ control: form.control, name: "planoId" });
 
     useEffect(() => {
-        console.log(planoId)
-        console.log(data)
-        if (planoId) {
-            const plano = data ? data.planos.find(p => p.idPlano == planoId) : null
-            console.log(plano)
-            form.setValue("planoValor", plano?.taxaInscricao)
-            form.setValue("comissao", plano?.taxaComissao)
-            form.setValue("planoTaxa", plano?.taxaManutencaoAnual)
+        if (planoId && Array.isArray(data)) {
+            const plano = data.find(p => p.id === planoId) ?? null
+            form.setValue("planoValor", plano?.taxaInscricaoRT ?? '')
+            form.setValue("comissao", plano?.percentualComissao ?? '')
+            form.setValue("planoTaxa", plano?.taxaManutencaoAnualRT ?? '')
         }
-    }, [planoId])
+    }, [planoId, data])
 
     return <>
         <FormSelect required form={form} name="planoId" label="Plano de Inscrição" placeholder="Selecionar" options={<PlanosOptions type={type} />} />
-        {type === "Associado" ?
-            <FormInput required form={form} name="planoValor" label="Valor do Plano" disabled />
-            :
-            null
+        {type?.toLowerCase() === "associado" &&
+            <FormInput required form={form} name="planoValor" label="Valor do Plano (RT$)" disabled />
         }
         <FormInput required form={form} name="comissao" label="Percentual de Comissão %" disabled />
-        {type === "Associado" ?
-            <FormInput required form={form} name="planoTaxa" label="Taxa Anual" disabled />
-            :
-            null
+        {type?.toLowerCase() === "associado" &&
+            <FormInput required form={form} name="planoTaxa" label="Taxa de Manutenção Anual (RT$)" disabled />
         }
     </>
 };

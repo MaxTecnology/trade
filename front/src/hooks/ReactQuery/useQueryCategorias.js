@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiData } from '../ListasHook';
+import api from '@/services/api';
 export const useQueryCategorias = () => {
   return useQuery({
     queryKey: ['categorias'],
-    queryFn: async () => getApiData('categorias/listar-categorias?page=1&pageSize=30'),
+    queryFn: async () => {
+      const res = await api.get('categorias');
+      return res.data.data;
+    },
   });
 };

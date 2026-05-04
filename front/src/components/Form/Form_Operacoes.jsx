@@ -3,14 +3,29 @@ import { getId } from "@/hooks/getId";
 import FormInput from "./formItens/FormInput";
 import FormSelect from "./formItens/FormSelect";
 import FormInputMoney from "./formItens/FormInputMoney";
+import { useWatch } from "react-hook-form";
+import { useEffect } from "react";
+import { useQueryGerentes } from "@/hooks/ReactQuery/useQueryGerentes";
 
 const Form_Operacoes = ({ form, type }) => {
+    const { data: gerentes } = useQueryGerentes()
+    const gerenteId = useWatch({ control: form.control, name: "gerente" })
+
+    useEffect(() => {
+        if (!gerenteId || !Array.isArray(gerentes)) {
+            form.setValue("taxaGerenteConta", "")
+            return
+        }
+        const gerente = gerentes.find(g => g.id === gerenteId)
+        form.setValue("taxaGerenteConta", gerente ? `${gerente.percentualComissao}%` : "")
+    }, [gerenteId, gerentes])
+
     return (
         <>
             <FormSelect required form={form} name="gerente" label="Gerente de Conta" placeholder="Selecionar" items={[
-                { value: getId(), label: "Nenhum" },
+                { value: "", label: "Nenhum" },
             ]} options={<GerentesOptions />} />
-            <FormInput disabled required name="taxaGerenteConta" label="Porcentagem do Gerente" placeholder="2%" form={form} />
+            <FormInput disabled required name="taxaGerenteConta" label="Porcentagem do Gerente" placeholder="—" form={form} />
             <FormSelect required form={form} name="tipoOperacao" label="Tipo de Operação" placeholder="Selecionar" items={[
                 { value: 1, label: "Compra" },
                 { value: 2, label: "Venda" },

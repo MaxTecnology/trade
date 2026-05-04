@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@cobrancaId = UUID_DA_COBRANCA
+
+### Criar cobrança (superadmin)
+POST {{baseUrl}}/cobrancas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contaId": "UUID_DA_CONTA",
+  "associadoId": "UUID_DO_ASSOCIADO",
+  "valorBRL": 150.00,
+  "vencimento": "2026-06-01T00:00:00Z",
+  "descricao": "Taxa de manutenção anual"
+}
+
+### Minhas cobranças (associado ou agência — detectado automaticamente)
+GET {{baseUrl}}/cobrancas/minhas?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Minhas cobranças — apenas pendentes
+GET {{baseUrl}}/cobrancas/minhas?pago=false&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Todas as cobranças (superadmin)
+GET {{baseUrl}}/cobrancas?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Quitar cobrança (superadmin / agency_admin)
+PATCH {{baseUrl}}/cobrancas/{{cobrancaId}}/quitar
+Authorization: Bearer {{token}}
+
+### Deletar cobrança (superadmin)
+DELETE {{baseUrl}}/cobrancas/{{cobrancaId}}
+Authorization: Bearer {{token}}

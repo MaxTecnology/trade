@@ -1,22 +1,25 @@
 import { useQueryPlanos } from '@/hooks/ReactQuery/useQueryPlanos';
 import { setPlano } from '@/pages/planos/setPlano';
+
+// type: 'agencia' | 'associado' | 'gerente'
+// complex: passa o objeto JSON como value (para exibir campos readonly ao selecionar)
 const PlanosOptions = ({ type, complex }) => {
     const { data } = useQueryPlanos();
-    const value = setPlano(data, type)
+    const planos = setPlano(data, type)
 
     return (
         <>
-            {data && value && value.length > 0 ?
-                value.map((item, index) => (
+            {planos && planos.length > 0
+                ? planos.map((item, index) => (
                     <option
-                        value={complex ? JSON.stringify(item) : item.idPlano}
-                        id={item.idPlano}
-                        key={item.idPlano + index}
+                        value={complex ? JSON.stringify(item) : item.id}
+                        id={item.id}
+                        key={item.id + index}
                     >
-                        {item.nomePlano}
+                        {item.nome}
                     </option>
                 ))
-                : <option disabled>Nenhum Plano Disponivel</option>}
+                : <option disabled>Nenhum Plano Disponível</option>}
         </>
     )
 };

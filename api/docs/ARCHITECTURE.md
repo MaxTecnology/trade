@@ -297,3 +297,48 @@ BCRYPT_SALT_ROUNDS=12
 | `OFFER_UNAVAILABLE` | 422 | Oferta fechada ou sem quantidade |
 | `VALIDATION_ERROR` | 400 | Erro de validação dos campos |
 | `INTERNAL_ERROR` | 500 | Erro interno do servidor |
+
+---
+
+## 13. Upload de Arquivos — Backblaze B2
+
+O upload usa o SDK AWS S3 apontando para o endpoint B2 (`forcePathStyle: true`).
+
+**Fluxo:**
+1. Front envia `multipart/form-data` para `POST /upload`
+2. API recebe com `@fastify/multipart`, valida tipo e tamanho
+3. `PutObjectCommand` envia para o bucket B2 com ACL `public-read`
+4. URL pública é persistida na tabela `arquivo`
+5. Resposta retorna `{ url, id }` para uso no campo `imagemUrl` da oferta
+
+**Variáveis de ambiente:**
+```
+B2_KEY_ID           # Application Key ID do Backblaze
+B2_APPLICATION_KEY  # Application Key Secret
+B2_BUCKET_NAME      # Nome do bucket
+B2_ENDPOINT         # ex: https://s3.us-east-005.backblazeb2.com
+B2_REGION           # ex: us-east-005
+B2_PUBLIC_URL       # ex: https://f005.backblazeb2.com/file/redetrade
+```
+
+---
+
+## 14. Fluxo de Solicitação de Crédito RT
+
+```
+Associado solicita RT → Agência analisa → Encaminha para Matriz → Matriz aprova/nega
+```
+
+- Ao aprovar: `prisma.$transaction` cria `movimentacao_conta` (crédito) e incrementa `conta.saldo`
+- Tabela `solicitacao_credito` é mutável (tem UPDATE para status) — diferente de `movimentacao_conta`
+- Status: `em_analise` → `encaminhado` → `aprovado` | `negado`
+
+---
+
+## 15. Novos Módulos — Mapa de Rotas
+
+| Módulo | Prefixo | Arquivo de rotas |
+|---|---|---|
+| Créditos RT | `/creditos` | `src/modules/credito/credito.routes.ts` |
+| Cobranças BRL | `/cobrancas` | `src/modules/cobranca/cobranca.routes.ts` |
+| Upload B2 | `/upload` | `src/modules/upload/upload.routes.ts` |

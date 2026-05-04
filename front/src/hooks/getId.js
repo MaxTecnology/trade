@@ -13,7 +13,5 @@ export function getName() {
 }
 
 export function getType() {
-  if (state.user.tipo) {
-    return state.user.conta.tipoDaConta.descricao;
-  }
+  return state.user?.conta?.tipoDaConta?.descricao ?? state.user?.tipoDaConta?.descricao ?? ''
 }

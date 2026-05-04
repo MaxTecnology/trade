@@ -4,6 +4,12 @@ import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
 import PaginationTable from "./PaginationTable";
 import SortColumn from "./SortColumn";
 import { formatColumns } from "./tableFunctions";
+import api from "@/services/api";
+import { toast } from "sonner";
+import state from "@/store";
+import { popup } from "@/hooks/Popup";
+import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
+import { TbToggleLeft } from "react-icons/tb";
 
 const PlanosTable = ({
     columns,
@@ -51,20 +57,30 @@ const PlanosTable = ({
                                 </td>
                             ))}
                             <td className="flex justify-end gap-2">
-                                <Buttons
-                                    type="Delete"
-                                    confirm="Deseja excluir esse Plano?"
-                                    titulo="Planos"
-                                    resultDelete="Plano excluido com sucesso!"
-                                    url={`planos/deletar-plano/${row.original.idPlano}`}
-                                    revalidate={() => revalidate("planos")}
-                                />
+                                <ButtonMotion
+                                    className="buttonDelete"
+                                    type="button"
+                                    onClick={() => {
+                                        state.action = () => toast.promise(
+                                            api.patch(`planos/${row.original.id}/status`, { ativo: false })
+                                                .then(() => revalidate("planos")),
+                                            {
+                                                loading: 'Desativando plano...',
+                                                success: 'Plano desativado!',
+                                                error: 'Erro ao desativar plano'
+                                            }
+                                        )
+                                        popup("Deseja desativar este plano?", "Planos")
+                                    }}
+                                >
+                                    <TbToggleLeft />
+                                </ButtonMotion>
                                 <Buttons
                                     type="Edit"
                                     setId={setId}
                                     setInfo={setInfo}
                                     info={row.original}
-                                    value={row.original.idPlano}
+                                    value={row.original.id}
                                     modal={modaltoggle}
                                 />
                             </td>

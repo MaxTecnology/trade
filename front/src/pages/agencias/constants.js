@@ -1,12 +1,11 @@
 export const columns = [
     {
         id: 'conta',
-        accessorKey: 'conta.numeroConta',
+        accessorKey: 'conta.numero',
         header: 'Conta',
     },
     {
-        id: 'nomeFranquia',
-        accessorKey: 'conta.nomeFranquia',
+        accessorKey: 'nome',
         header: 'Unidade',
     },
     {

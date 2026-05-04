@@ -7,7 +7,6 @@ import AssociadosTable from "@/components/Tables/AssociadosTable";
 import { columns } from "./constants";
 import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
 import useModal from "@/hooks/useModal";
-import { getType } from "@/hooks/getId";
 
 const AssociadosLista = () => {
     const { data } = useQueryAssociados();
@@ -38,7 +37,6 @@ const AssociadosLista = () => {
                     setId={setUserId}
                     setInfo={setUserInfo}
                     modaltoggle={modalToggle}
-                    type={getType()}
                 />
             </div>
             <Footer />

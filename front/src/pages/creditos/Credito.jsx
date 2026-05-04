@@ -19,7 +19,7 @@ const Credito = () => {
     }, []);
 
     useEffect(() => {
-        getApiData("creditos/listar-todos", setData)
+        getApiData("creditos?page=1&limit=100", setData)
     }, [reload]);
 
     return (

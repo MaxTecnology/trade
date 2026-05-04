@@ -1,7 +1,7 @@
 export const columns = [
     {
         id: 'account',
-        accessorKey: 'conta.numeroConta',
+        accessorKey: 'conta.numero',
         header: 'Conta',
     },
     {
@@ -9,8 +9,8 @@ export const columns = [
         header: 'Nome Fantasia',
     },
     {
-        id: 'nomeFranquia',
-        accessorKey: 'conta.nomeFranquia',
+        id: 'unidade',
+        accessorKey: 'agencia.nome',
         header: 'Unidade',
     },
     {

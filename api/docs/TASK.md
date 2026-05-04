@@ -347,6 +347,51 @@
 
 ---
 
+## ETAPA 19 — Integração Frontend (novos módulos para o front)
+
+### Schema e modelos
+- [x] Estender `Plano` com `tipoPlano`, `taxaInscricaoRT`, `taxaManutencaoAnualRT`
+- [x] Adicionar `imagemUrl` e `vencimento` em `Oferta`
+- [x] Criar model `SolicitacaoCredito` com fluxo de status
+- [x] Criar model `Cobranca` (faturas BRL)
+- [x] Criar model `Arquivo` (metadados do B2)
+- [x] Criar enums `TipoPlano` e `StatusCredito`
+
+### Módulo Créditos RT
+- [x] `POST /creditos` — solicitar
+- [x] `GET /creditos/meus` — listar próprios
+- [x] `GET /creditos/filhos` — visão agência
+- [x] `GET /creditos/matriz` — visão superadmin
+- [x] `GET /creditos` — todos (superadmin)
+- [x] `PUT /creditos/:id` — atualizar (enquanto em_analise)
+- [x] `DELETE /creditos/:id` — excluir (enquanto em_analise)
+- [x] `PATCH /creditos/:id/encaminhar` — encaminhar para matriz
+- [x] `PATCH /creditos/:id/aprovar` — aprovar e injetar RT atomicamente
+- [x] `PATCH /creditos/:id/negar` — negar
+- [x] `docs/http/creditos.http`
+
+### Módulo Cobranças BRL
+- [x] `POST /cobrancas` — criar
+- [x] `GET /cobrancas` — todas (superadmin)
+- [x] `GET /cobrancas/minhas` — por entidade logada
+- [x] `PATCH /cobrancas/:id/quitar` — marcar como paga
+- [x] `DELETE /cobrancas/:id` — remover
+- [x] `docs/http/cobrancas.http`
+
+### Upload Backblaze B2
+- [x] Instalar `@aws-sdk/client-s3`, `@fastify/multipart`
+- [x] `src/config/b2.ts` — S3Client configurado para B2
+- [x] `POST /upload` — upload multipart (max 5MB, apenas imagens)
+- [x] `DELETE /upload/:id` — remover arquivo do B2 e do banco
+- [x] Variáveis B2 no `.env` e `.env.example`
+- [x] `docs/http/upload.http`
+
+### Documentação
+- [x] Atualizar `SPEC.md` — seções 12–16
+- [x] Atualizar `ARCHITECTURE.md` — seções 13–15
+
+---
+
 ## ETAPA 18 — Revisão Final
 
 - [x] Validar que todos os guards estão aplicados corretamente em todas as rotas
@@ -356,6 +401,18 @@
 - [ ] Rodar seed completo e verificar dados
 - [x] Verificar se Swagger está documentando todas as rotas
 - [ ] Testar `docker-compose up` do zero (fresh build)
+
+## ETAPA 20 — Integração Frontend (auth + store)
+
+### API — enriquecer /auth/me
+- [x] `GET /auth/me` retorna `entityName`, `conta.saldo`, `conta.limiteCredito`, `conta.numero`
+- [x] Login (`POST /auth/login`) retorna `accessToken` + `usuario` (front faz segundo GET /auth/me)
+
+### Frontend — camada de auth
+- [x] `store/index.js` — URL atualizada para `http://localhost:3000/api/v1/`
+- [x] `auth/authFunction.js` — aponta para `/auth/me`; mapeia `id→idUsuario`, `entityName→nomeFantasia`, `role→tipo`, `conta.saldo→saldoPermuta`, `conta.numero→numeroConta`, `tipoDaConta.descricao`
+- [x] `hooks/ListasHook.js` — `loginUser` aponta para `auth/login`; rename `login→email`; chama `getUserInfo()` após salvar token
+- [x] `src/services/api.js` — instância axios centralizada com interceptor de token e redirect 401
 
 ---
 
@@ -381,3 +438,5 @@
 | 16 — Filas BullMQ | `[x]` | Concluído |
 | 17 — Doc HTTP | `[~]` | Pendente: testar endpoints manualmente |
 | 18 — Revisão Final | `[~]` | Pendente: seed + docker-compose (requer ambiente) |
+| 19 — Integração Frontend | `[x]` | Créditos, Cobranças, Upload B2 implementados |
+| 20 — Frontend Auth/Store | `[x]` | URL, login, getUserInfo, api.js centralizados |

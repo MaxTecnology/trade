@@ -1,78 +1,59 @@
 import { useEffect, useState } from 'react';
 import { useQueryCategorias } from '@/hooks/ReactQuery/useQueryCategorias';
+
 const Categoria_SubCategoriaOptions = ({ defaultValue, required }) => {
     const { data } = useQueryCategorias();
-    const [selected, setSelected] = useState(null)
-    const [sub, setSub] = useState("")
-    const [defaultCategoria, setDefaultCategoria] = useState(null)
+    const categorias = Array.isArray(data) ? data : [];
+
+    const [selected, setSelected] = useState(null);
+    const [sub, setSub] = useState('');
+
     useEffect(() => {
-        if (defaultValue) {
-            const defaultPlan = data ? data.categorias.find(p => p.idCategoria === defaultValue.categoriaId) : null
-            setDefaultCategoria(defaultPlan)
-            setSelected(defaultPlan)
-            if (defaultValue.subcategoriaId) setSub(defaultValue.subcategoriaId)
+        if (defaultValue?.categoriaId && categorias.length > 0) {
+            const found = categorias.find(c => c.id === defaultValue.categoriaId)
+                ?? categorias.find(c => c.categoriasFilhas?.some(s => s.id === defaultValue.categoriaId))
+                ?? null;
+            setSelected(found);
         }
-    }, [defaultValue, data, defaultCategoria])
+        if (defaultValue?.subcategoriaId) setSub(defaultValue.subcategoriaId);
+    }, [defaultValue, data]);
 
     const categoryHandler = (e) => {
-        var selectedIndex = e.selectedIndex;
-        // Obtém o option selecionado usando o índice
-        var selectedOption = e.options[selectedIndex];
-
-        // Obtém o ID do option selecionado
-        var selectedOptionId = selectedOption.id;
-        setSelected(JSON.parse(selectedOptionId))
-    }
+        const cat = categorias.find(c => c.id === e.target.value) ?? null;
+        setSelected(cat);
+        setSub('');
+    };
 
     return (
         <>
             <div className="form-group">
                 <label>Categoria</label>
-                <select defaultValue={defaultValue && defaultValue.categoriaId ? defaultValue.categoriaId : ""} onChange={(e) => {
-                    setSub("")
-                    categoryHandler(e.target)
-                }} required={required}>
+                <select
+                    defaultValue={defaultValue?.categoriaId ?? ''}
+                    onChange={categoryHandler}
+                    required={required}
+                    name="categoriaIdSelect"
+                >
                     <option value="" disabled>Selecione uma Categoria</option>
-                    {data && data.categorias ?
-                        data.categorias.map((item, index) => (
-                            <option
-                                value={item.idCategoria}
-                                id={JSON.stringify(item)}
-                                key={item.idCategoria}
-                            >
-                                {item.nomeCategoria}
-                            </option>
-                        ))
-                        : <option disabled>Nenhuma Categoria</option>}
+                    {categorias.map(item => (
+                        <option value={item.id} key={item.id}>{item.nome}</option>
+                    ))}
                 </select>
             </div>
-            <input type="hidden" name="categoriaId" value={selected ? selected.idCategoria : defaultCategoria?.idCategoria} />
+            <input type="hidden" name="categoriaId" value={selected?.id ?? defaultValue?.categoriaId ?? ''} />
             <div className="form-group">
                 <label>Sub-Categoria</label>
-                <select
-                    onChange={(e) => setSub(e.target.value)}
-                    value={sub}
-                    name="subcategoriaId"
-                >
-                    <option disabled value="">
-                        {
-                            selected && selected?.subcategorias.length > 0 ? "Selecione uma Sub-Categoria" : "Nenhuma Sub-Categoria"
-                        }
+                <select onChange={e => setSub(e.target.value)} value={sub} name="subcategoriaId">
+                    <option value="">
+                        {selected?.categoriasFilhas?.length > 0 ? 'Selecione uma Sub-Categoria' : 'Nenhuma Sub-Categoria'}
                     </option>
-                    {selected && selected?.subcategorias.length > 0 ?
-                        selected.subcategorias.map((item, index) => {
-                            return (
-                                <option value={item.idSubcategoria} key={index}>
-                                    {item.nomeSubcategoria}
-                                </option>
-                            )
-                        })
-                        : null}
+                    {selected?.categoriasFilhas?.map(item => (
+                        <option value={item.id} key={item.id}>{item.nome}</option>
+                    ))}
                 </select>
             </div>
-
         </>
-    )
+    );
 };
 
 export default Categoria_SubCategoriaOptions;

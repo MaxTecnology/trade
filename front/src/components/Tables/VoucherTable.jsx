@@ -109,7 +109,7 @@ const VoucherTable = ({
                                 {type ?
                                     <Buttons
                                         type="Undo"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja solicitar o extorno?"}
                                         titulo={"Voucher"}
                                         resultDelete={"Extorno solicitado com sucesso"}
@@ -120,7 +120,7 @@ const VoucherTable = ({
                                 {agencia ?
                                     <Buttons
                                         type="Send"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja encaminhar o extorno?"}
                                         titulo={"Voucher"}
                                         resultDelete={"Extorno encaminhado com sucesso"}
@@ -131,7 +131,7 @@ const VoucherTable = ({
                                 {matriz ?
                                     <Buttons
                                         type="Aprove"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja aprovar o extorno?"}
                                         titulo={"Voucher"}
                                         resultDelete={"Extorno aprovado com sucesso"}

@@ -23,21 +23,12 @@ const GerenteSearch = () => {
             <div className="searchRow">
                 <SearchInput />
                 <div className="form-group">
-                    <label htmlFor="nome">Nome Gerente</label>
-                    <input type="text" id="nome" name="nome" placeholder="Nome Gerente" onChange={handleSearch} />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="nomeFantasia">Nome Fantasia</label>
-                    <input type="text" id="nomeFantasia" name="nomeFantasia" placeholder="Nome Fantasia" onChange={handleSearch} />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="conta">N° da Conta</label>
-                    <input type="number" id="conta" name="conta" placeholder="N° da conta" onChange={handleSearch} />
+                    <label htmlFor="nome">Nome</label>
+                    <input type="text" id="nome" name="nome" placeholder="Nome do gerente" onChange={handleSearch} />
                 </div>
                 <div className="buttonContainer">
                     <ButtonMotion type="submit"><FaSearch /> Pesquisar</ButtonMotion>
-                    <ButtonMotion
-                        ButtonMotion onClick={handleclick} className="purpleBtn" type="button"><FaPlus /> Cadastrar</ButtonMotion>
+                    <ButtonMotion onClick={handleclick} className="purpleBtn" type="button"><FaPlus /> Cadastrar</ButtonMotion>
                 </div>
             </div>
 

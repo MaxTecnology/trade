@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from 'react-modal';
-import { editUser } from '@/hooks/ListasHook';
 import { closeModal } from '@/hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
 import { BiSolidImageAdd } from 'react-icons/bi';
@@ -12,6 +11,14 @@ import Categoria_SubCategoriaOptions from '@/components/Options/Categoria_SubCat
 import { imageReferenceHandler } from '@/utils/functions/formHandler';
 import ButtonMotion from '@/components/FramerMotion/ButtonMotion';
 import InputMask from 'react-input-mask';
+import api from '@/services/api';
+
+const parseBRNumber = (val) => {
+    if (!val && val !== 0) return undefined
+    const cleaned = String(val).replace(/[^0-9,]/g, '').replace(',', '.')
+    const num = parseFloat(cleaned)
+    return isNaN(num) ? undefined : num
+}
 
 const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
     const [imagemReference, setImageReference] = useState(null);
@@ -19,30 +26,73 @@ const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
     const [error, setError] = useState(false)
     const [sucess, setSucess] = useState(false)
     const info = associadoInfo
-
-    useEffect(() => {
-        setImageReference(info.imagem)
-    }, [info]);
+    const contato = info?.contatos?.[0] ?? {}
 
     const revalidate = useRevalidate();
 
-    const formHandler = (event) => {
+    const formHandler = async (event) => {
         event.preventDefault()
         setReference(false);
-        toast.promise(editUser(event), {
-            loading: 'Editando Associado...',
-            success: () => {
+
+        const formData = new FormData(event.target)
+        const raw = {}
+        formData.forEach((value, key) => { raw[key] = value })
+
+        // Upload imagem se selecionada
+        const imagemInput = event.target.querySelector('input[name="imagem"]')
+        const imagemFile = imagemInput?.files?.[0]
+        delete raw.imagem
+        if (imagemFile) {
+            try {
+                const fd = new FormData()
+                fd.append('file', imagemFile)
+                const res = await api.post('upload', fd)
+                raw.imagemUrl = res.data?.data?.url ?? res.data?.url
+            } catch (err) {
                 setReference(true)
-                modalToggle()
-                revalidate("associados")
-                return "Associado editado com sucesso!"
-            },
-            error: (error) => {
-                setReference(true)
-                return <b>{error.message}</b>
-            },
-        })
+                toast.error(`Erro ao enviar imagem: ${err?.response?.data?.message ?? err.message}`)
+                return
+            }
+        }
+
+        // Boolean conversions
+        if (raw.mostrarNoSite !== undefined) raw.mostrarNoSite = raw.mostrarNoSite === 'true'
+        if (raw.aceitaOrcamento !== undefined) raw.aceitaOrcamento = raw.aceitaOrcamento === 'true'
+        // Remove nomeUsuario — used only for display, no user update endpoint here
+        delete raw.nomeUsuario
+
+        // Number conversions for money fields
+        for (const key of ['limiteCredito', 'limiteVendaMensal', 'limiteVendaTotal']) {
+            const parsed = parseBRNumber(raw[key])
+            if (parsed !== undefined) raw[key] = parsed
+            else delete raw[key]
+        }
+        if (raw.diaVencimentoFatura) raw.diaVencimentoFatura = Number(raw.diaVencimentoFatura) || undefined
+
+        // Remove empty strings
+        Object.keys(raw).forEach(key => { if (raw[key] === '' || raw[key] === undefined) delete raw[key] })
+
+        toast.promise(
+            api.put(`associados/${info.id}`, raw).catch(err => {
+                throw new Error(err?.response?.data?.message ?? 'Erro ao editar')
+            }),
+            {
+                loading: 'Editando Associado...',
+                success: () => {
+                    setReference(true)
+                    modalToggle()
+                    revalidate('associados')
+                    return 'Associado editado com sucesso!'
+                },
+                error: (err) => {
+                    setReference(true)
+                    return <b>{err.message}</b>
+                },
+            }
+        )
     }
+
+    if (!info) return null
 
     return (
         <Modal
@@ -57,211 +107,163 @@ const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
                 <GrFormClose onClick={() => closeModal(modalToggle, setSucess, setError)} />
             </div>
             <div className='modalDivider'></div>
-            <form onSubmit={(event) => formHandler(event)} className="containerForm">
+            <form onSubmit={formHandler} className="containerForm">
                 <div className="form-group">
                     <label className="required-field-label">Razão Social</label>
-                    <input
-                        defaultValue={info.razaoSocial
-                        } type="text" className="form-control" id="razaoSocial" name="razaoSocial" required />
+                    <input defaultValue={info.nome} type="text" className="form-control" name="nome" required />
                 </div>
                 <div className="form-group">
                     <label className="required-field-label">Nome Fantasia</label>
-                    <input
-                        defaultValue={info.nomeFantasia
-                        } type="text" className="form-control" id="nomeFantasia" name="nomeFantasia" required />
+                    <input defaultValue={info.nomeFantasia} type="text" className="form-control" name="nomeFantasia" required />
                 </div>
                 <div className="form-group">
                     <label className="required-field-label">Descrição</label>
-                    <input
-                        defaultValue={info.descricao} type="text" className="form-control" id="descricao" name="descricao" required />
+                    <input defaultValue={info.descricao} type="text" className="form-control" name="descricao" required />
                 </div>
                 <div className="form-group">
                     <label>Status</label>
-                    <select defaultValue={info.status} className="form-control" id="status" name="status">
+                    <select defaultValue={info.status} className="form-control" name="status">
                         <option value="" disabled>Selecionar</option>
-                        <option value="true">Atendendo</option>
-                        <option value="false">Não Atendendo</option>
+                        <option value="ativo">Atendendo</option>
+                        <option value="inativo">Não Atendendo</option>
+                        <option value="suspenso">Suspenso</option>
                     </select>
                 </div>
                 <div className="form-group">
                     <label className="required-field-label">CNPJ</label>
                     <InputMask mask="99.999.999/9999-99" maskChar={null} defaultValue={info.cnpj}>
-                        {(inputProps) => <input {...inputProps} type="text" id="cnpj" name="cnpj" required />}
+                        {(inputProps) => <input {...inputProps} type="text" name="cnpj" required />}
                     </InputMask>
                 </div>
                 <div className="form-group">
                     <label>Insc. Estadual</label>
-                    <input
-                        defaultValue={info.inscEstadual} type="text" className="form-control" id="inscEstadual" name="inscEstadual" />
+                    <input defaultValue={info.inscEstadual} type="text" className="form-control" name="inscEstadual" />
                 </div>
                 <div className="form-group">
                     <label>Insc. Municipal</label>
-                    <input
-                        defaultValue={info.inscMunicipal} type="text" className="form-control" id="inscMunicipal" name="inscMunicipal" />
+                    <input defaultValue={info.inscMunicipal} type="text" className="form-control" name="inscMunicipal" />
                 </div>
                 <div className="form-group">
-                    <label className="required-field-label">Restrições</label>
-                    <input
-                        defaultValue={info.restricao} type="text" className="form-control" id="restricoes" name="restricao" required />
+                    <label>Restrições</label>
+                    <input defaultValue={info.restricao} type="text" className="form-control" name="restricao" />
                 </div>
-                <Categoria_SubCategoriaOptions defaultValue={info} required />
+                <Categoria_SubCategoriaOptions defaultValue={info} />
                 <div className="form-group">
                     <label>Mostrar no site</label>
-                    <select defaultValue={info.mostrarNoSite} className="form-control" id="mostrarNoSite" name="mostrarNoSite">
+                    <select defaultValue={info.mostrarNoSite ? 'true' : 'false'} className="form-control" name="mostrarNoSite">
                         <option value="" disabled>Selecionar</option>
                         <option value="true">Sim</option>
                         <option value="false">Não</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Tipo</label>
-                    <select defaultValue={info.tipo} className="form-control" id="tipo">
-                        <option value="" disabled>Selecionar</option>
-                        <option value="Associado">Associado</option>
                     </select>
                 </div>
                 <div className="formDivider">
                     <p>Contato</p>
                 </div>
-                {/* CONTATO */}
                 <div className="form-group f2">
-                    <label className="required-field-label">Nome</label>
-                    <input
-                        defaultValue={info.nomeContato} type="text" className="form-control" id="nomeContato" name="nomeContato" required />
+                    <label>Nome</label>
+                    <input defaultValue={contato.nomeContato} type="text" className="form-control" name="nomeContato" />
                 </div>
                 <div className="form-group f2">
                     <label>Telefone</label>
                     <InputMask mask="(99)9999-9999" maskChar={null} defaultValue={info.telefone}>
-                        {(inputProps) => <input {...inputProps} type="text" className="form-control" id="telefone" name="telefone" required />}
+                        {(inputProps) => <input {...inputProps} type="text" className="form-control" name="telefone" />}
                     </InputMask>
                 </div>
                 <div className="form-group f2">
                     <label className="required-field-label">Celular</label>
-                    <InputMask mask="(99)99999-9999" maskChar={null} defaultValue={info.celular}>
-                        {(inputProps) => <input {...inputProps} type="text" className="form-control" id="celular" name="celular" required />}
+                    <InputMask mask="(99)99999-9999" maskChar={null} defaultValue={contato.celular}>
+                        {(inputProps) => <input {...inputProps} type="text" className="form-control" name="celular" required />}
                     </InputMask>
                 </div>
                 <div className="form-group f2">
                     <label className="required-field-label">E-mail</label>
-                    <input
-                        defaultValue={info.emailContato} type="email" className="form-control" id="emailContato" name="emailContato" required />
+                    <input defaultValue={contato.emailContato} type="email" className="form-control" name="emailContato" required />
                 </div>
                 <div className="form-group f2">
                     <label>E-mail secundário</label>
-                    <input
-                        defaultValue={info.emailSecundario} type="email" className="form-control" id="emailSecundario" name="emailSecundario" />
+                    <input defaultValue={contato.emailSecundario} type="email" className="form-control" name="emailSecundario" />
                 </div>
                 <div className="form-group f2">
                     <label>Site</label>
-                    <input defaultValue={info.site} type="text" className="form-control" id="site" name="site" />
+                    <input defaultValue={contato.site} type="text" className="form-control" name="site" />
                 </div>
                 <div className="formDivider">
                     <p>Endereço</p>
                 </div>
-                {/* ENDEREÇO */}
                 <div className="form-group">
                     <label className="required-field-label">Logradouro</label>
-                    <input
-                        defaultValue={info.logradouro} type="text" className="form-control" id="logradouro" name="logradouro" required />
+                    <input defaultValue={info.logradouro} type="text" className="form-control" name="logradouro" required />
                 </div>
                 <div className="form-group">
                     <label className="required-field-label">Número</label>
-                    <input
-                        defaultValue={info.numero} type="number" className="form-control" id="numero" name="numero" required />
+                    <input defaultValue={info.numero} type="text" className="form-control" name="numero" required />
                 </div>
                 <div className="form-group">
-                    <label className="required-field-label">CEP</label>
+                    <label>CEP</label>
                     <InputMask mask="99999-999" maskChar={null} defaultValue={info.cep}>
-                        {(inputProps) => <input {...inputProps} type="text" id="cep" name="cep" />}
+                        {(inputProps) => <input {...inputProps} type="text" name="cep" />}
                     </InputMask>
                 </div>
                 <div className="form-group">
                     <label>Complemento</label>
-                    <input
-                        defaultValue={info.complemento} type="text" className="form-control" id="complemento" name="complemento" />
+                    <input defaultValue={info.complemento} type="text" className="form-control" name="complemento" />
                 </div>
                 <div className="form-group">
                     <label className="required-field-label">Bairro</label>
-                    <input
-                        defaultValue={info.bairro} type="text" className="form-control" id="bairro" name="bairro" required />
+                    <input defaultValue={info.bairro} type="text" className="form-control" name="bairro" required />
                 </div>
                 <div className="form-group f2">
                     <label className="required-field-label">Cidade</label>
-                    <input
-                        defaultValue={info.cidade} type="text" className="form-control" id="cidade" name="cidade" required />
+                    <input defaultValue={info.cidade} type="text" className="form-control" name="cidade" required />
                 </div>
                 <div className="form-group f1">
                     <label className="required-field-label">Estado</label>
-                    <input
-                        defaultValue={info.estado} type="text" className="form-control" id="estado" name="estado" required />
+                    <input defaultValue={info.estado} type="text" className="form-control" name="estado" required />
                 </div>
                 <div className="form-group">
                     <label>Região</label>
-                    <input
-                        defaultValue={info.regiao} type="text" className="form-control" id="regiao" name="regiao" />
+                    <input defaultValue={info.regiao} type="text" className="form-control" name="regiao" />
                 </div>
                 <div className="formDivider">
                     <p>Agência</p>
                 </div>
-                {/* AGENCIA */}
                 <PlanosFields type={"Associado"} defaultValue={info} />
                 <div className="form-group">
                     <label>Data Vencimento Fatura</label>
-                    <select defaultValue={info.dataVencimentoFatura} className="form-control" id="dataVencimentoFatura" name="dataVencimentoFatura">
+                    <select defaultValue={info.diaVencimentoFatura} className="form-control" name="diaVencimentoFatura">
                         <option value="" disabled>Selecionar</option>
-                        <option>10</option>
-                        <option>20</option>
-                        <option>30</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
                     </select>
                 </div>
                 <div className="formDivider">
                     <p>Operações</p>
                 </div>
-                {/* Operações */}
                 <div className="form-group">
-                    <label>Gerente de Conta</label>
-                    <select defaultValue={info.nomeFranquia ? info.nomeFranquia : info.idUsuario} className="form-control" id="gerentesSelect" name="gerente">
+                    <label>Tipo de Operação</label>
+                    <select defaultValue={info.tipoOperacao} className="form-control" name="tipoOperacao">
                         <option value="" disabled>Selecionar</option>
-                        <option value={info.conta.gerenteContaId ? info.conta.gerenteContaId : info.idUsuario}>Sem Gerente</option>
+                        <option value="compra">Compra</option>
+                        <option value="venda">Venda</option>
+                        <option value="compra_venda">Compra/Venda</option>
                     </select>
                 </div>
                 <div className="form-group">
-                    <label className="required-field-label">Taxa Gerente Conta em %</label>
-                    <input
-                        defaultValue={info.taxaGerenteConta} type="number" className="form-control readOnly" id="taxaGerenteConta" readOnly />
+                    <label>Limite Crédito</label>
+                    <RealInput defaultValue={info.limiteCredito} name="limiteCredito" placeholder="Insira o limite" reference={reference} />
                 </div>
                 <div className="form-group">
-                    <label className="required">Tipo de Operação</label>
-                    <select defaultValue={info.tipoOperacao} className="form-control" id="tipoOperacao" name="tipoOperacao">
-                        <option value="" disabled>Selecionar</option>
-                        <option value={1}>Compra</option>
-                        <option value={2}>Venda</option>
-                        <option value={3}>Compra/Venda</option>
-                    </select>
+                    <label>Limite de Venda Mensal</label>
+                    <RealInput defaultValue={info.limiteVendaMensal} name="limiteVendaMensal" placeholder="Insira o limite" reference={reference} />
                 </div>
                 <div className="form-group">
-                    <label className="required-field-label">Limite Crédito</label>
-                    <RealInput defaultValue={info.conta?.limiteCredito} name="limiteCredito" placeholder="Insira o limite" reference={reference} required />
-                </div>
-                <div className="form-group">
-                    <label className="required-field-label">Limite de Venda Mensal</label>
-                    <RealInput defaultValue={info.conta?.limiteVendaMensal} name="limiteVendaMensal" placeholder="Insira o limite" reference={reference} required />
-                </div>
-                <div className="form-group">
-                    <label className="required-field-label">Limite de Venda Total</label>
-                    <RealInput defaultValue={info.conta?.limiteVendaTotal} name="limiteVendaTotal" placeholder="Insira o limite" reference={reference} required />
+                    <label>Limite de Venda Total</label>
+                    <RealInput defaultValue={info.limiteVendaTotal} name="limiteVendaTotal" placeholder="Insira o limite" reference={reference} />
                 </div>
                 <div className="form-group">
                     <label>Aceita Orçamento</label>
-                    <select defaultValue={info.aceitaOrcamento} className="form-control" id="aceitaOrcamento" name="aceitaOrcamento">
-                        <option value="" disabled>Selecionar</option>
-                        <option value="true">Sim</option>
-                        <option value="false">Não</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Aceita Voucher</label>
-                    <select defaultValue={info.aceitaVoucher} className="form-control" id="aceitaVoucher" name="aceitaVoucher">
+                    <select defaultValue={info.aceitaOrcamento ? 'true' : 'false'} className="form-control" name="aceitaOrcamento">
                         <option value="" disabled>Selecionar</option>
                         <option value="true">Sim</option>
                         <option value="false">Não</option>
@@ -271,35 +273,26 @@ const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
                     <p>Dados do usuário</p>
                 </div>
                 <div className="formImage">
-                    <img src={imagemReference} className="rounded float-left img-fluid" alt="..." id="imagem-selecionada" name="imagem-selecionada" />
+                    <img src={imagemReference || info.imagemUrl || ''} className="rounded float-left img-fluid" alt="..." />
                 </div>
                 <div className="form-group">
                     <label htmlFor="img_path" className="inputLabel">
                         <BiSolidImageAdd /> Selecione uma imagem
-                        <input type="file" name='imagem' accept="image/*" className="custom-file-input" id="img_path" onChange={(e) => imageReferenceHandler(e, setImageReference)} />
+                        <input type="file" name='imagem' accept="image/*" className="custom-file-input" id="img_path"
+                            onChange={(e) => imageReferenceHandler(e, setImageReference)} />
                     </label>
                 </div>
                 <div className="form-group">
                     <label className="required-field-label">Nome</label>
-                    <input defaultValue={info.nome} type="text" className="form-control" id="nome" name="nome" required />
+                    <input defaultValue={info.nome} type="text" className="form-control" name="nomeUsuario" required />
                 </div>
                 <div className="form-group">
-                    <label className="required-field-label">Cpf</label>
-                    <InputMask mask="999.999.999-99" maskChar={null} defaultValue={info.cpf}>
-                        {(inputProps) => <input  {...inputProps} type="text" className="form-control" id="cpf" name="cpf" required />}
-                    </InputMask>
-
+                    <label className="required-field-label">E-mail</label>
+                    <input defaultValue={info.email} type="email" className="form-control" name="email" required />
                 </div>
-                <div className="form-group">
-                    <label className="required-field-label ">E-mail</label>
-                    <input defaultValue={info.email} type="email" className="form-control" id="email" name="email" required />
-                </div>
-                <input type="hidden" name="contaId" value={info.conta.idConta} />
-                <input type="hidden" name="taxaRepasseMatriz" value={info.conta.taxaRepasseMatriz} />
-                <input type="hidden" name="idUsuario" value={info.idUsuario} />
 
                 <div className="buttonContainer">
-                    <ButtonMotion className='modalButtonClose' type='button' onClick={() => closeModal(modalToggle, setSucess, setError)} >Fechar</ButtonMotion>
+                    <ButtonMotion className='modalButtonClose' type='button' onClick={() => closeModal(modalToggle, setSucess, setError)}>Fechar</ButtonMotion>
                     <ButtonMotion className='modalButtonSave' type="submit">Salvar alterações</ButtonMotion>
                 </div>
             </form>

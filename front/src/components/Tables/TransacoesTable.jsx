@@ -113,7 +113,7 @@ const TransacoesTable = ({
                                 {type ?
                                     <Buttons
                                         type="Undo"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja solicitar o extorno?"}
                                         titulo={"Transação"}
                                         resultDelete={"Extorno solicitado com sucesso"}
@@ -124,7 +124,7 @@ const TransacoesTable = ({
                                 {agencia ?
                                     <Buttons
                                         type="Send"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja encaminhar o extorno?"}
                                         titulo={"Extorno"}
                                         resultDelete={"Extorno encaminhado com sucesso"}
@@ -135,7 +135,7 @@ const TransacoesTable = ({
                                 {matriz ?
                                     <Buttons
                                         type="Aprove"
-                                        url={row.original.idTransacao}
+                                        url={row.original.id}
                                         confirm={"Deseja aprovar o extorno?"}
                                         titulo={"Extorno"}
                                         resultDelete={"Extorno aprovado com sucesso"}

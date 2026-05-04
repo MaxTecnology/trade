@@ -1,12 +1,13 @@
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
+import multipart from '@fastify/multipart'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import { env } from './config/env.js'
 import { AppError } from './shared/errors/AppError.js'
 import { ZodError } from 'zod'
 
-// Módulos
+// Módulos existentes
 import { authRoutes } from './modules/auth/auth.routes.js'
 import { agencyRoutes } from './modules/agency/agency.routes.js'
 import { associateRoutes } from './modules/associate/associate.routes.js'
@@ -19,12 +20,18 @@ import { transactionRoutes } from './modules/transaction/transaction.routes.js'
 import { voucherRoutes } from './modules/voucher/voucher.routes.js'
 import { reportRoutes } from './modules/report/report.routes.js'
 
+// Novos módulos
+import { creditoRoutes } from './modules/credito/credito.routes.js'
+import { cobrancaRoutes } from './modules/cobranca/cobranca.routes.js'
+import { uploadRoutes } from './modules/upload/upload.routes.js'
+
 export async function buildApp() {
   const app = Fastify({
     logger: env.NODE_ENV === 'development',
   })
 
   await app.register(cookie)
+  await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } })
 
   await app.register(swagger, {
     openapi: {
@@ -56,6 +63,9 @@ export async function buildApp() {
   await app.register(transactionRoutes, { prefix })
   await app.register(voucherRoutes, { prefix })
   await app.register(reportRoutes, { prefix })
+  await app.register(creditoRoutes, { prefix })
+  await app.register(cobrancaRoutes, { prefix })
+  await app.register(uploadRoutes, { prefix })
 
   // Error handler global
   app.setErrorHandler((error, _request, reply) => {

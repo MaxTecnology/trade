@@ -14,7 +14,7 @@ const Resultado = () => {
     const action = state.action
     return (
         <Modal
-            isOpen={state.message}
+            isOpen={!!state.message}
             onRequestClose={() => closeModal()}
             className={"modalEditPanel modalAnimationEdit modalResultado"}
             overlayClassName={"modalOverlay modalAnimationOverlay"}

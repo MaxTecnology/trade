@@ -1,20 +1,18 @@
 import { useQueryAgencias } from '@/hooks/ReactQuery/useQueryAgencias';
-const AgenciasOptions = ({ voucher }) => {
+
+// value: id da agência (UUID) — use 'nome' prop para exibir nome como value
+const AgenciasOptions = () => {
     const { data } = useQueryAgencias();
 
     return (
         <>
-            {data && data.data ?
-                data.data.map((item, index) => (
-                    <option
-                        value={item.nomeFantasia}
-                        id={item.nomeFantasia}
-                        key={index}
-                    >
-                        {item.nomeFantasia}
+            {Array.isArray(data) && data.length > 0
+                ? data.map((item) => (
+                    <option value={item.id} key={item.id}>
+                        {item.nome}
                     </option>
                 ))
-                : <option disabled>Nenhuma Agência Disponivel</option>
+                : <option disabled>Nenhuma Agência Disponível</option>
             }
         </>
     )

@@ -34,7 +34,7 @@ const GerentesLista = () => {
             <div className="containerList">
                 <GerentesTable
                     columns={columns}
-                    data={data && data.data ? data.data : []}
+                    data={data ?? []}
                     setId={setUserId}
                     setInfo={setUserInfo}
                     modaltoggle={modalToggle}

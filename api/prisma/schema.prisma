@@ -73,9 +73,28 @@ enum StatusTransacao {
   falha
 }
 
-enum Periodicidade {
-  mensal
-  anual
+enum TipoPlano {
+  agencia
+  associado
+  gerente
+}
+
+enum StatusCredito {
+  em_analise
+  encaminhado
+  aprovado
+  negado
+}
+
+enum TipoComissaoGerente {
+  inscricao
+  transacao
+}
+
+enum TipoOperacao {
+  compra
+  venda
+  compra_venda
 }
 
 // ─────────────────────────────────────────
@@ -83,18 +102,22 @@ enum Periodicidade {
 // ─────────────────────────────────────────
 
 model Plano {
-  id                 String        @id @default(uuid())
-  nome               String        @unique
-  limiteRT           Decimal       @db.Decimal(15, 2)
-  percentualComissao Decimal       @db.Decimal(5, 2)
-  periodicidade      Periodicidade
-  maxParcelas        Int           @default(1)
-  ativo              Boolean       @default(true)
-  criadoEm          DateTime      @default(now())
-  atualizadoEm      DateTime      @updatedAt
+  id                    String        @id @default(uuid())
+  nome                  String
+  tipoPlano             TipoPlano     @default(associado)
+  limiteRT              Decimal       @db.Decimal(15, 2)
+  percentualComissao    Decimal       @db.Decimal(5, 2)
+  taxaInscricaoRT       Decimal       @default(0) @db.Decimal(15, 2)
+  taxaManutencaoAnualRT Decimal       @default(0) @db.Decimal(15, 2)
+  ativo                 Boolean       @default(true)
+  criadoEm             DateTime      @default(now())
+  atualizadoEm         DateTime      @updatedAt
 
   associados Associado[]
+  agencias   Agencia[]
 
+  @@unique([nome, tipoPlano])
+  @@index([tipoPlano])
   @@map("plano")
 }
 
@@ -105,27 +128,59 @@ model Plano {
 model Agencia {
   id               String      @id @default(uuid())
   nome             String
+  nomeFantasia     String?
   cnpj             String      @unique
+  inscEstadual     String?
+  inscMunicipal    String?
   tipo             TipoAgencia
   email            String      @unique
   telefone         String?
+  imagemUrl        String?
   status           StatusGeral @default(ativo)
   agenciaParenteId String?
+  planoId          String?
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
 
-  logradouro String?
-  cidade     String
-  estado     String  @db.Char(2)
-  cep        String?
+  logradouro          String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cidade              String
+  estado              String  @db.Char(2)
+  cep                 String?
+  regiao              String?
 
-  agenciaParente Agencia?  @relation("AgenciaHierarquia", fields: [agenciaParenteId], references: [id])
-  agenciasFilhas Agencia[] @relation("AgenciaHierarquia")
+  limiteCredito       Decimal? @db.Decimal(15, 2)
+  limiteVendaMensal   Decimal? @db.Decimal(15, 2)
+  limiteVendaTotal    Decimal? @db.Decimal(15, 2)
+  taxaRepasseMatriz   Decimal? @db.Decimal(5, 2)
+  diaVencimentoFatura Int?
+
+  agenciaParente Agencia?         @relation("AgenciaHierarquia", fields: [agenciaParenteId], references: [id])
+  agenciasFilhas Agencia[]        @relation("AgenciaHierarquia")
+  plano          Plano?           @relation(fields: [planoId], references: [id])
+  contatos       ContatoAgencia[]
   associados     Associado[]
   usuarios       Usuario[]
   conta          Conta?
+  cobranças      Cobranca[]
 
   @@map("agencia")
+}
+
+model ContatoAgencia {
+  id              String   @id @default(uuid())
+  agenciaId       String
+  nomeContato     String?
+  celular         String?
+  emailSecundario String?
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  agencia Agencia @relation(fields: [agenciaId], references: [id])
+
+  @@map("contato_agencia")
 }
 
 // ─────────────────────────────────────────
@@ -135,33 +190,74 @@ model Agencia {
 model Associado {
   id              String            @id @default(uuid())
   nome            String
+  nomeFantasia    String?
   cnpj            String            @unique
   email           String            @unique
   telefone        String?
+  descricao       String?
+  inscEstadual    String?
+  inscMunicipal   String?
+  restricao       String?
+  imagemUrl       String?
+  mostrarNoSite   Boolean           @default(true)
+  aceitaOrcamento Boolean           @default(true)
   status          StatusGeral       @default(ativo)
   statusLoja      StatusLoja        @default(aberta)
   tipoAtendimento TipoAtendimento[]
-  agenciaId       String
+  tipoOperacao    TipoOperacao?
+  categoriaId     String?
+  agenciaId       String?
   planoId         String
-  gerenteId       String
+  gerenteId       String?
+  formaPagamento      Int?
+  diaVencimentoFatura Int?
+  valorInscricaoBRL   Decimal?      @db.Decimal(15, 2)
+  valorInscricaoRT    Decimal?      @db.Decimal(15, 2)
+  limiteCredito       Decimal?      @db.Decimal(15, 2)
+  limiteVendaMensal Decimal?        @db.Decimal(15, 2)
+  limiteVendaTotal  Decimal?        @db.Decimal(15, 2)
   criadoEm       DateTime          @default(now())
   atualizadoEm   DateTime          @updatedAt
 
-  logradouro String?
-  cidade     String
-  estado     String  @db.Char(2)
-  cep        String?
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String
+  estado      String  @db.Char(2)
+  cep         String?
+  regiao      String?
 
-  agencia          Agencia     @relation(fields: [agenciaId], references: [id])
-  plano            Plano       @relation(fields: [planoId], references: [id])
-  gerente          Usuario     @relation("GerenteAssociados", fields: [gerenteId], references: [id])
-  conta            Conta?
-  usuarios         Usuario[]
-  ofertas          Oferta[]
-  transacoesCompra Transacao[] @relation("Comprador")
-  transacoesVenda  Transacao[] @relation("Vendedor")
+  agencia              Agencia?             @relation(fields: [agenciaId], references: [id])
+  plano                Plano                @relation(fields: [planoId], references: [id])
+  gerente              Usuario?             @relation("GerenteAssociados", fields: [gerenteId], references: [id])
+  categoria            Categoria?           @relation(fields: [categoriaId], references: [id])
+  conta                Conta?
+  contatos             ContatoAssociado[]
+  usuarios             Usuario[]
+  ofertas              Oferta[]
+  transacoesCompra     Transacao[]          @relation("Comprador")
+  transacoesVenda      Transacao[]          @relation("Vendedor")
+  solicitacoesCredito  SolicitacaoCredito[]
+  cobranças            Cobranca[]
 
   @@map("associado")
+}
+
+model ContatoAssociado {
+  id              String   @id @default(uuid())
+  associadoId     String
+  nomeContato     String?
+  celular         String?
+  emailContato    String?
+  emailSecundario String?
+  site            String?
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  associado Associado @relation(fields: [associadoId], references: [id])
+
+  @@map("contato_associado")
 }
 
 // ─────────────────────────────────────────
@@ -186,6 +282,7 @@ model Conta {
   movimentacoes     MovimentacaoConta[]
   transacoesOrigem  Transacao[]         @relation("ContaOrigem")
   transacoesDestino Transacao[]         @relation("ContaDestino")
+  cobranças         Cobranca[]
 
   @@index([numero])
   @@map("conta")
@@ -227,6 +324,7 @@ model Usuario {
   role               RoleUsuario
   ativo              Boolean     @default(true)
   codigoOperador     String?     @unique
+  cpf                String?     @unique
   entityType         EntityType
   associadoId        String?
   agenciaId          String?
@@ -271,18 +369,19 @@ model RefreshToken {
 // ─────────────────────────────────────────
 
 model ComissaoGerente {
-  id                    String   @id @default(uuid())
-  gerenteId             String
-  associadoId           String
-  transacaoId           String
-  valorTransacaoRT      Decimal  @db.Decimal(15, 2)
-  comissaoPlataformaBRL Decimal  @db.Decimal(15, 2)
-  percentualGerente     Decimal  @db.Decimal(5, 2)
-  comissaoGerenteBRL    Decimal  @db.Decimal(15, 2)
-  criadoEm             DateTime @default(now())
+  id           String              @id @default(uuid())
+  gerenteId    String
+  associadoId  String
+  transacaoId  String?
+  tipoComissao TipoComissaoGerente @default(transacao)
+  baseValorRT  Decimal             @db.Decimal(15, 2)
+  percentual   Decimal             @db.Decimal(5, 2)
+  comissaoBRL  Decimal             @default(0) @db.Decimal(15, 2)
+  comissaoRT   Decimal             @db.Decimal(15, 2)
+  criadoEm    DateTime            @default(now())
 
-  gerente   Usuario   @relation(fields: [gerenteId], references: [id])
-  transacao Transacao @relation(fields: [transacaoId], references: [id])
+  gerente   Usuario    @relation(fields: [gerenteId], references: [id])
+  transacao Transacao? @relation(fields: [transacaoId], references: [id])
 
   @@index([gerenteId, criadoEm])
   @@index([transacaoId])
@@ -305,6 +404,7 @@ model Categoria {
   categoriaParente Categoria?  @relation("CategoriaHierarquia", fields: [categoriaParenteId], references: [id])
   categoriasFilhas Categoria[] @relation("CategoriaHierarquia")
   ofertas          Oferta[]
+  associados       Associado[]
 
   @@unique([nome, categoriaParenteId])
   @@map("categoria")
@@ -327,6 +427,8 @@ model Oferta {
   associadoId          String
   cidade               String
   estado               String            @db.Char(2)
+  imagemUrl            String?
+  vencimento           DateTime?
   criadoEm            DateTime          @default(now())
   atualizadoEm        DateTime          @updatedAt
 
@@ -395,4 +497,66 @@ model Voucher {
   transacao Transacao @relation(fields: [transacaoId], references: [id])
 
   @@map("voucher")
+}
+
+// ─────────────────────────────────────────
+// SOLICITAÇÃO DE CRÉDITO RT
+// ─────────────────────────────────────────
+
+model SolicitacaoCredito {
+  id              String        @id @default(uuid())
+  associadoId     String
+  valorSolicitado Decimal       @db.Decimal(15, 2)
+  descricao       String?
+  status          StatusCredito @default(em_analise)
+  criadoEm       DateTime      @default(now())
+  atualizadoEm   DateTime      @updatedAt
+
+  associado Associado @relation(fields: [associadoId], references: [id])
+
+  @@index([associadoId, criadoEm])
+  @@index([status])
+  @@map("solicitacao_credito")
+}
+
+// ─────────────────────────────────────────
+// COBRANÇA / FATURA BRL
+// ─────────────────────────────────────────
+
+model Cobranca {
+  id          String    @id @default(uuid())
+  descricao   String?
+  valorBRL    Decimal   @db.Decimal(15, 2)
+  vencimento  DateTime
+  pago        Boolean   @default(false)
+  contaId     String
+  associadoId String?
+  agenciaId   String?
+  transacaoId String?
+  criadoEm   DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  conta     Conta      @relation(fields: [contaId], references: [id])
+  associado Associado? @relation(fields: [associadoId], references: [id])
+  agencia   Agencia?   @relation(fields: [agenciaId], references: [id])
+
+  @@index([contaId, pago])
+  @@index([vencimento])
+  @@map("cobranca")
+}
+
+// ─────────────────────────────────────────
+// ARQUIVO (Backblaze B2)
+// ─────────────────────────────────────────
+
+model Arquivo {
+  id        String   @id @default(uuid())
+  nome      String
+  url       String
+  tamanho   Int?
+  mimeType  String?
+  bucket    String   @default("redetrade")
+  criadoEm DateTime @default(now())
+
+  @@map("arquivo")
 }

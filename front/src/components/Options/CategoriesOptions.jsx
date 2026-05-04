@@ -3,14 +3,14 @@ const CategoriesOptions = () => {
     const { data } = useQueryCategorias();
     return (
         <>
-            {data && data.categorias ?
-                data.categorias.map((item, index) => (
+            {data && data.length > 0
+                ? data.map((item, index) => (
                     <option
-                        value={item.idCategoria}
-                        id={item.idCategoria}
-                        key={item.idCategoria + index}
+                        value={item.id}
+                        id={item.id}
+                        key={item.id + index}
                     >
-                        {item.nomeCategoria}
+                        {item.nome}
                     </option>
                 ))
                 : <option disabled>Nenhuma Categoria</option>}

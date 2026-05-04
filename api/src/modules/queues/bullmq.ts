@@ -90,23 +90,25 @@ export function startWorkers() {
         where: { id: transacaoId },
         include: { comprador: { include: { gerente: true } } },
       })
-      if (!transacao?.comprador?.gerente || !transacao.comissaoBRL) return
+      if (!transacao?.comprador?.gerenteId || !transacao.comprador.gerente) return
 
       const gerente = transacao.comprador.gerente
       if (!gerente.percentualComissao) return
 
-      const comissaoGerenteBRL =
-        Number(transacao.comissaoBRL) * (Number(gerente.percentualComissao) / 100)
+      // Opção A: comissão é X% do valor RT da transação
+      const comissaoRT =
+        Number(transacao.valorRT) * (Number(gerente.percentualComissao) / 100)
 
       await prisma.comissaoGerente.create({
         data: {
           gerenteId: gerente.id,
           associadoId: transacao.compradorId!,
           transacaoId,
-          valorTransacaoRT: transacao.valorRT,
-          comissaoPlataformaBRL: transacao.comissaoBRL,
-          percentualGerente: gerente.percentualComissao,
-          comissaoGerenteBRL,
+          tipoComissao: 'transacao',
+          baseValorRT: transacao.valorRT,
+          percentual: gerente.percentualComissao,
+          comissaoBRL: 0,
+          comissaoRT,
         },
       })
     },

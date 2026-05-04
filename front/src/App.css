@@ -1092,6 +1092,10 @@ input[type="file"] {
   background-color: var(--mainColor) !important;
 }
 
+.buttonUnlock {
+  background-color: #16a34a !important;
+}
+
 .buttonUndo {
   background-color: var(--mainColor) !important;
 }
@@ -1535,6 +1539,8 @@ input[type="file"] {
   font-size: 16px;
   color: #747474;
   font-weight: 500;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .associadoCardStatus {
@@ -1566,9 +1572,18 @@ input[type="file"] {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex: 1 1 30px;
+  flex: 1 1 0;
+  min-width: 0;
   gap: 5px;
   font-size: 0.7rem;
+  overflow: hidden;
+}
+
+.associadoCardIconsContainer div span {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .associadoCardIconsContainer svg {
@@ -1576,7 +1591,7 @@ input[type="file"] {
 }
 
 .associadoCardIconsContainer .flex2 {
-  flex: 2 1 40px;
+  flex: 2 1 0;
 }
 
 /* INFO */

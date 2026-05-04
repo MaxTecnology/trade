@@ -11,7 +11,16 @@ type Params = { id: string }
 type Query = { page?: number; limit?: number }
 
 export async function createController(request: FastifyRequest, reply: FastifyReply) {
-  const input = createManagerSchema.parse(request.body)
+  const body = request.body as Record<string, unknown>
+  // agency_admin sempre usa sua própria agência
+  if (request.user.role === 'agency_admin') {
+    body.agenciaId = request.user.entityId
+  }
+  // string vazia = gerente da matriz (sem agência)
+  if (body.agenciaId === '' || body.agenciaId === null) {
+    delete body.agenciaId
+  }
+  const input = createManagerSchema.parse(body)
   const gerente = await managerService.create(input)
   return reply.status(201).send(success(gerente))
 }
@@ -55,16 +64,6 @@ export async function getComissoesController(request: FastifyRequest, reply: Fas
   const q = request.query as Query
   const page = Number(q.page ?? 1)
   const limit = Math.min(Number(q.limit ?? 20), 100)
-  const { items, total, totalComissaoBRL } = await managerService.getComissoes(id, page, limit)
-  return reply.send({
-    success: true,
-    data: items,
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      totalComissaoBRL,
-    },
-  })
+  const result = await managerService.getComissoes(id, page, limit)
+  return reply.send(success(result))
 }

@@ -16,7 +16,7 @@ const EditarSubCategoriaModal = ({ isOpen, modalToggle, info, revalidate }) => {
     const data = info
 
     const formHandler = (event) => {
-        toast.promise(editItem(event, `categorias/editar-subcategoria/${data.idSubcategoria}`), {
+        toast.promise(editItem(event, `categorias/${data.id}`), {
             loading: 'Editando dados...',
             success: () => {
                 modalToggle()
@@ -44,7 +44,7 @@ const EditarSubCategoriaModal = ({ isOpen, modalToggle, info, revalidate }) => {
                 <div className="modalFormContentContainer">
                     <div className="form-group f1">
                         <label htmlFor="nome">Nome da SubCategoria</label>
-                        <input type="text" defaultValue={data.nomeSubcategoria} name="nomeSubcategoria" />
+                        <input type="text" defaultValue={data.nome} name="nome" />
                     </div>
                     <div className="form-group f1"></div>
                 </div>

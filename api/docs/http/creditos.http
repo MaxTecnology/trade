@@ -1,0 +1,55 @@
+@baseUrl = http://localhost:3000/api/v1
+@token = SEU_ACCESS_TOKEN_AQUI
+@creditoId = UUID_DA_SOLICITACAO
+
+### Solicitar crédito (associate_admin / associate_operator)
+POST {{baseUrl}}/creditos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "valorSolicitado": 5000,
+  "descricao": "Capital de giro para estoque"
+}
+
+### Meus créditos (associate)
+GET {{baseUrl}}/creditos/meus?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Créditos dos associados da agência (agency_admin)
+GET {{baseUrl}}/creditos/filhos?page=1&limit=20&status=em_analise
+Authorization: Bearer {{token}}
+
+### Créditos para aprovar — visão Matriz (superadmin)
+GET {{baseUrl}}/creditos/matriz?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Todos os créditos (superadmin)
+GET {{baseUrl}}/creditos?page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Atualizar solicitação (enquanto em_analise)
+PUT {{baseUrl}}/creditos/{{creditoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "valorSolicitado": 7000,
+  "descricao": "Valor atualizado"
+}
+
+### Excluir solicitação (enquanto em_analise)
+DELETE {{baseUrl}}/creditos/{{creditoId}}
+Authorization: Bearer {{token}}
+
+### Encaminhar para Matriz (agency_admin / superadmin)
+PATCH {{baseUrl}}/creditos/{{creditoId}}/encaminhar
+Authorization: Bearer {{token}}
+
+### Aprovar crédito — injeta RT na conta (superadmin)
+PATCH {{baseUrl}}/creditos/{{creditoId}}/aprovar
+Authorization: Bearer {{token}}
+
+### Negar crédito (superadmin)
+PATCH {{baseUrl}}/creditos/{{creditoId}}/negar
+Authorization: Bearer {{token}}

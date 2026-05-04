@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { getApiData } from '../ListasHook';
-import { getId } from '../getId';
+// TODO: API precisa de GET /vouchers?usuarioId= para filtrar por usuário
 export const useQueryVoucherUsuario = () => {
     return useQuery({
         queryKey: ['voucherUsuario'],
-        queryFn: async () => getApiData(`vouchers/vouchers-do-usuario/${getId()}?page=1&pageSize=200`),
+        queryFn: async () => getApiData('transacoes?page=1&limit=200'),
     });
 };

@@ -22,11 +22,11 @@ export async function associateRoutes(app: FastifyInstance) {
     preHandler: [authGuard, roleGuard('superadmin', 'agency_admin', 'associate_admin')],
   }
 
-  app.post('/associados', agencyAdmin, createController)
+  app.post('/associados', adminOrSuper, createController)
   app.get('/associados', adminOrSuper, listController)
   app.get('/associados/:id', viewAssociate, getByIdController)
-  app.put('/associados/:id', associateAdmin, updateController)
-  app.patch('/associados/:id/status', agencyAdmin, setStatusController)
+  app.put('/associados/:id', viewAssociate, updateController)
+  app.patch('/associados/:id/status', adminOrSuper, setStatusController)
   app.get('/associados/:id/conta', contaRoles, getContaController)
   app.patch('/associados/:id/loja', associateAdmin, setLojaStatusController)
 }

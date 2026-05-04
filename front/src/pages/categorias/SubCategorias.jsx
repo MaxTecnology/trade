@@ -15,27 +15,18 @@ import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 
 const columns = [
     {
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'Data',
     },
     {
-        accessorKey: 'nomeSubcategoria',
+        accessorKey: 'nome',
         header: 'Nome da Sub Categoria',
     },
 ]
 
 const filterSub = (data) => {
-    // Verifica se a propriedade 'categorias' existe em data
-    if (data && data.categorias) {
-        // Filtra as categorias que têm subcategorias
-        const filteredCategories = data.categorias.filter(category => category.subcategorias.length > 0);
-        // Obtém apenas os valores das subcategorias
-        const subcategoryValues = filteredCategories.flatMap(category => category.subcategorias);
-        return subcategoryValues;
-    } else {
-        console.error("O objeto 'data' não possui a propriedade 'categorias'.");
-        return null; // ou qualquer outro valor de retorno desejado
-    }
+    if (!Array.isArray(data)) return []
+    return data.flatMap(category => category.categoriasFilhas ?? [])
 }
 
 const Categorias = () => {
@@ -61,7 +52,7 @@ const Categorias = () => {
 
     const formHandler = (event) => {
         event.preventDefault()
-        toast.promise(createItem(event, `categorias/criar-subcategoria/${selectedOptionId}`), {
+        toast.promise(createItem(event, `categorias`), {
             loading: 'Criando Sub-Categoria...',
             success: () => {
                 event.target.reset()
@@ -86,12 +77,13 @@ const Categorias = () => {
                     <div className="form-group"><label>Categoria</label>
                         <select defaultValue={""} className="form-control" required onChange={handleSelectChange}>
                             <option value="" disabled>Selecionar</option>
-                            <CategoriesOptions url="categorias/listar-categorias" />
+                            <CategoriesOptions url="categorias" />
                         </select>
                     </div>
                     <div className="form-group f2">
                         <label htmlFor="nomePlano">Nome da sub-categoria</label>
-                        <input type="text" id="nomePlano" name="nomeSubcategoria" />
+                        <input type="text" id="nomePlano" name="nome" />
+                        <input type="hidden" name="categoriaParenteId" value={selectedOptionId} />
                     </div>
                     <div className="form-group f2">
                         <label htmlFor="data">Data</label>

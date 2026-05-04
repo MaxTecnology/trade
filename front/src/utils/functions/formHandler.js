@@ -27,9 +27,11 @@ export const formHandler = (item) => {
             return object[key] = numericValue;
         }
 
-        const numericValue = /^[0-9.]+(?:,[0-9]+)?$/.test(value) ? parseFloat(value.replace(/\./g, '').replace(',', '.')) : value;
-
-
+        const numericValue = /^[0-9.]+(?:,[0-9]+)?$/.test(value)
+            ? (value.includes(',')
+                ? parseFloat(value.replace(/\./g, '').replace(',', '.'))
+                : parseFloat(value))
+            : value;
 
         // Atribui o valor ao objeto
         object[key] = numericValue;
@@ -93,7 +95,11 @@ export const formatForm = (form) => {
             return object[key] = numericValue;
         }
 
-        const numericValue = /^[0-9.]+(?:,[0-9]+)?$/.test(value) ? parseFloat(value.replace(/\./g, '').replace(',', '.')) : value;
+        const numericValue = /^[0-9.]+(?:,[0-9]+)?$/.test(value)
+            ? (value.includes(',')
+                ? parseFloat(value.replace(/\./g, '').replace(',', '.'))
+                : parseFloat(value))
+            : value;
 
         // Atribui o valor ao objeto
         object[key] = numericValue;

@@ -6,6 +6,13 @@ import { formatColumns } from "./tableFunctions";
 import { useSnapshot } from "valtio";
 import filters from "@/store/filters";
 import { useEffect, useState } from "react";
+import { TbLockOff, TbLock } from "react-icons/tb";
+import { toast } from "sonner";
+import { popup } from "@/hooks/Popup";
+import state from "@/store";
+import api from "@/services/api";
+import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
+import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 
 
 const AssociadosTable = ({
@@ -13,11 +20,27 @@ const AssociadosTable = ({
     data,
     setId,
     setInfo,
-    modaltoggle, type }) => {
+    modaltoggle }) => {
 
     const snap = useSnapshot(filters.table);
-
+    const revalidate = useRevalidate();
     const [columnFilters, setColumnFilters] = useState([])
+
+    const handleToggleStatus = (associado) => {
+        const ativo = associado.status === 'ativo'
+        const novoStatus = ativo ? 'suspenso' : 'ativo'
+        const acao = ativo ? 'bloquear' : 'desbloquear'
+        state.action = () => toast.promise(
+            api.patch(`associados/${associado.id}/status`, { status: novoStatus })
+                .then(() => revalidate('associados')),
+            {
+                loading: `${ativo ? 'Bloqueando' : 'Desbloqueando'} associado...`,
+                success: `Associado ${ativo ? 'bloqueado' : 'desbloqueado'} com sucesso!`,
+                error: (e) => `Erro: ${e.message}`,
+            }
+        )
+        popup(`Deseja ${acao} este associado?`, 'Associados')
+    }
 
     const formattedColumns = formatColumns(columns);
 
@@ -82,18 +105,22 @@ const AssociadosTable = ({
                                     setId={setId}
                                     setInfo={setInfo}
                                     info={row.original}
-                                    value={row.original.idPlano}
+                                    value={row.original.id}
                                     modal={modaltoggle}
                                 />
-                                {type === "Matriz" ?
-                                    <Buttons type="Bloq" userId={row.original.idUsuario} />
-                                    : null}
+                                <ButtonMotion
+                                    className={row.original.status === 'ativo' ? "buttonBloq" : "buttonDelete"}
+                                    type="button"
+                                    onClick={() => handleToggleStatus(row.original)}
+                                    title={row.original.status === 'ativo' ? 'Bloquear acesso' : 'Desbloquear acesso'}
+                                >
+                                    {row.original.status === 'ativo' ? <TbLockOff /> : <TbLock />}
+                                </ButtonMotion>
                                 <Buttons
                                     type="Eye"
                                     associado
                                     info={row.original}
                                 />
-
                             </td>
                         </tr>
                     ))}
