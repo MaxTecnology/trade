@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-echo "Syncing database schema..."
-node_modules/.bin/prisma db push
+echo "Applying database migrations..."
+node_modules/.bin/prisma migrate deploy
 
 echo "Running database seed..."
 node_modules/.bin/tsx prisma/seed.ts

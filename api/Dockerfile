@@ -26,4 +26,5 @@ RUN addgroup -g 1001 -S nodejs && \
 USER nodejs
 
 EXPOSE 3000
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=20s CMD wget -qO- http://127.0.0.1:3000/health || exit 1
 CMD ["sh", "entrypoint.sh"]
