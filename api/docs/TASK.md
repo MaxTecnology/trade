@@ -47,7 +47,7 @@
 - [x] Adicionar todos os enums
 - [x] Adicionar todos os índices do SCHEMA.md §3
 - [x] Adicionar constraints SQL do SCHEMA.md §4
-- [ ] Criar migration inicial
+- [x] Criar migration inicial (`20260702020114_init`)
 - [x] Criar `prisma/seed.ts` com superadmin, planos e categorias iniciais (SCHEMA.md §5)
 - [x] Testar seed sem erros
 
@@ -343,7 +343,7 @@
 - [x] Revisar e consolidar todos os arquivos `.http` gerados por módulo
 - [x] Garantir que `docs/http/doc.http` contém todas as rotas organizadas por seção
 - [x] Adicionar variáveis de ambiente no topo do `doc.http` (`@baseUrl`, `@token`)
-- [ ] Testar todos os endpoints do `doc.http` manualmente
+- [x] Testar todos os endpoints do `doc.http` manualmente — 4 bugs reais encontrados e corrigidos (ver `AJUSTES.md`)
 
 ---
 
@@ -398,9 +398,9 @@
 - [x] Validar que todas as operações financeiras são atômicas
 - [x] Validar que `movimentacao_conta` e `comissao_gerente` são imutáveis (sem UPDATE/DELETE)
 - [x] Validar que saldo nunca fica negativo (constraint + validação no service)
-- [ ] Rodar seed completo e verificar dados
+- [x] Rodar seed completo e verificar dados
 - [x] Verificar se Swagger está documentando todas as rotas
-- [ ] Testar `docker-compose up` do zero (fresh build)
+- [x] Testar `docker-compose up` do zero (fresh build) — validado com api + frontend + postgres + redis
 
 ## ETAPA 20 — Integração Frontend (auth + store)
 
@@ -422,7 +422,7 @@
 |---|---|---|
 | 1 — Setup | `[x]` | Concluído |
 | 2 — Docker | `[x]` | Concluído |
-| 3 — Prisma | `[~]` | Pendente: migration inicial (usando db push por ora) |
+| 3 — Prisma | `[x]` | Migration inicial criada e aplicada (`prisma migrate deploy` no entrypoint) |
 | 4 — Base | `[x]` | Concluído |
 | 5 — Auth | `[x]` | Concluído |
 | 6 — Agências | `[x]` | Concluído |
@@ -436,7 +436,7 @@
 | 14 — Vouchers | `[x]` | Concluído |
 | 15 — Relatórios | `[x]` | Concluído |
 | 16 — Filas BullMQ | `[x]` | Concluído |
-| 17 — Doc HTTP | `[~]` | Pendente: testar endpoints manualmente |
-| 18 — Revisão Final | `[~]` | Pendente: seed + docker-compose (requer ambiente) |
+| 17 — Doc HTTP | `[x]` | Endpoints testados manualmente, 4 bugs corrigidos |
+| 18 — Revisão Final | `[x]` | Seed + docker-compose validados |
 | 19 — Integração Frontend | `[x]` | Créditos, Cobranças, Upload B2 implementados |
 | 20 — Frontend Auth/Store | `[x]` | URL, login, getUserInfo, api.js centralizados |

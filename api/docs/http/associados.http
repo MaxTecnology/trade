@@ -3,6 +3,8 @@
 @associadoId = UUID_DO_ASSOCIADO
 
 ### Criar associado
+### Nota: campos de endereço são FLAT (não aninhados em "endereco"), e "senha" é obrigatória
+### (usada para criar o Usuario associate_admin do associado). agenciaId/gerenteId são opcionais.
 POST {{baseUrl}}/associados
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -16,12 +18,11 @@ Content-Type: application/json
   "gerenteId": "UUID_DO_GERENTE",
   "planoId": "UUID_DO_PLANO",
   "tipoAtendimento": ["presencial", "online"],
-  "endereco": {
-    "logradouro": "Av. Principal, 500",
-    "cidade": "Arapiraca",
-    "estado": "AL",
-    "cep": "57300-000"
-  }
+  "logradouro": "Av. Principal, 500",
+  "cidade": "Arapiraca",
+  "estado": "AL",
+  "cep": "57300-000",
+  "senha": "SenhaForte@123"
 }
 
 ### Listar associados
@@ -40,12 +41,10 @@ Content-Type: application/json
 {
   "nome": "Padaria Central Atualizada",
   "telefone": "82988886666",
-  "endereco": {
-    "logradouro": "Av. Nova, 100",
-    "cidade": "Arapiraca",
-    "estado": "AL",
-    "cep": "57300-001"
-  }
+  "logradouro": "Av. Nova, 100",
+  "cidade": "Arapiraca",
+  "estado": "AL",
+  "cep": "57300-001"
 }
 
 ### Ativar/Suspender associado

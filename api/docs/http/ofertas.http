@@ -15,7 +15,9 @@ Content-Type: application/json
   "quantidadeDisponivel": 100,
   "tipoAtendimento": ["presencial"],
   "cidade": "Arapiraca",
-  "estado": "AL"
+  "estado": "AL",
+  "imagemUrl": "https://f005.backblazeb2.com/file/redetrade/uploads/exemplo.png",
+  "vencimento": "2027-01-01T00:00:00Z"
 }
 
 ### Listar ofertas (público, com filtros)

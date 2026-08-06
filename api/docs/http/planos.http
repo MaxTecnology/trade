@@ -2,17 +2,18 @@
 @token = SEU_ACCESS_TOKEN_AQUI
 @planoId = UUID_DO_PLANO
 
-### Criar plano
+### Criar plano (tipoPlano: agencia | associado | gerente)
 POST {{baseUrl}}/planos
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "nome": "Plano Premium",
+  "tipoPlano": "associado",
   "limiteRT": 100000,
   "percentualComissao": 2.5,
-  "periodicidade": "mensal",
-  "maxParcelas": 6,
+  "taxaInscricaoRT": 100,
+  "taxaManutencaoAnualRT": 50,
   "ativo": true
 }
 

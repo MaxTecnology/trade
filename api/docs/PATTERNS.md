@@ -50,8 +50,8 @@ Ambas as entidades seguem o mesmo padrão de criação: uma entidade principal c
 3. Se houver campos de contato → cria `ContatoAssociado`
 4. Gera número de conta e cria `Conta RT` (`entityType: 'associado'`)
 5. Cria `Usuario` (`role: 'associate_admin'`) com email = email do associado
-6. Se `valorInscricaoBRL > 0` → cria `Cobranca` BRL
-7. Se `valorInscricaoRT > 0` → cria `MovimentacaoConta` (débito) e atualiza saldo negativo
+6. Se `valorInscricaoBRL > 0` → cria `Cobranca` (`valorBRL`)
+7. Se `valorInscricaoRT > 0` → cria `Cobranca` (`valorRT`) — **não** debita a `Conta` diretamente (saldo nunca fica negativo, ver `AJUSTES.md` §Testes E2E)
 8. Se `gerenteId` e plano tem `taxaInscricaoRT > 0` → cria `ComissaoGerente` (inscrição)
 
 ### Fluxo de atualização (`PUT /associados/:id`)
@@ -149,7 +149,7 @@ GET    /agencias/:id/conta      → conta RT
 | Contato | `ContatoAssociado` (nomeContato, celular, emailContato, emailSecundario, site) | `ContatoAgencia` (nomeContato, celular, emailSecundario) |
 | Usuário criado | Sempre, com email do próprio associado | Só se `senha` + `usuarioEmail` forem fornecidos |
 | Cobrança BRL | Sim, se `valorInscricaoBRL > 0` | Não |
-| Saldo RT negativo | Sim, se `valorInscricaoRT > 0` | Não |
+| Cobrança RT | Sim, se `valorInscricaoRT > 0` (não debita a conta) | Não |
 | Comissão gerente | Sim, na inscrição | Não |
 
 ---

@@ -13,6 +13,10 @@
 9. [Transações RT](#9-transações-rt)
 10. [Vouchers](#10-vouchers)
 11. [Relatórios e Extratos](#11-relatórios-e-extratos)
+12. [Solicitações de Crédito RT](#12-solicitações-de-crédito-rt)
+13. [Cobranças / Faturas BRL](#13-cobranças--faturas-brl)
+14. [Upload de Arquivos](#14-upload-de-arquivos-backblaze-b2)
+17. [Solicitação de Estorno](#17-solicitação-de-estorno)
 
 ---
 
@@ -130,9 +134,8 @@ Associados são as empresas que efetivamente realizam permutas. São vinculados 
 
 ### Regras de Negócio
 
-- Todo associado deve ser vinculado a uma agência no momento do cadastro.
-- Todo associado deve ser vinculado a um **gerente** no momento do cadastro — é o gerente quem realiza o cadastro.
-- Um plano deve ser atribuído no momento do cadastro.
+- Agência e gerente são **opcionais** no cadastro (implementação atual — diverge da versão original desta spec). Quando presente, o vínculo gerente → associado é definido no momento da criação.
+- O plano (`planoId`) é **obrigatório** no cadastro.
 - Toda criação de associado gera automaticamente uma conta RT.
 - O número da conta é gerado sequencialmente com 7 dígitos: `0000001`.
 - Associados possuem um atributo `tipoAtendimento`: `presencial`, `online`, `voucher` (múltiplos permitidos).
@@ -248,21 +251,26 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
 ```
 
 ### Resposta de Comissões (`GET /gerentes/:id/comissoes`)
+
+> Modelo atual (`ComissaoGerente`): `tipoComissao` (`inscricao | transacao`), `baseValorRT`, `percentual`, `comissaoBRL`, `comissaoRT`. Ver detalhes da regra em `AJUSTES.md` §Gerentes.
+
 ```json
 {
   "success": true,
   "data": {
     "totalComissaoBRL": 1250.50,
+    "totalComissaoRT": 300.00,
     "comissoes": [
       {
         "id": "uuid",
         "transacaoId": "uuid-da-transacao",
         "associadoId": "uuid-do-associado",
         "associadoNome": "Padaria Central",
-        "valorTransacaoRT": 200.00,
-        "comissaoPlataformaBRL": 50.00,
-        "percentualGerente": 10.0,
-        "comissaoGerenteBRL": 5.00,
+        "tipoComissao": "transacao",
+        "baseValorRT": 200.00,
+        "percentual": 10.0,
+        "comissaoBRL": 0,
+        "comissaoRT": 20.00,
         "criadoEm": "2026-04-15T14:30:00Z"
       }
     ]
@@ -277,7 +285,9 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
 
 ### Contexto
 
-Planos definem as regras financeiras de um Associado: limite de movimentação RT, percentual de comissão da plataforma, periodicidade e parcelamento.
+Planos definem as regras financeiras de uma entidade (Associado, Agência ou Gerente): limite de movimentação RT, percentual de comissão e taxas de inscrição/manutenção. Um plano é sempre segregado por `tipoPlano`.
+
+> `periodicidade` e `maxParcelas` foram **removidos** do modelo (ver `AJUSTES.md` §Planos — Campos removidos). O parcelamento continua existindo na `Transacao` (`parcelas`/`totalParcelas`), mas não é mais limitado pelo plano.
 
 ### Endpoints
 
@@ -291,20 +301,22 @@ Planos definem as regras financeiras de um Associado: limite de movimentação R
 
 ### Regras de Negócio
 
-- Todo plano deve ter: nome, `limiteRT` (valor numérico), `percentualComissao`, `periodicidade` (`mensal` ou `anual`), `maxParcelas`.
-- Planos inativos não podem ser atribuídos a novos Associados.
-- Alterar um plano não afeta retroativamente Associados já vinculados — é necessário reatribuir explicitamente.
+- Todo plano deve ter: `nome`, `tipoPlano` (`agencia\|associado\|gerente`), `limiteRT`, `percentualComissao`.
+- `taxaInscricaoRT` e `taxaManutencaoAnualRT` são opcionais (default `0`) — usados só para planos de tipo `associado`.
+- Nome é único **por tipo de plano** (`@@unique([nome, tipoPlano])`) — pode haver "Plano Básico" tanto para associado quanto para agência.
+- Planos inativos não podem ser atribuídos a novas entidades.
+- Alterar um plano não afeta retroativamente entidades já vinculadas — é necessário reatribuir explicitamente.
 - O limite RT é de **movimentação** (soma de débitos no período). Ao atingir, novas permutas são bloqueadas.
-- Parcelamento: sem juros, máximo de `maxParcelas` vezes. Cada parcela é uma `movimentacao_conta` agendada.
 
 ### Payload de Criação
 ```json
 {
   "nome": "Plano Básico",
+  "tipoPlano": "associado",
   "limiteRT": 5000,
   "percentualComissao": 5.0,
-  "periodicidade": "mensal",
-  "maxParcelas": 3,
+  "taxaInscricaoRT": 100,
+  "taxaManutencaoAnualRT": 50,
   "ativo": true
 }
 ```
@@ -406,18 +418,21 @@ Ofertas são produtos ou serviços disponibilizados por Associados para troca em
 
 ### Contexto
 
-Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta), `transferencia` (entre contas), `credito` (injeção pela Matriz), `estorno` (reversão de permuta).
+Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do marketplace), `negociada` (negociação direta entre associados, fora do marketplace), `transferencia` (entre contas), `credito` (injeção pela Matriz), `estorno` (reversão de permuta/negociada).
 
 ### Endpoints
 
 | Método | Rota | Descrição | Role mínimo |
 |---|---|---|---|
-| POST | `/transacoes/permuta` | Realizar permuta (comprar oferta) | `associate_operator` |
+| POST | `/transacoes/permuta` | Realizar permuta (comprar oferta) | `associate_operator`, `associate_admin` |
+| POST | `/transacoes/negociada` | Negociação direta com outro associado (sem oferta) | `associate_operator`, `associate_admin` |
+| PATCH | `/transacoes/:id/avaliar` | Avaliar atendimento do vendedor (1-5 + comentário) | `associate_operator`, `associate_admin` |
 | POST | `/transacoes/transferencia` | Transferir RT entre contas | `associate_admin` |
 | POST | `/transacoes/credito` | Injetar RT (Matriz → Agência/Associado) | `superadmin` |
-| POST | `/transacoes/:id/estorno` | Estornar transação | `superadmin`, `agency_admin` |
-| GET | `/transacoes` | Listar transações da entidade | `associate_operator` |
-| GET | `/transacoes/:id` | Detalhar transação | `associate_operator` |
+| POST | `/transacoes/:id/estorno` | Estornar transação diretamente (sem solicitação) | `superadmin`, `agency_admin` |
+| GET | `/transacoes` | Listar transações da entidade | `associate_operator`, `associate_admin` |
+| GET | `/transacoes/:id` | Detalhar transação | `associate_operator`, `associate_admin` |
+| GET | `/associados/diretorio` | Diretório mínimo de associados ativos (id, nome, cidade, estado, tipoAtendimento — sem dados financeiros) para escolher parceiro de negociação | `associate_operator`, `associate_admin` |
 
 ### Regras de Negócio
 
@@ -439,12 +454,27 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta), `tr
 - Cria `movimentacao_conta` de crédito na conta de destino.
 - Registra como `tipo: credito` na tabela `transacao`.
 
-**Estorno:**
-- Reverte os movimentos de uma permuta (débito volta para comprador, crédito volta para vendedor).
+**Negociação direta (`negociada`):**
+- Fora do marketplace de Ofertas — o comprador escolhe qualquer associado ativo (via `GET /associados/diretorio`) e define o `valorRT` diretamente, sem oferta publicada.
+- **Sempre em RT** — não existe valor em dinheiro real (BRL) numa negociação direta. RT é a moeda interna do sistema e não circula para fora dele (ver `ARCHITECTURE.md §4`).
+- Mesmas validações de saldo e limite mensal do plano que a permuta.
+- Não decrementa estoque de oferta (não há oferta envolvida) — `quantidade` fica `null`.
+- Gera voucher, comissão da plataforma e comissão de gerente, igual à permuta.
+- Não é permitido negociar consigo mesmo.
+
+**Avaliação (`avaliar`):**
+- Apenas o `usuarioIniciador` (quem fez a compra) pode avaliar, e só uma vez por transação.
+- Aplica-se a `permuta` e `negociada`, apenas em transações `concluida`.
+- Nota de 1 a 5 (`notaAtendimento`) + comentário opcional (`comentarioAvaliacao`).
+
+**Estorno direto:**
+- Reverte os movimentos de uma permuta ou negociada (débito volta para comprador, crédito volta para vendedor).
 - Só pode ser realizado por `superadmin` ou `agency_admin` da agência responsável.
 - Não é permitido estornar transações com mais de 30 dias.
+- Valida que a conta que recebeu o valor original ainda tem saldo suficiente para a reversão — se o RT já foi gasto/transferido, retorna `INSUFFICIENT_BALANCE` (422) em vez de erro genérico.
 - Gera novo voucher de estorno.
-- A quantidade da oferta é restaurada (+1).
+- A quantidade da oferta é restaurada de acordo com `Transacao.quantidade` da permuta original (não é sempre +1 — reflete exatamente quantas unidades foram compradas). Não se aplica a `negociada` (sem oferta).
+- Este endpoint executa a reversão **imediatamente**. Para o fluxo de solicitação/aprovação (usado pelas telas de "Solicitar estorno"/"Cancelar voucher"), ver §12.
 
 ### Payload de Permuta
 ```json
@@ -452,6 +482,24 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta), `tr
   "ofertaId": "uuid-da-oferta",
   "quantidade": 2,
   "parcelas": 1
+}
+```
+
+### Payload de Negociação Direta
+```json
+{
+  "vendedorId": "uuid-do-associado-vendedor",
+  "valorRT": 200,
+  "parcelas": 1,
+  "descricao": "Negociação combinada por telefone"
+}
+```
+
+### Payload de Avaliação
+```json
+{
+  "notaAtendimento": 5,
+  "comentarioAvaliacao": "Ótimo atendimento, recomendo"
 }
 ```
 
@@ -600,9 +648,9 @@ em_analise → encaminhado → aprovado | negado
 
 ---
 
-## 13. Cobranças / Faturas BRL
+## 13. Cobranças / Faturas (BRL ou RT)
 
-Registro de cobranças em BRL associadas a contas (taxas de plano, manutenção, inscrição).
+Registro de cobranças associadas a contas — taxas de plano, manutenção, inscrição (BRL ou RT) e comissão da plataforma (BRL, gerada automaticamente após cada permuta/negociação).
 
 ### Endpoints
 
@@ -611,7 +659,7 @@ Registro de cobranças em BRL associadas a contas (taxas de plano, manutenção,
 | POST | `/cobrancas` | Criar cobrança | `superadmin` |
 | GET | `/cobrancas` | Todas as cobranças | `superadmin` |
 | GET | `/cobrancas/minhas` | Cobranças da entidade logada | qualquer autenticado |
-| PATCH | `/cobrancas/:id/quitar` | Marcar como paga | `superadmin`, `agency_admin` |
+| PATCH | `/cobrancas/:id/quitar` | Quitar cobrança | `superadmin`, `agency_admin` |
 | DELETE | `/cobrancas/:id` | Remover cobrança | `superadmin` |
 
 ### Regras de Negócio
@@ -619,6 +667,10 @@ Registro de cobranças em BRL associadas a contas (taxas de plano, manutenção,
 - `GET /cobrancas/minhas` detecta automaticamente se é associado ou agência e retorna as cobranças correspondentes.
 - Agência vê cobranças próprias + dos seus associados.
 - Cobranças já quitadas não podem ser quitadas novamente.
+- Toda cobrança tem `valorBRL` OU `valorRT` preenchido (nunca os dois nulos — validado por CHECK no banco).
+- **Quitar cobrança em BRL**: apenas marca `pago: true`. O pagamento acontece fora do sistema (PIX/boleto) — o endpoint só reconcilia manualmente.
+- **Quitar cobrança em RT**: move o RT de verdade, de forma atômica. Debita `contaId` (valida saldo suficiente antes — retorna `INSUFFICIENT_BALANCE` se não houver), credita a conta de `agenciaId` se a cobrança tiver uma agência vinculada. Sem agência, o RT é retirado de circulação (simétrico à injeção de RT pela Matriz, que credita sem debitar origem).
+- **Comissão da plataforma**: gerada automaticamente pelo job `commission.calculate` após cada `permuta`/`negociada` concluída — cria uma `Cobranca` (BRL) vinculada à transação (`transacaoId`), cobrada do comprador. Idempotente (não duplica se o job reprocessar).
 
 ---
 
@@ -662,3 +714,40 @@ Campos adicionados ao model `Oferta`:
 |---|---|---|
 | `imagemUrl` | String? | URL da imagem no Backblaze B2 |
 | `vencimento` | DateTime? | Data de vencimento da oferta |
+
+---
+
+## 17. Solicitação de Estorno
+
+### Contexto
+
+Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `negociada`), mesmo padrão de `SolicitacaoCredito` (§12): `em_analise → encaminhado → aprovado | negado`. Complementa o estorno direto (§9), usado pelas telas "Solicitar estorno" (Transações) e "Cancelar voucher" (Vouchers) — cancelar um voucher é, na prática, estornar a transação por trás dele.
+
+### Endpoints
+
+| Método | Rota | Descrição | Role |
+|---|---|---|---|
+| POST | `/estornos` | Solicitar estorno de uma transação | `associate_admin`, `associate_operator`, `agency_admin`, `superadmin` |
+| GET | `/estornos/minhas` | Minhas solicitações | mesmo grupo acima |
+| GET | `/estornos/filhos` | Solicitações envolvendo associados da agência | `agency_admin`, `agency_operator` |
+| PATCH | `/estornos/:id/encaminhar` | Encaminhar para a Matriz | `agency_admin`, `superadmin` |
+| GET | `/estornos/matriz` | Solicitações encaminhadas (Matriz) | `superadmin` |
+| PATCH | `/estornos/:id/aprovar` | Aprovar — executa o estorno de fato | `superadmin` |
+| PATCH | `/estornos/:id/negar` | Negar solicitação | `superadmin` |
+| GET | `/estornos` | Todas as solicitações | `superadmin` |
+
+### Regras de Negócio
+
+- Só pode solicitar quem é comprador/vendedor da transação, ou `agency_admin`/`superadmin`.
+- Apenas transações `permuta` ou `negociada`, ainda não `estornada`, dentro do prazo de 30 dias.
+- Não permite duas solicitações simultâneas em andamento (`em_analise`/`encaminhado`) para a mesma transação.
+- Ao aprovar, executa a mesma lógica de estorno direto (§9) — valida saldo suficiente na conta a ser debitada, reverte movimentações, restaura quantidade da oferta (se aplicável), gera voucher de estorno.
+- Ao negar, a transação original permanece `concluida` — nenhuma reversão ocorre.
+
+### Payload de Solicitação
+```json
+{
+  "transacaoId": "uuid-da-transacao",
+  "motivo": "Produto não entregue"
+}
+```

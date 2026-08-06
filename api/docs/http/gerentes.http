@@ -3,17 +3,23 @@
 @gerenteId = UUID_DO_GERENTE
 
 ### Cadastrar gerente
+### Nota: "Gerente" tecnicamente cria um Associado + Usuario(role=gerente) vinculado a ele.
+### planoId deve ser de um Plano com tipoPlano="gerente". agenciaId é opcional (gerente pode ser da Matriz).
 POST {{baseUrl}}/gerentes
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "nome": "Carlos Mendes",
+  "cnpj": "11.222.333/0001-44",
   "email": "carlos@redetrade.com.br",
   "senha": "SenhaForte@789",
-  "percentualComissao": 10.0,
-  "entityId": "UUID_DA_AGENCIA_OU_MATRIZ",
-  "entityType": "agencia"
+  "telefone": "82999990000",
+  "agenciaId": "UUID_DA_AGENCIA",
+  "planoId": "UUID_DO_PLANO_TIPO_GERENTE",
+  "cidade": "Maceió",
+  "estado": "AL",
+  "cep": "57000-000"
 }
 
 ### Listar gerentes
@@ -24,14 +30,14 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/gerentes/{{gerenteId}}
 Authorization: Bearer {{token}}
 
-### Atualizar gerente
+### Atualizar gerente (apenas nome, email, telefone — percentual vem do PlanoGerente)
 PUT {{baseUrl}}/gerentes/{{gerenteId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "nome": "Carlos Mendes Junior",
-  "percentualComissao": 12.5
+  "telefone": "82999991111"
 }
 
 ### Ativar/Desativar gerente

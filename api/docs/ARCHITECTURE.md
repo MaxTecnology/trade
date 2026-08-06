@@ -342,3 +342,4 @@ Associado solicita RT → Agência analisa → Encaminha para Matriz → Matriz 
 | Créditos RT | `/creditos` | `src/modules/credito/credito.routes.ts` |
 | Cobranças BRL | `/cobrancas` | `src/modules/cobranca/cobranca.routes.ts` |
 | Upload B2 | `/upload` | `src/modules/upload/upload.routes.ts` |
+| Solicitação de Estorno | `/estornos` | `src/modules/estorno/estorno.routes.ts` |
