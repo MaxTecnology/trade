@@ -9,6 +9,8 @@ export const createOfferSchema = z.object({
   tipoAtendimento: z.array(z.enum(['presencial', 'online', 'voucher'])).min(1),
   cidade: z.string(),
   estado: z.string().length(2),
+  imagemUrl: z.string().optional(),
+  vencimento: z.string().datetime().optional(),
 })
 
 export const updateOfferSchema = createOfferSchema.partial()

@@ -4,6 +4,7 @@ import { roleGuard } from '../../shared/guards/role.guard.js'
 import {
   createController,
   listController,
+  diretorioController,
   getByIdController,
   updateController,
   setStatusController,
@@ -18,12 +19,18 @@ export async function associateRoutes(app: FastifyInstance) {
     preHandler: [authGuard, roleGuard('superadmin', 'agency_admin', 'associate_admin')],
   }
   const associateAdmin = { preHandler: [authGuard, roleGuard('associate_admin')] }
+  const operator = {
+    preHandler: [authGuard, roleGuard('associate_admin', 'associate_operator')],
+  }
   const contaRoles = {
     preHandler: [authGuard, roleGuard('superadmin', 'agency_admin', 'associate_admin')],
   }
 
   app.post('/associados', adminOrSuper, createController)
   app.get('/associados', adminOrSuper, listController)
+  // Diretório mínimo (sem dados financeiros) para negociação direta entre associados —
+  // precisa vir antes de /associados/:id para não ser capturada como um :id.
+  app.get('/associados/diretorio', operator, diretorioController)
   app.get('/associados/:id', viewAssociate, getByIdController)
   app.put('/associados/:id', viewAssociate, updateController)
   app.patch('/associados/:id/status', adminOrSuper, setStatusController)

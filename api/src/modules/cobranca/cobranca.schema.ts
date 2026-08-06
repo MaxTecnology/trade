@@ -1,13 +1,18 @@
 import { z } from 'zod'
 
-export const CriarCobrancaSchema = z.object({
-  contaId: z.string().uuid(),
-  associadoId: z.string().uuid().optional(),
-  agenciaId: z.string().uuid().optional(),
-  valorBRL: z.number().positive(),
-  vencimento: z.string().datetime(),
-  descricao: z.string().optional(),
-})
+export const CriarCobrancaSchema = z
+  .object({
+    contaId: z.string().uuid(),
+    associadoId: z.string().uuid().optional(),
+    agenciaId: z.string().uuid().optional(),
+    valorBRL: z.number().positive().optional(),
+    valorRT: z.number().positive().optional(),
+    vencimento: z.string().datetime(),
+    descricao: z.string().optional(),
+  })
+  .refine((data) => data.valorBRL !== undefined || data.valorRT !== undefined, {
+    message: 'Informe valorBRL ou valorRT',
+  })
 
 export const ListCobrancaQuery = z.object({
   pago: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),

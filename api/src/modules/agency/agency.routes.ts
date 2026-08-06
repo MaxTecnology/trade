@@ -26,6 +26,6 @@ export async function agencyRoutes(app: FastifyInstance) {
   app.put('/agencias/:id', adminOrSuper, updateController)
   app.patch('/agencias/:id/status', superadmin, setStatusController)
   app.get('/agencias/:id/associados', adminOrGerente, getAssociadosController)
-  app.get('/agencias/:id/conta', { preHandler: [authGuard, roleGuard('agency_admin')] }, getContaController)
+  app.get('/agencias/:id/conta', adminOrSuper, getContaController)
   app.get('/agencias/:id/gerentes', adminOrSuper, getGerentesController)
 }

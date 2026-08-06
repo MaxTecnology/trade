@@ -3,6 +3,8 @@ import { authGuard } from '../../shared/guards/auth.guard.js'
 import { roleGuard } from '../../shared/guards/role.guard.js'
 import {
   permutaController,
+  negociadaController,
+  avaliarController,
   transferenciaController,
   creditoController,
   estornoController,
@@ -17,7 +19,9 @@ export async function transactionRoutes(app: FastifyInstance) {
   const adminOrSuper = { preHandler: [authGuard, roleGuard('superadmin', 'agency_admin')] }
   const auth = { preHandler: [authGuard] }
 
-  app.post('/transacoes/permuta', { preHandler: [authGuard, roleGuard('associate_operator')] }, permutaController)
+  app.post('/transacoes/permuta', operator, permutaController)
+  app.post('/transacoes/negociada', operator, negociadaController)
+  app.patch('/transacoes/:id/avaliar', operator, avaliarController)
   app.post('/transacoes/transferencia', assocAdmin, transferenciaController)
   app.post('/transacoes/credito', superadmin, creditoController)
   app.post('/transacoes/:id/estorno', adminOrSuper, estornoController)

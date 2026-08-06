@@ -11,7 +11,7 @@ const includeContatos = {
   plano: { select: { id: true, nome: true, percentualComissao: true } },
 } as const
 
-export async function create(input: CreateAgencyInput, creatorId: string) {
+export async function create(input: CreateAgencyInput, creatorId: string, creatorRole: string) {
   const exists = await prisma.agencia.findUnique({ where: { cnpj: input.cnpj } })
   if (exists) throw Errors.duplicateCnpj()
 
@@ -88,7 +88,9 @@ export async function create(input: CreateAgencyInput, creatorId: string) {
           agenciaId: agencia.id,
         },
       })
-    } else {
+    } else if (creatorRole !== 'superadmin') {
+      // Reatribui o criador (agency_admin de uma master) como admin da nova agência comum.
+      // Nunca reatribuir o superadmin — ele deve permanecer com entityType 'matriz'.
       await tx.usuario.update({
         where: { id: creatorId },
         data: { agenciaId: agencia.id, entityType: 'agencia' },

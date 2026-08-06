@@ -22,6 +22,8 @@ export async function create(input: CreateOfferInput, associadoId: string) {
       tipoAtendimento: input.tipoAtendimento,
       cidade: input.cidade,
       estado: input.estado,
+      imagemUrl: input.imagemUrl,
+      vencimento: input.vencimento ? new Date(input.vencimento) : undefined,
       associadoId,
     },
   })
@@ -74,7 +76,10 @@ export async function update(id: string, input: UpdateOfferInput, associadoId: s
   const oferta = await prisma.oferta.findUnique({ where: { id } })
   if (!oferta) throw Errors.notFound('Oferta')
   if (oferta.associadoId !== associadoId) throw Errors.forbidden()
-  return prisma.oferta.update({ where: { id }, data: input })
+  return prisma.oferta.update({
+    where: { id },
+    data: { ...input, vencimento: input.vencimento ? new Date(input.vencimento) : undefined },
+  })
 }
 
 export async function setStatus(
@@ -92,7 +97,13 @@ export async function minhaLoja(associadoId: string, page: number, limit: number
   const skip = (page - 1) * limit
   const where = { associadoId }
   const [items, total] = await prisma.$transaction([
-    prisma.oferta.findMany({ where, skip, take: limit, orderBy: { criadoEm: 'desc' } }),
+    prisma.oferta.findMany({
+      where,
+      skip,
+      take: limit,
+      include: { categoria: true },
+      orderBy: { criadoEm: 'desc' },
+    }),
     prisma.oferta.count({ where }),
   ])
   return { items, total }

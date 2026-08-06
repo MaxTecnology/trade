@@ -106,7 +106,11 @@ export async function changePassword(id: string, senhaAtual: string, novaSenha: 
 
 export async function setStatus(id: string, ativo: boolean) {
   await getById(id)
-  return prisma.usuario.update({ where: { id }, data: { ativo } })
+  return prisma.usuario.update({
+    where: { id },
+    data: { ativo },
+    select: { id: true, nome: true, email: true, role: true, ativo: true, codigoOperador: true },
+  })
 }
 
 export async function remove(id: string) {

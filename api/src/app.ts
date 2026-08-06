@@ -24,11 +24,52 @@ import { reportRoutes } from './modules/report/report.routes.js'
 import { creditoRoutes } from './modules/credito/credito.routes.js'
 import { cobrancaRoutes } from './modules/cobranca/cobranca.routes.js'
 import { uploadRoutes } from './modules/upload/upload.routes.js'
+import { estornoRoutes } from './modules/estorno/estorno.routes.js'
 
 export async function buildApp() {
   const app = Fastify({
     logger: env.NODE_ENV === 'development',
   })
+
+  // Error handler global — precisa ser registrado ANTES de app.register(routes),
+  // porque cada plugin registrado via app.register() herda a configuração de erro
+  // do pai no momento em que é registrado (encapsulamento do Fastify). Registrar
+  // depois faz com que toda rota real (dentro de módulos) nunca herde este handler,
+  // caindo no formatter de erro padrão do Fastify — só rotas definidas direto no
+  // `app` raiz (fora de qualquer register) herdariam corretamente.
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof AppError) {
+      return reply.status(error.statusCode).send({
+        success: false,
+        error: { code: error.code, message: error.message, details: error.details },
+      })
+    }
+
+    // `instanceof ZodError` pode falhar por dual-package hazard (múltiplas instâncias do
+    // módulo zod carregadas). Checagem por duck-typing garante a detecção independente disso.
+    const isZodError =
+      error instanceof ZodError ||
+      ((error as { name?: string })?.name === 'ZodError' &&
+        Array.isArray((error as { issues?: unknown }).issues))
+    if (isZodError) {
+      return reply.status(400).send({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Erro de validação dos campos.',
+          details: (error as { issues: unknown }).issues,
+        },
+      })
+    }
+
+    app.log.error(error)
+    return reply.status(500).send({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'Erro interno do servidor.', details: [] },
+    })
+  })
+
+  app.get('/health', async () => ({ status: 'ok' }))
 
   await app.register(cookie)
   await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } })
@@ -66,33 +107,7 @@ export async function buildApp() {
   await app.register(creditoRoutes, { prefix })
   await app.register(cobrancaRoutes, { prefix })
   await app.register(uploadRoutes, { prefix })
-
-  // Error handler global
-  app.setErrorHandler((error, _request, reply) => {
-    if (error instanceof AppError) {
-      return reply.status(error.statusCode).send({
-        success: false,
-        error: { code: error.code, message: error.message, details: error.details },
-      })
-    }
-
-    if (error instanceof ZodError) {
-      return reply.status(400).send({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Erro de validação dos campos.',
-          details: error.issues,
-        },
-      })
-    }
-
-    app.log.error(error)
-    return reply.status(500).send({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: 'Erro interno do servidor.', details: [] },
-    })
-  })
+  await app.register(estornoRoutes, { prefix })
 
   return app
 }

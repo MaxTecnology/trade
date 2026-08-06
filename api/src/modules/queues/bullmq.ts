@@ -1,6 +1,7 @@
 import { Queue, Worker, QueueEvents } from 'bullmq'
 import { getRedis } from '../../config/redis.js'
 import { prisma } from '../../config/prisma.js'
+import { calcularVencimento } from '../../shared/utils/data.js'
 
 function conn() {
   return { connection: getRedis() }
@@ -75,9 +76,31 @@ export function startWorkers() {
     'commission.calculate',
     async (job) => {
       const { transacaoId } = job.data as { transacaoId: string }
-      const transacao = await prisma.transacao.findUnique({ where: { id: transacaoId } })
-      if (!transacao?.valorRT) return
-      // comissaoBRL already stored during permuta transaction
+      const transacao = await prisma.transacao.findUnique({
+        where: { id: transacaoId },
+        include: { comprador: true },
+      })
+      if (!transacao || !transacao.comissaoBRL || Number(transacao.comissaoBRL) <= 0) return
+      if (!transacao.comprador || !transacao.contaOrigemId) return
+
+      // A comissão calculada (comissaoBRL) só ficava guardada na própria transação, sem
+      // nenhum jeito de efetivamente ser cobrada de alguém. Vira uma Cobrança BRL no
+      // comprador, vinculada à transação, seguindo o mesmo padrão de cobrança de inscrição.
+      const jaExiste = await prisma.cobranca.findFirst({ where: { transacaoId } })
+      if (jaExiste) return
+
+      const vencimento = calcularVencimento(transacao.comprador.diaVencimentoFatura ?? 10)
+      await prisma.cobranca.create({
+        data: {
+          descricao: `Comissão da plataforma — transação #${transacaoId.slice(0, 8)}`,
+          valorBRL: transacao.comissaoBRL,
+          vencimento,
+          contaId: transacao.contaOrigemId,
+          associadoId: transacao.compradorId,
+          agenciaId: transacao.comprador.agenciaId,
+          transacaoId,
+        },
+      })
     },
     conn(),
   )

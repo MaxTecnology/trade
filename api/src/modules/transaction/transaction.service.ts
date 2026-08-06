@@ -1,7 +1,14 @@
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import { queues } from '../queues/bullmq.js'
-import type { PermutaInput, TransferenciaInput, CreditoInput, ListTransactionQuery } from './transaction.schema.js'
+import type {
+  PermutaInput,
+  NegociadaInput,
+  AvaliarInput,
+  TransferenciaInput,
+  CreditoInput,
+  ListTransactionQuery,
+} from './transaction.schema.js'
 
 export async function permuta(input: PermutaInput, compradorAssociadoId: string, usuarioId: string) {
   const oferta = await prisma.oferta.findUnique({
@@ -54,6 +61,7 @@ const vendedorConta = oferta.associado.conta
         valorRT: valorTotal,
         comissaoBRL,
         parcelas: input.parcelas,
+        quantidade: input.quantidade,
         compradorId: compradorAssociadoId,
         vendedorId: oferta.associadoId,
         ofertaId: input.ofertaId,
@@ -126,6 +134,152 @@ const vendedorConta = oferta.associado.conta
   await queues.commissionGerente.add('gerente', { transacaoId: transacao.id })
 
   return transacao
+}
+
+// Negociação direta entre associados, fora do marketplace de ofertas — sempre em RT
+// (mesmas validações de saldo/limite de plano da permuta, sem vínculo com Oferta).
+export async function negociada(input: NegociadaInput, compradorAssociadoId: string, usuarioId: string) {
+  if (input.vendedorId === compradorAssociadoId) {
+    throw new AppError('VALIDATION_ERROR', 'Não é possível negociar consigo mesmo.', 422)
+  }
+
+  const compradorAssociado = await prisma.associado.findUnique({
+    where: { id: compradorAssociadoId },
+    include: { plano: true, conta: true },
+  })
+  if (!compradorAssociado?.conta) throw Errors.notFound('Conta do comprador')
+  if (compradorAssociado.status !== 'ativo') throw Errors.associateSuspended()
+
+  const vendedorAssociado = await prisma.associado.findUnique({
+    where: { id: input.vendedorId },
+    include: { conta: true },
+  })
+  if (!vendedorAssociado?.conta) throw Errors.notFound('Associado vendedor')
+  if (vendedorAssociado.status !== 'ativo') throw Errors.associateSuspended()
+
+  const valorTotal = input.valorRT
+  if (Number(compradorAssociado.conta.saldo) < valorTotal) throw Errors.insufficientBalance()
+
+  const inicioMes = new Date()
+  inicioMes.setDate(1)
+  inicioMes.setHours(0, 0, 0, 0)
+  const movimentacoesMes = await prisma.movimentacaoConta.aggregate({
+    where: {
+      contaId: compradorAssociado.conta.id,
+      tipo: 'debito',
+      criadoEm: { gte: inicioMes },
+    },
+    _sum: { valor: true },
+  })
+  const totalMes = Number(movimentacoesMes._sum.valor ?? 0)
+  const limiteRT = Number(compradorAssociado.plano.limiteRT)
+  if (totalMes + valorTotal > limiteRT) throw Errors.planLimitReached()
+
+  const vendedorConta = vendedorAssociado.conta
+  const valorParcela = valorTotal / input.parcelas
+  const compradorContaSaldo = Number(compradorAssociado.conta.saldo)
+  const vendedorContaSaldo = Number(vendedorConta.saldo)
+  const comissaoBRL = valorTotal * (Number(compradorAssociado.plano.percentualComissao) / 100)
+
+  const transacao = await prisma.$transaction(async (tx) => {
+    const t = await tx.transacao.create({
+      data: {
+        tipo: 'negociada',
+        status: 'concluida',
+        valorRT: valorTotal,
+        comissaoBRL,
+        parcelas: input.parcelas,
+        descricao: input.descricao,
+        compradorId: compradorAssociadoId,
+        vendedorId: input.vendedorId,
+        usuarioIniciadorId: usuarioId,
+        contaOrigemId: compradorAssociado.conta!.id,
+        contaDestinoId: vendedorConta.id,
+      },
+    })
+
+    const agora = new Date()
+    for (let i = 1; i <= input.parcelas; i++) {
+      const vencimento = new Date(agora)
+      vencimento.setMonth(vencimento.getMonth() + i - 1)
+      const novoSaldoComprador = compradorContaSaldo - valorParcela * i
+
+      await tx.movimentacaoConta.create({
+        data: {
+          contaId: compradorAssociado.conta!.id,
+          tipo: 'debito',
+          valor: valorParcela,
+          saldoApos: novoSaldoComprador,
+          descricao: `Negociação direta - parcela ${i}/${input.parcelas}`,
+          transacaoId: t.id,
+          numeroParcela: i,
+          totalParcelas: input.parcelas,
+          vencimento,
+        },
+      })
+
+      await tx.movimentacaoConta.create({
+        data: {
+          contaId: vendedorConta.id,
+          tipo: 'credito',
+          valor: valorParcela,
+          saldoApos: vendedorContaSaldo + valorParcela * i,
+          descricao: `Negociação direta - parcela ${i}/${input.parcelas}`,
+          transacaoId: t.id,
+          numeroParcela: i,
+          totalParcelas: input.parcelas,
+          vencimento,
+        },
+      })
+    }
+
+    await tx.conta.update({
+      where: { id: compradorAssociado.conta!.id },
+      data: { saldo: { decrement: valorTotal } },
+    })
+
+    await tx.conta.update({
+      where: { id: vendedorConta.id },
+      data: { saldo: { increment: valorTotal } },
+    })
+
+    await tx.voucher.create({
+      data: { transacaoId: t.id },
+    })
+
+    return t
+  })
+
+  await queues.voucherGenerate.add('generate', { transacaoId: transacao.id })
+  await queues.commissionCalculate.add('calculate', { transacaoId: transacao.id })
+  await queues.commissionGerente.add('gerente', { transacaoId: transacao.id })
+
+  return transacao
+}
+
+export async function avaliar(transacaoId: string, input: AvaliarInput, usuarioId: string) {
+  const transacao = await prisma.transacao.findUnique({ where: { id: transacaoId } })
+  if (!transacao) throw Errors.notFound('Transação')
+  if (!['permuta', 'negociada'].includes(transacao.tipo)) {
+    throw new AppError('VALIDATION_ERROR', 'Apenas permutas ou negociações podem ser avaliadas.', 422)
+  }
+  if (transacao.status !== 'concluida') {
+    throw new AppError('VALIDATION_ERROR', 'Apenas transações concluídas podem ser avaliadas.', 422)
+  }
+  if (transacao.usuarioIniciadorId !== usuarioId) {
+    throw Errors.forbidden()
+  }
+  if (transacao.notaAtendimento !== null) {
+    throw new AppError('VALIDATION_ERROR', 'Esta transação já foi avaliada.', 422)
+  }
+
+  return prisma.transacao.update({
+    where: { id: transacaoId },
+    data: {
+      notaAtendimento: input.notaAtendimento,
+      comentarioAvaliacao: input.comentarioAvaliacao,
+    },
+  })
 }
 
 export async function transferencia(input: TransferenciaInput, usuarioId: string, contaOrigemId: string) {
@@ -219,8 +373,8 @@ export async function estorno(transacaoId: string, usuarioId: string) {
     include: { oferta: true },
   })
   if (!original) throw Errors.notFound('Transação')
-  if (original.tipo !== 'permuta') {
-    throw new AppError('VALIDATION_ERROR', 'Somente permutas podem ser estornadas.', 422)
+  if (original.tipo !== 'permuta' && original.tipo !== 'negociada') {
+    throw new AppError('VALIDATION_ERROR', 'Somente permutas ou negociações podem ser estornadas.', 422)
   }
   if (original.status === 'estornada') {
     throw new AppError('VALIDATION_ERROR', 'Transação já foi estornada.', 422)
@@ -232,6 +386,12 @@ export async function estorno(transacaoId: string, usuarioId: string) {
   const contaOrigem = await prisma.conta.findUnique({ where: { id: original.contaOrigemId! } })
   const contaDestino = await prisma.conta.findUnique({ where: { id: original.contaDestinoId! } })
   if (!contaOrigem || !contaDestino) throw Errors.notFound('Contas da transação')
+
+  // contaDestino recebeu o valor original e é quem será debitado no estorno — se o saldo
+  // já foi movimentado (gasto/transferido) desde então, não há RT suficiente para reverter.
+  if (Number(contaDestino.saldo) < Number(original.valorRT)) {
+    throw Errors.insufficientBalance()
+  }
 
   const transacaoEstorno = await prisma.$transaction(async (tx) => {
     await tx.transacao.update({ where: { id: transacaoId }, data: { status: 'estornada' } })
@@ -279,9 +439,10 @@ export async function estorno(transacaoId: string, usuarioId: string) {
     await tx.conta.update({ where: { id: original.contaOrigemId! }, data: { saldo: { increment: valorRT } } })
 
     if (original.ofertaId) {
+      // original.quantidade pode ser null em transações criadas antes deste campo existir
       await tx.oferta.update({
         where: { id: original.ofertaId },
-        data: { quantidadeDisponivel: { increment: 1 } },
+        data: { quantidadeDisponivel: { increment: original.quantidade ?? 1 } },
       })
     }
 
@@ -311,7 +472,17 @@ export async function list(query: ListTransactionQuery, contaId: string) {
   }
 
   const [items, total] = await prisma.$transaction([
-    prisma.transacao.findMany({ where, skip, take: limit, orderBy: { criadoEm: 'desc' } }),
+    prisma.transacao.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { criadoEm: 'desc' },
+      include: {
+        comprador: { select: { nome: true } },
+        vendedor: { select: { nome: true } },
+        voucher: true,
+      },
+    }),
     prisma.transacao.count({ where }),
   ])
   return { items, total }

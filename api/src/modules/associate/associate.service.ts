@@ -3,16 +3,8 @@ import { prisma } from '../../config/prisma.js'
 import { env } from '../../config/env.js'
 import { Errors } from '../../shared/errors/AppError.js'
 import { gerarNumeroConta } from '../../shared/utils/conta.js'
+import { calcularVencimento } from '../../shared/utils/data.js'
 import type { CreateAssociateInput, UpdateAssociateInput } from './associate.schema.js'
-
-function calcularVencimento(dia: number): Date {
-  const hoje = new Date()
-  let vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), dia)
-  if (vencimento <= hoje) {
-    vencimento = new Date(hoje.getFullYear(), hoje.getMonth() + 1, dia)
-  }
-  return vencimento
-}
 
 export async function create(input: CreateAssociateInput) {
   const [cnpjExists, emailExists, plano] = await Promise.all([
@@ -124,21 +116,19 @@ export async function create(input: CreateAssociateInput) {
       })
     }
 
-    // Débito RT na conta do associado (saldo inicia negativo)
+    // Cobrança RT para o associado (não debita a conta na criação — saldo nunca fica negativo;
+    // o débito acontece de forma atômica quando a cobrança é quitada, ver cobranca.service.ts)
     if (input.valorInscricaoRT && input.valorInscricaoRT > 0) {
-      const saldoApos = -input.valorInscricaoRT
-      await tx.movimentacaoConta.create({
+      const vencimento = calcularVencimento(input.diaVencimentoFatura ?? 10)
+      await tx.cobranca.create({
         data: {
+          descricao: `Inscrição - ${associado.nome}`,
+          valorRT: input.valorInscricaoRT,
+          vencimento,
           contaId: conta.id,
-          tipo: 'debito',
-          valor: input.valorInscricaoRT,
-          saldoApos,
-          descricao: 'Inscrição - Permuta',
+          associadoId: associado.id,
+          agenciaId: input.agenciaId ?? null,
         },
-      })
-      await tx.conta.update({
-        where: { id: conta.id },
-        data: { saldo: saldoApos },
       })
     }
 
@@ -186,6 +176,26 @@ export async function list(requester: { role: string; entityId: string }, page =
   ])
 
   return { items, total }
+}
+
+// Diretório mínimo para negociação direta entre associados — sem dados financeiros
+// (saldo, plano, gerente), diferente de list() que é uso administrativo.
+export async function listDiretorio(exceptAssociadoId?: string) {
+  return prisma.associado.findMany({
+    where: {
+      status: 'ativo',
+      ...(exceptAssociadoId ? { id: { not: exceptAssociadoId } } : {}),
+    },
+    select: {
+      id: true,
+      nome: true,
+      nomeFantasia: true,
+      cidade: true,
+      estado: true,
+      tipoAtendimento: true,
+    },
+    orderBy: { nome: 'asc' },
+  })
 }
 
 export async function getById(id: string) {

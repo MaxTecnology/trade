@@ -32,6 +32,11 @@ export async function listController(request: FastifyRequest, reply: FastifyRepl
   return reply.send(paginated(items, page, limit, total))
 }
 
+export async function diretorioController(request: FastifyRequest, reply: FastifyReply) {
+  const associados = await associateService.listDiretorio(request.user.entityId)
+  return reply.send(success(associados))
+}
+
 export async function getByIdController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
   const associado = await associateService.getById(id)

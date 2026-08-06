@@ -56,9 +56,17 @@ enum TipoAtendimento {
 
 enum TipoTransacao {
   permuta
+  negociada
   transferencia
   credito
   estorno
+}
+
+enum StatusEstorno {
+  em_analise
+  encaminhado
+  aprovado
+  negado
 }
 
 enum TipoMovimentacao {
@@ -240,6 +248,7 @@ model Associado {
   transacoesVenda      Transacao[]          @relation("Vendedor")
   solicitacoesCredito  SolicitacaoCredito[]
   cobranças            Cobranca[]
+  comissoesGerente     ComissaoGerente[]
 
   @@map("associado")
 }
@@ -340,6 +349,7 @@ model Usuario {
   transacoesIniciadas   Transacao[]       @relation("UsuarioIniciador")
   associadosGerenciados Associado[]       @relation("GerenteAssociados")
   comissoesGerente      ComissaoGerente[]
+  solicitacoesEstorno   SolicitacaoEstorno[]
 
   @@index([email])
   @@map("usuario")
@@ -381,6 +391,7 @@ model ComissaoGerente {
   criadoEm    DateTime            @default(now())
 
   gerente   Usuario    @relation(fields: [gerenteId], references: [id])
+  associado Associado  @relation(fields: [associadoId], references: [id])
   transacao Transacao? @relation(fields: [transacaoId], references: [id])
 
   @@index([gerenteId, criadoEm])
@@ -454,6 +465,7 @@ model Transacao {
   comissaoBRL         Decimal?        @db.Decimal(15, 2)
   descricao           String?
   parcelas            Int             @default(1)
+  quantidade          Int?            // unidades da oferta compradas (apenas tipo: permuta) — usado para restaurar estoque no estorno
   compradorId         String?
   vendedorId          String?
   contaOrigemId       String?
@@ -461,6 +473,8 @@ model Transacao {
   usuarioIniciadorId  String?
   ofertaId            String?
   transacaoOriginalId String?
+  notaAtendimento     Int?            // avaliação do vendedor pelo comprador (1-5), apenas tipo: permuta | negociada
+  comentarioAvaliacao String?
   criadoEm           DateTime        @default(now())
   atualizadoEm       DateTime        @updatedAt
 
@@ -473,14 +487,36 @@ model Transacao {
   transacaoOriginal Transacao?  @relation("Estorno", fields: [transacaoOriginalId], references: [id])
   estornos          Transacao[] @relation("Estorno")
 
-  movimentacoes    MovimentacaoConta[]
-  voucher          Voucher?
-  comissoesGerente ComissaoGerente[]
+  movimentacoes       MovimentacaoConta[]
+  voucher             Voucher?
+  comissoesGerente    ComissaoGerente[]
+  solicitacoesEstorno SolicitacaoEstorno[]
 
   @@index([compradorId, criadoEm])
   @@index([vendedorId, criadoEm])
   @@index([status])
   @@map("transacao")
+}
+
+// ─────────────────────────────────────────
+// SOLICITAÇÃO DE ESTORNO (fluxo de aprovação, mesmo padrão de SolicitacaoCredito)
+// ─────────────────────────────────────────
+
+model SolicitacaoEstorno {
+  id            String        @id @default(uuid())
+  transacaoId   String
+  solicitanteId String
+  motivo        String?
+  status        StatusEstorno @default(em_analise)
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
+
+  transacao   Transacao @relation(fields: [transacaoId], references: [id])
+  solicitante Usuario   @relation(fields: [solicitanteId], references: [id])
+
+  @@index([transacaoId])
+  @@index([status])
+  @@map("solicitacao_estorno")
 }
 
 // ─────────────────────────────────────────
@@ -520,13 +556,14 @@ model SolicitacaoCredito {
 }
 
 // ─────────────────────────────────────────
-// COBRANÇA / FATURA BRL
+// COBRANÇA / FATURA (BRL ou RT)
 // ─────────────────────────────────────────
 
 model Cobranca {
   id          String    @id @default(uuid())
   descricao   String?
-  valorBRL    Decimal   @db.Decimal(15, 2)
+  valorBRL    Decimal?  @db.Decimal(15, 2) // preenchido quando a cobrança é em moeda real
+  valorRT     Decimal?  @db.Decimal(15, 2) // preenchido quando a cobrança é em RT (não debita a conta diretamente — mantém saldo >= 0)
   vencimento  DateTime
   pago        Boolean   @default(false)
   contaId     String

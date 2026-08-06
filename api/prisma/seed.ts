@@ -1,4 +1,4 @@
-import { PrismaClient, Periodicidade } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcrypt'
 import 'dotenv/config'
@@ -7,6 +7,9 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' && !process.env.SEED_ADMIN_PASSWORD) {
+    throw new Error('SEED_ADMIN_PASSWORD não definida — obrigatória em produção.')
+  }
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@123456'
   const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12)
   const senhaHash = await bcrypt.hash(adminPassword, saltRounds)
@@ -25,34 +28,31 @@ async function main() {
     },
   })
 
-  // Planos padrão
+  // Planos padrão (tipo associado)
   const planos = [
     {
       nome: 'Plano Básico',
+      tipoPlano: 'associado' as const,
       limiteRT: 5000,
       percentualComissao: 5.0,
-      periodicidade: Periodicidade.mensal,
-      maxParcelas: 1,
     },
     {
       nome: 'Plano Intermediário',
+      tipoPlano: 'associado' as const,
       limiteRT: 15000,
       percentualComissao: 4.0,
-      periodicidade: Periodicidade.mensal,
-      maxParcelas: 3,
     },
     {
       nome: 'Plano Avançado',
+      tipoPlano: 'associado' as const,
       limiteRT: 50000,
       percentualComissao: 3.0,
-      periodicidade: Periodicidade.mensal,
-      maxParcelas: 6,
     },
   ]
 
   for (const plano of planos) {
     await prisma.plano.upsert({
-      where: { nome: plano.nome },
+      where: { nome_tipoPlano: { nome: plano.nome, tipoPlano: plano.tipoPlano } },
       update: {},
       create: plano,
     })

@@ -12,7 +12,7 @@ type Query = { page?: number; limit?: number }
 
 export async function createController(request: FastifyRequest, reply: FastifyReply) {
   const input = createAgencySchema.parse(request.body)
-  const agencia = await agencyService.create(input, request.user.id)
+  const agencia = await agencyService.create(input, request.user.id, request.user.role)
   return reply.status(201).send(success(agencia))
 }
 

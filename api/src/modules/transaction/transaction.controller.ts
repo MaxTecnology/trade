@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import {
   permutaSchema,
+  negociadaSchema,
+  avaliarSchema,
   transferenciaSchema,
   creditoSchema,
   listTransactionQuerySchema,
@@ -15,6 +17,18 @@ export async function permutaController(request: FastifyRequest, reply: FastifyR
   const input = permutaSchema.parse(request.body)
   const t = await txService.permuta(input, request.user.entityId, request.user.id)
   return reply.status(201).send(success(t))
+}
+
+export async function negociadaController(request: FastifyRequest, reply: FastifyReply) {
+  const input = negociadaSchema.parse(request.body)
+  const t = await txService.negociada(input, request.user.entityId, request.user.id)
+  return reply.status(201).send(success(t))
+}
+
+export async function avaliarController(request: FastifyRequest, reply: FastifyReply) {
+  const input = avaliarSchema.parse(request.body)
+  const t = await txService.avaliar((request.params as Params).id, input, request.user.id)
+  return reply.send(success(t))
 }
 
 export async function transferenciaController(request: FastifyRequest, reply: FastifyReply) {
