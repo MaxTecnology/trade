@@ -24,10 +24,10 @@ const TransacoesTable = ({
     const [columnFilters, setColumnFilters] = useState([])
 
     const formattedColumns = columns.map((column) => {
-        if (column.accessorKey === 'createdAt') {
+        if (column.accessorKey === 'createdAt' || column.accessorKey === 'criadoEm') {
             return {
                 ...column,
-                cell: (value) => formatDate(value.getValue()),
+                cell: (value) => value.getValue() ? formatDate(value.getValue()) : '-',
             };
         }
         if (column.accessorKey === 'conta.nomeFranquia') {
@@ -42,7 +42,7 @@ const TransacoesTable = ({
                 cell: (value) => value.getValue() ? value.getValue() : "Indefinido",
             };
         }
-        if (column.accessorKey === 'valorRt' || column.id === 'valor') {
+        if (column.accessorKey === 'valorRT' || column.id === 'valor') {
             return {
                 ...column,
                 cell: (value) => value.getValue() ? `RT$ ${formatarNumeroParaRT(value.getValue())}` : "Indefinido",
@@ -133,14 +133,24 @@ const TransacoesTable = ({
                                     : null
                                 }
                                 {matriz ?
-                                    <Buttons
-                                        type="Aprove"
-                                        url={row.original.id}
-                                        confirm={"Deseja aprovar o extorno?"}
-                                        titulo={"Extorno"}
-                                        resultDelete={"Extorno aprovado com sucesso"}
-                                        revalidate={() => resetQuery()}
-                                    />
+                                    <>
+                                        <Buttons
+                                            type="Aprove"
+                                            url={row.original.id}
+                                            confirm={"Deseja aprovar o extorno?"}
+                                            titulo={"Extorno"}
+                                            resultDelete={"Extorno aprovado com sucesso"}
+                                            revalidate={() => resetQuery()}
+                                        />
+                                        <Buttons
+                                            type="Reject"
+                                            url={row.original.id}
+                                            confirm={"Deseja negar o extorno?"}
+                                            titulo={"Extorno"}
+                                            resultDelete={"Extorno negado"}
+                                            revalidate={() => resetQuery()}
+                                        />
+                                    </>
                                     : null
                                 }
                                 <Buttons

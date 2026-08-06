@@ -1,32 +1,33 @@
 export const columns = [
     {
-        accessorKey: 'idOferta',
+        accessorKey: 'id',
         header: 'Id',
-    },
-    {
-        accessorKey: 'nomeUsuario',
-        header: 'Nome Fantasia',
     },
     {
         accessorKey: 'titulo',
         header: 'Titulo',
     },
     {
-        accessorKey: 'valor',
+        accessorKey: 'valorRT',
         header: 'Valor',
     },
     {
-        accessorKey: 'tipo',
+        accessorKey: 'quantidadeDisponivel',
+        header: 'Quantidade',
+    },
+    {
+        accessorKey: 'tipoAtendimento',
         header: 'Tipo',
+        cell: (value) => value.getValue()?.join(', ') || 'Indefinido',
     },
     {
         accessorKey: 'vencimento',
         header: 'Vencimento',
     },
     {
-        id: 'agencia',
-        accessorKey: 'nomeFranquia',
-        header: 'Agência',
+        id: 'categoria',
+        accessorKey: 'categoria.nome',
+        header: 'Categoria',
     },
     {
         accessorKey: 'cidade',

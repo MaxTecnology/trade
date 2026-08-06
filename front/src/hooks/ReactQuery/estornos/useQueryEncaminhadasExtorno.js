@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { getApiData } from '@/hooks/ListasHook';
-// TODO: API precisa de filtro de estorno por status
+// Solicitações de estorno dos associados da agência (visão agency_admin/operator)
 export const useQueryEncaminhadasExtorno = () => {
     return useQuery({
-        queryKey: ['encaminhadasExtorno'],
-        queryFn: async () => getApiData('transacoes?page=1&limit=30'),
+        queryKey: ['estornos', 'filhos'],
+        queryFn: async () => getApiData('estornos/filhos?page=1&limit=30'),
     });
 };

@@ -8,10 +8,19 @@ const appElement = document.getElementById('root');
 
 // Configure o elemento principal para o react-modal
 Modal.setAppElement(appElement);
-const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
+const TransaçõesModal = ({ isOpen, modalToggle, info }) => {
     const [error, setError] = useState(false)
     const [sucess, setSucess] = useState(false)
-    const data = info
+    // `info` pode ser uma Transacao direta (telas de listagem) ou uma
+    // SolicitacaoEstorno com a transação aninhada em `transacao` (telas de estorno).
+    const transacao = info?.transacao ?? info
+    const statusLabel = {
+        concluida: 'Concluída',
+        pendente: 'Pendente',
+        estornada: 'Estornada',
+        falha: 'Falha',
+    }[transacao?.status] ?? transacao?.status
+
     return (
         <Modal
             isOpen={isOpen}
@@ -30,40 +39,37 @@ const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
                     <div className="modalTransacoesSubContainer">
                         <div className="modalTransacoesItem">
                             <span>Vendedor</span>
-                            <p>{voucher ? data.transacao?.comprador.nomeFantasia || data.vendedor.nomeFantasia : data.nomeVendedor}</p>
+                            <p>{transacao?.vendedor?.nome ?? '-'}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Comprador</span>
-                            <p>{voucher ? data.transacao?.vendedor.nomeFantasia || data.comprador.nomeFantasia : data.nomeComprador}</p>
+                            <p>{transacao?.comprador?.nome ?? '-'}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Status</span>
-                            <p>{data.status ? "Ativa" : "Encerrada"}</p>
+                            <p>{statusLabel ?? '-'}</p>
                         </div>
-
                     </div>
                     <div className="modalTransacoesDivider"></div>
                     <div className="modalTransacoesSubContainer">
                         <div className="modalTransacoesItem">
                             <span>Descrição</span>
-                            <p>{data.transacao?.descricao || data.descricao || null}</p>
+                            <p>{transacao?.descricao || 'Nenhuma'}</p>
                         </div>
-                        {/* <div className="modalTransacoesItem">
-                            <span>Vencimento</span>
-                            <p>{data.nomeVendedor}</p>
-                        </div> */}
                         <div className="modalTransacoesItem">
                             <span>Valor RT$</span>
-                            <p>{data.transacao?.comprador.nomeFantasia || data.valorRt}</p>
+                            <p>{transacao?.valorRT ?? '-'}</p>
                         </div>
-                        {/* <div className="modalTransacoesItem">
-                            <span>StatusParcelas</span>
-                            <p>{data.nomeVendedor}</p>
-                        </div> */}
                         <div className="modalTransacoesItem">
                             <span>Parcelas</span>
-                            <p>{voucher ? "1" : data.numeroParcelas}</p>
+                            <p>{transacao?.parcelas ?? '1'}</p>
                         </div>
+                        {info?.motivo && (
+                            <div className="modalTransacoesItem">
+                                <span>Motivo do estorno</span>
+                                <p>{info.motivo}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className='modalDivierForm'></div>

@@ -164,10 +164,13 @@ export const createOferta = async (event, url) => {
     const formData = new FormData(event.target)
     const imagemFile = formData.get("imagens")
     const imagemUrl = await uploadToB2(imagemFile)
-    if (imagemUrl) formData.set("imagemUrl", imagemUrl)
+    const tipoAtendimento = formData.getAll("tipoAtendimento")
     formData.delete("imagens")
+    formData.delete("tipoAtendimento")
     if (formData.get("vencimento")) {
         formData.set("vencimento", formatarData(formData.get("vencimento")))
+    } else {
+        formData.delete("vencimento")
     }
     const object = {}
     formData.forEach((value, key) => {
@@ -176,9 +179,11 @@ export const createOferta = async (event, url) => {
         const numericValue = value !== "" ? (isNaN(value) ? value : parseFloat(value)) : value
         object[key] = numericValue
     })
+    if (imagemUrl) object.imagemUrl = imagemUrl
+    object.tipoAtendimento = tipoAtendimento
     await api.post(url, object)
         .then(() => event.target.reset())
-        .catch(() => { throw "Algo de errado aconteceu" })
+        .catch((err) => { throw new Error(err?.response?.data?.error?.message ?? "Erro ao cadastrar oferta") })
 }
 
 export const createSubAccount = async (event) => {
@@ -205,15 +210,34 @@ export const createUser = async (event, url) => {
     await api.post(url, object)
         .then(() => event.target.reset())
         .catch((err) => {
-            throw new Error(err?.response?.data?.message ?? "Erro ao criar registro")
+            throw new Error(err?.response?.data?.error?.message ?? "Erro ao criar registro")
         })
 }
 
-export const createT = async (event) => {
-    const object = formHandler(event)
-    const { voucher, ...data } = object
-    const response = await api.post('transacoes/permuta', data)
-    if (!response) throw new Error("Erro ao criar transação")
+// Cria uma negociação direta entre associados (fora do marketplace de Ofertas) e,
+// se houver nota de atendimento no formulário, avalia a transação logo em seguida.
+export const createT = async (formData) => {
+    const object = formHandler(formData)
+    const { voucher, nomeComprador, nomeVendedor, notaAtendimento, observacaoNota, ...data } = object
+    let response
+    try {
+        response = await api.post('transacoes/negociada', data)
+    } catch (err) {
+        throw new Error(err?.response?.data?.error?.message ?? "Erro ao criar transação")
+    }
+    const transacaoId = response?.data?.data?.id
+    if (transacaoId && notaAtendimento) {
+        try {
+            await api.patch(`transacoes/${transacaoId}/avaliar`, {
+                notaAtendimento: Number(notaAtendimento),
+                comentarioAvaliacao: observacaoNota || undefined,
+            })
+        } catch (err) {
+            // A transação já foi concluída; falha na avaliação não deve reverter o fluxo.
+            console.error('Erro ao registrar avaliação:', err?.response?.data?.error?.message)
+        }
+    }
+    return response
 };
 
 export const editUser = async (event, url) => {
@@ -231,7 +255,7 @@ export const editUser = async (event, url) => {
     const { idUsuario, contaId, ...data } = object
     const targetUrl = url ?? `usuarios/${idUsuario}`
     await api.put(targetUrl, data).catch((err) => {
-        throw new Error(err?.response?.data?.message ?? "Erro ao editar")
+        throw new Error(err?.response?.data?.error?.message ?? "Erro ao editar")
     })
 }
 
@@ -241,19 +265,28 @@ export const editItem = async (event, url, setState, oferta) => {
     event.preventDefault()
     const formData = new FormData(event.target)
     const imagemFile = formData.get("imagem")
+    const imagemFieldName = oferta ? "imagemUrl" : "imagem"
     if (imagemFile && imagemFile.name !== '') {
         const imagemUrl = await uploadToB2(imagemFile)
-        if (imagemUrl) formData.set("imagem", imagemUrl)
-        else formData.delete("imagem")
+        formData.delete("imagem")
+        if (imagemUrl) formData.set(imagemFieldName, imagemUrl)
     } else {
         formData.delete("imagem")
     }
+    let tipoAtendimento
+    if (oferta) {
+        tipoAtendimento = formData.getAll("tipoAtendimento")
+        formData.delete("tipoAtendimento")
+    }
     if (formData.get("vencimento")) {
         formData.set("vencimento", formatarData(formData.get("vencimento")))
+    } else {
+        formData.delete("vencimento")
     }
     const object = formHandler(formData)
+    if (tipoAtendimento) object.tipoAtendimento = tipoAtendimento
     await api.put(url, object).catch((err) => {
-        throw new Error(err?.response?.data?.message ?? "Erro ao editar")
+        throw new Error(err?.response?.data?.error?.message ?? "Erro ao editar")
     })
     if (setState) setState(true)
 }
@@ -281,21 +314,28 @@ export const bloqUser = (userId) => {
         .catch(error => console.log(error))
 }
 
-// EXTORNO
-export const refound = async (id, revalidate) => {
-    api.post(`transacoes/${id}/estorno`)
+// EXTORNO — fluxo de solicitação/aprovação (mesmo padrão de Créditos RT)
+// refound recebe o id da TRANSAÇÃO; sendRefound/aproveRefound/negarRefound recebem
+// o id da SOLICITAÇÃO de estorno (SolicitacaoEstorno), não da transação original.
+export const refound = async (transacaoId, revalidate) => {
+    api.post('estornos', { transacaoId })
         .then(() => { revalidate(); toast.success("Estorno solicitado com sucesso") })
-        .catch(error => { console.log(error); toast.error("Erro ao solicitar estorno") })
+        .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao solicitar estorno"))
 }
-export const sendRefound = async (id, revalidate) => {
-    api.post(`transacoes/${id}/estorno`)
+export const sendRefound = async (solicitacaoId, revalidate) => {
+    api.patch(`estornos/${solicitacaoId}/encaminhar`)
         .then(() => { revalidate(); toast.success("Estorno encaminhado com sucesso") })
-        .catch(error => { console.log(error); toast.error("Erro ao encaminhar") })
+        .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao encaminhar"))
 }
-export const aproveRefound = async (id, revalidate) => {
-    api.post(`transacoes/${id}/estorno`)
+export const aproveRefound = async (solicitacaoId, revalidate) => {
+    api.patch(`estornos/${solicitacaoId}/aprovar`)
         .then(() => { revalidate(); toast.success("Estorno aprovado com sucesso") })
-        .catch(error => { console.log(error); toast.error("Erro ao aprovar") })
+        .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao aprovar"))
+}
+export const negarRefound = async (solicitacaoId, revalidate) => {
+    api.patch(`estornos/${solicitacaoId}/negar`)
+        .then(() => { revalidate(); toast.success("Estorno negado") })
+        .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao negar"))
 }
 
 

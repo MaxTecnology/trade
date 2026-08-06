@@ -55,7 +55,7 @@ const EditarAgenciaModal = ({ isOpen, modalToggle, associadoInfo }) => {
                 imagemUrl = res.data?.data?.url ?? res.data?.url
             } catch (err) {
                 setReference(true)
-                toast.error(`Erro ao enviar imagem: ${err?.response?.data?.message ?? err.message}`)
+                toast.error(`Erro ao enviar imagem: ${err?.response?.data?.error?.message ?? err.message}`)
                 return
             }
         }
@@ -98,7 +98,7 @@ const EditarAgenciaModal = ({ isOpen, modalToggle, associadoInfo }) => {
 
         toast.promise(
             api.put(`agencias/${info.id}`, payload).catch(err => {
-                throw new Error(err?.response?.data?.message ?? 'Erro ao editar')
+                throw new Error(err?.response?.data?.error?.message ?? 'Erro ao editar')
             }),
             {
                 loading: 'Editando Agência...',

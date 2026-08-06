@@ -89,7 +89,7 @@ const CadastrarAssociado = () => {
             imagemUrl = await uploadImagem()
         } catch (err) {
             setLoading(false)
-            toast.error(`Erro ao enviar imagem: ${err?.response?.data?.message ?? err.message}`)
+            toast.error(`Erro ao enviar imagem: ${err?.response?.data?.error?.message ?? err.message}`)
             return
         }
 
@@ -153,7 +153,7 @@ const CadastrarAssociado = () => {
 
         toast.promise(
             api.post("associados", payload).catch((err) => {
-                throw new Error(err?.response?.data?.message ?? "Erro ao cadastrar")
+                throw new Error(err?.response?.data?.error?.message ?? "Erro ao cadastrar")
             }),
             {
                 loading: 'Cadastrando Associado...',

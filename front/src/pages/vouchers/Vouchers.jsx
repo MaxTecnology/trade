@@ -18,7 +18,6 @@ const Vouchers = () => {
         activePage("voucher")
     }, []);
 
-    console.log(data)
     return (
         <div className="container">
             {modalIsOpen ?
@@ -34,7 +33,7 @@ const Vouchers = () => {
             <div className="containerList">
                 <VoucherTable
                     columns={columns}
-                    data={data && data.transacoesComVoucher ? data.transacoesComVoucher : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}

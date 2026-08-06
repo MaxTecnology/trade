@@ -3,10 +3,10 @@ import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 
 export const formatColumns = (columns, status) => {
     return columns.map((column) => {
-        if (column.accessorKey === 'createdAt') {
+        if (column.accessorKey === 'createdAt' || column.accessorKey === 'criadoEm') {
             return {
                 ...column,
-                cell: (value) => formatDate(value.getValue()),
+                cell: (value) => value.getValue() ? formatDate(value.getValue()) : '-',
             };
         }
         if (column.accessorKey === 'status' && !status) {
@@ -34,7 +34,7 @@ export const formatColumns = (columns, status) => {
             };
         }
 
-        if (column.accessorKey === 'valorRt' || column.accessorKey === 'valor' || column.accessorKey === 'valorSolicitado') {
+        if (column.accessorKey === 'valorRT' || column.accessorKey === 'valor' || column.accessorKey === 'valorSolicitado') {
             return {
                 ...column,
                 cell: (value) => value.getValue() ? `RT$ ${formatarNumeroParaRT(value.getValue())}` : "Indefinido",

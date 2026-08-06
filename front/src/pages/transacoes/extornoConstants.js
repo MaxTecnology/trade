@@ -3,44 +3,40 @@ import { filterEnd, filterStart } from "@/utils/functions/tables/date";
 export const columns = [
     {
         id: "comprador",
-        accessorKey: 'nomeComprador',
+        accessorKey: 'transacao.comprador.nome',
         header: 'Comprador',
     },
     {
         id: "vendedor",
-        accessorKey: 'nomeVendedor',
+        accessorKey: 'transacao.vendedor.nome',
         header: 'Vendedor',
     },
     {
-        accessorKey: 'descricao',
-        header: 'Descrição',
+        accessorKey: 'motivo',
+        header: 'Motivo',
     },
     {
-        accessorKey: 'createdAt',
-        header: 'Data'
-    },
-    {
-        accessorKey: 'valorRt',
+        id: 'valor',
+        accessorKey: 'transacao.valorRT',
         header: 'Valor RT$',
     },
     {
-        accessorKey: 'status',
         header: 'Status',
+        accessorKey: 'status',
     },
     {
-        id: 'agencia',
-        accessorKey: 'conta.nomeFranquia',
-        header: 'Agência',
+        accessorKey: 'criadoEm',
+        header: 'Data'
     },
     {
         id: 'dataInicio',
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'dataInicio',
         filterFn: filterStart,
     },
     {
         id: "dataTermino",
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'dataTermino',
         filterFn: filterEnd,
     },

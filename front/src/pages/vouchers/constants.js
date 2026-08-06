@@ -3,12 +3,12 @@ import { formatDate } from "@/hooks/ListasHook";
 export const columns = [
     {
         id: "comprador",
-        accessorKey: 'comprador.nomeFantasia',
+        accessorKey: 'comprador.nome',
         header: 'Comprador',
     },
     {
         id: "vendedor",
-        accessorKey: 'vendedor.nomeFantasia',
+        accessorKey: 'vendedor.nome',
         header: 'Vendedor',
     },
     {
@@ -17,13 +17,13 @@ export const columns = [
         header: 'Descrição',
     },
     {
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'Data',
-        cell: (value) => formatDate(value.getValue()),
+        cell: (value) => value.getValue() ? formatDate(value.getValue()) : '-',
     },
     {
         id: "valor",
-        accessorKey: 'valorRt',
+        accessorKey: 'valorRT',
         header: 'Valor RT$',
     },
     {
@@ -31,9 +31,4 @@ export const columns = [
         accessorKey: 'status',
         header: 'Status',
     },
-    {
-        id: 'agencia',
-        accessorKey: 'vendedor.conta.nomeFranquia',
-        header: 'Agência',
-    }
 ]

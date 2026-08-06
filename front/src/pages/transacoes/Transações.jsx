@@ -32,7 +32,7 @@ const Transações = () => {
             <div className="containerList">
                 <TransacoesTable
                     columns={columns}
-                    data={data && data.transacoes ? data.transacoes : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}

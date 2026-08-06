@@ -7,7 +7,7 @@ async function login(page) {
     await page.goto(`${BASE}/login`);
     await page.waitForLoadState('networkidle');
     await page.fill('input[name="login"]', 'admin@redetrade.com.br');
-    await page.fill('input[name="senha"]', 'Admin@123456');
+    await page.fill('input[name="senha"]', 'At2KnAH9GMFj90fHMBDVqArz');
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3000);
 }
@@ -50,10 +50,13 @@ test.describe('Formulário Cadastrar Associado', () => {
 
     test('3 - selecionar gerente preenche porcentagem', async ({ page }) => {
         const sel = page.locator('select[name="gerente"]');
-        const opts = await sel.locator('option').count();
-        if (opts <= 1) { console.log('⚠️  Nenhum gerente cadastrado'); return; }
+        // index 0 = placeholder disabled, index 1 = "Nenhum" (sempre presentes).
+        // Sem gerente cadastrado, GerentesOptions renderiza um 3º <option disabled> "Nenhum gerente disponível"
+        // — não dá pra distinguir por índice, tem que checar se a opção está habilitada.
+        const opt2 = sel.locator('option').nth(2)
+        const hasGerente = (await opt2.count()) > 0 && !(await opt2.isDisabled())
+        if (!hasGerente) { console.log('⚠️  Nenhum gerente cadastrado'); return; }
 
-        // index 0 = placeholder disabled, index 1 = "Nenhum", index 2+ = gerentes reais
         await sel.selectOption({ index: 2 });
         await page.waitForTimeout(800);
 

@@ -62,7 +62,7 @@ const CadastrarAgencia = () => {
             } catch (err) {
                 setLoading(false)
                 setReference(true)
-                toast.error(`Erro ao enviar imagem: ${err?.response?.data?.message ?? err.message}`)
+                toast.error(`Erro ao enviar imagem: ${err?.response?.data?.error?.message ?? err.message}`)
                 return
             }
         }
@@ -109,7 +109,7 @@ const CadastrarAgencia = () => {
 
         toast.promise(
             api.post('agencias', payload).catch((err) => {
-                throw new Error(err?.response?.data?.message ?? 'Erro ao cadastrar')
+                throw new Error(err?.response?.data?.error?.message ?? 'Erro ao cadastrar')
             }),
             {
                 loading: 'Cadastrando Agência...',

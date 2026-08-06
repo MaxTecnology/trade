@@ -14,7 +14,7 @@ const uploadToB2 = async (file) => {
 
 export async function newPassword(event, id) {
     await api.patch(`usuarios/${id}/senha`, event).catch((err) => {
-        throw new Error(err?.response?.data?.message ?? "Erro ao redefinir senha")
+        throw new Error(err?.response?.data?.error?.message ?? "Erro ao redefinir senha")
     })
     return "Senha redefinida com sucesso!"
 }
@@ -34,7 +34,7 @@ export const createUser = async (event, url) => {
     }
     const formatedEvent = formatForm(event)
     await api.post(url, formatedEvent).catch((err) => {
-        throw new Error(err?.response?.data?.message ?? "Erro ao criar registro")
+        throw new Error(err?.response?.data?.error?.message ?? "Erro ao criar registro")
     })
 }
 

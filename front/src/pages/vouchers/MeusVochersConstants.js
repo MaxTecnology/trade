@@ -4,38 +4,33 @@ import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 export const columns = [
     {
         id: "comprador",
-        accessorKey: 'transacao.comprador.nomeFantasia',
+        accessorKey: 'comprador.nome',
         header: 'Comprador',
     },
     {
         id: "vendedor",
-        accessorKey: 'transacao.vendedor.nomeFantasia',
+        accessorKey: 'vendedor.nome',
         header: 'Vendedor',
     },
     {
         id: "descricao",
-        accessorKey: 'transacao.descricao',
+        accessorKey: 'descricao',
         header: 'Descrição',
     },
     {
-        accessorKey: 'transacao.createdAt',
+        accessorKey: 'criadoEm',
         header: 'Data',
-        cell: (value) => formatDate(value.getValue()),
+        cell: (value) => value.getValue() ? formatDate(value.getValue()) : '-',
     },
     {
         id: "valor",
-        accessorKey: 'transacao.valorRt',
+        accessorKey: 'valorRT',
         header: 'Valor RT$',
         cell: (value) => value.getValue() ? `RT$ ${formatarNumeroParaRT(value.getValue())}` : "Indefinido",
     },
     {
         id: 'status',
-        accessorKey: 'transacao.status',
+        accessorKey: 'status',
         header: 'Status',
     },
-    {
-        id: 'agencia',
-        accessorKey: 'transacao.vendedor.conta.nomeFranquia',
-        header: 'Agência',
-    }
 ]

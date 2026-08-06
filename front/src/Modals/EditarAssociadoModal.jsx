@@ -50,7 +50,7 @@ const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
                 raw.imagemUrl = res.data?.data?.url ?? res.data?.url
             } catch (err) {
                 setReference(true)
-                toast.error(`Erro ao enviar imagem: ${err?.response?.data?.message ?? err.message}`)
+                toast.error(`Erro ao enviar imagem: ${err?.response?.data?.error?.message ?? err.message}`)
                 return
             }
         }
@@ -74,7 +74,7 @@ const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
 
         toast.promise(
             api.put(`associados/${info.id}`, raw).catch(err => {
-                throw new Error(err?.response?.data?.message ?? 'Erro ao editar')
+                throw new Error(err?.response?.data?.error?.message ?? 'Erro ao editar')
             }),
             {
                 loading: 'Editando Associado...',

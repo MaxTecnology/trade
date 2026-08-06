@@ -6,7 +6,6 @@ import { closeModal } from '@/hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
 import { BiSolidImageAdd } from 'react-icons/bi';
 import RealInput from '@/components/Inputs/CampoMoeda';
-import { getId } from '@/hooks/getId';
 import defaultImage from '@/assets/images/default_img.png'
 import CategoriesOptions from '@/components/Options/CategoriesOptions';
 import { toast } from 'sonner';
@@ -24,8 +23,8 @@ const MinhasOfertasModal = ({ isOpen, modalToggle, setState, ofertaInfo }) => {
 
     useEffect(() => {
         Mascaras()
-        if (info && info.imagens) {
-            setImageReference(info.imagens[0])
+        if (info && info.imagemUrl) {
+            setImageReference(info.imagemUrl)
         } else {
             setImageReference("https://cdn.vectorstock.com/i/preview-1x/65/30/default-image-icon-missing-picture-page-vector-40546530.jpg")
         }
@@ -102,35 +101,27 @@ const MinhasOfertasModal = ({ isOpen, modalToggle, setState, ofertaInfo }) => {
                                 <input defaultValue={info.titulo} type="text" className="form-control" id="razaoSocial" name="titulo" required />
                             </div>
                             <div className="form-group f1">
-                                <label className="required" >Tipo</label>
-                                <select name="tipo" defaultValue={info.tipo} required >
-                                    <option value="" disabled>Selecionar</option>
-                                    <option value="Produto">Produto</option>
-                                    <option value="Serviço">Serviço</option>
-                                </select>
-                            </div>
-                            <div className="form-group f1">
-                                <label className="required" name="">Status</label>
-                                <select name="status" defaultValue={info.status} required>
-                                    <option value="" disabled >Selecionar</option>
-                                    <option value="true">Disponível</option>
-                                    <option value="false">Indisponível</option>
-                                </select>
-                            </div>
-                            <div className="form-group f1">
                                 <label className="required">Categorias</label>
-                                <select id="planoAssociado" defaultValue={info.categoria} name="categoria">
+                                <select id="planoAssociado" defaultValue={info.categoriaId} name="categoriaId">
                                     <option value="" disabled>
                                         Selecione
                                     </option>
                                     <CategoriesOptions />
                                 </select>
                             </div>
+                            <div className="form-group f2">
+                                <label className="required">Tipo de Atendimento</label>
+                                <select name="tipoAtendimento" multiple defaultValue={info.tipoAtendimento} required>
+                                    <option value="presencial">Presencial</option>
+                                    <option value="online">Online</option>
+                                    <option value="voucher">Voucher</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="form-group f4 desc">
                             <label className="required">Descrição</label>
-                            <textarea defaultValue={info.descricao} maxLength="150" type="text" rows={9} name="descricao" required />
+                            <textarea defaultValue={info.descricao} maxLength="150" minLength="10" type="text" rows={9} name="descricao" required />
                         </div>
                     </div>
                 </div>
@@ -147,47 +138,28 @@ const MinhasOfertasModal = ({ isOpen, modalToggle, setState, ofertaInfo }) => {
 
                 <div className="containerRow">
                     <div className="form-group f2">
-                        <label className="required">Quantidade</label>
-                        <input defaultValue={info.quantidade} type="number" className="form-control" id="nomeContato" name="quantidade" required />
+                        <label className="required">Quantidade Disponível</label>
+                        <input defaultValue={info.quantidadeDisponivel} type="number" min="1" className="form-control" id="nomeContato" name="quantidadeDisponivel" required />
                     </div>
                     <div className="form-group f2">
-                        <label className='required'>Valor</label>
-                        <RealInput name="valor" defaultValue={info.valor} reference={reference} required />
-                    </div>
-                    <div className="form-group f2">
-                        <label className="required">Limite de Compra</label>
-                        <input type="number" defaultValue={info.limiteCompra} className="form-control" name="limiteCompra" required />
+                        <label className='required'>Valor (RT)</label>
+                        <RealInput name="valorRT" defaultValue={info.valorRT} reference={reference} required />
                     </div>
                 </div>
                 <div className="containerRow">
                     <div className="form-group f2">
-                        <label className="required">Vencimento</label>
-                        <input type="datetime-local" defaultValue={formatarDataParaInputData(info.vencimento)} className="form-control" name="vencimento" required />
+                        <label>Vencimento</label>
+                        <input type="datetime-local" defaultValue={info.vencimento ? formatarDataParaInputData(info.vencimento) : ''} className="form-control" name="vencimento" />
                     </div>
                     <div className="form-group f2">
-                        <label>Cidade</label>
-                        <input type="text" defaultValue={info.cidade} className="form-control" name="cidade" />
+                        <label className="required">Cidade</label>
+                        <input type="text" defaultValue={info.cidade} className="form-control" name="cidade" required />
                     </div>
-                    <div className="form-group f2">
-                        <label className="required">Retirada</label>
-                        <select id="planoAssociado" defaultValue={info.retirada} name="retirada">
-                            <option value="" disabled>
-                                Selecione
-                            </option>
-                            <option value="Local">
-                                Local
-                            </option>
-                            <option value="Entrega" >
-                                Entrega
-                            </option>
-                        </select>
+                    <div className="form-group f1">
+                        <label className="required">Estado</label>
+                        <input type="text" maxLength="2" defaultValue={info.estado} className="form-control" name="estado" required />
                     </div>
                 </div>
-                <div className="form-group desc">
-                    <label>Observações</label>
-                    <textarea defaultValue={info.obs} name="obs" rows={9} />
-                </div>
-                <input readOnly style={{ display: "none" }} type="text" name="usuarioId" value={getId()} />
                 <div className="buttonContainer">
                     <button onClick={() => closeModal(modalToggle, setSucess, setError)} className="purpleBtn" type="button">Fechar</button>
                     <button type="submit">Editar</button>

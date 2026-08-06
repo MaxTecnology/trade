@@ -54,7 +54,7 @@ const ContasModal = ({ isOpen, modalToggle, info, voucher }) => {
                         </div> */}
                         <div className="modalTransacoesItem">
                             <span>Valor RT$</span>
-                            <p>{data.transacao?.comprador.nomeFantasia || data.valorRt}</p>
+                            <p>{data.transacao?.comprador.nomeFantasia || data.valorRT}</p>
                         </div>
                         {/* <div className="modalTransacoesItem">
                             <span>StatusParcelas</span>

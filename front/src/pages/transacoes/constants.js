@@ -16,11 +16,11 @@ export const columns = [
         header: 'Descrição',
     },
     {
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'Data'
     },
     {
-        accessorKey: 'valorRt',
+        accessorKey: 'valorRT',
         header: 'Valor RT$',
     },
     {
@@ -34,13 +34,13 @@ export const columns = [
     },
     {
         id: 'dataInicio',
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'dataInicio',
         filterFn: filterStart,
     },
     {
         id: "dataTermino",
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'dataTermino',
         filterFn: filterEnd,
     },

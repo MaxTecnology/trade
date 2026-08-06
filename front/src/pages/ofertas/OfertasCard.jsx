@@ -75,7 +75,7 @@ const OfertasCard = ({ associado, index }) => {
         navigate("/ofertasInfo")
     }
 
-    if (data.status) {
+    if (data.status === 'aberta') {
         return (
             <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -84,9 +84,9 @@ const OfertasCard = ({ associado, index }) => {
                 exit={{ opacity: 0, scale: 0 }}
                 className=" ofertasCard"
             >
-                <img src={data.imagens[0] ? data.imagens[0] : "https://cdn.vectorstock.com/i/preview-1x/65/30/default-image-icon-missing-picture-page-vector-40546530.jpg"} alt="" className="ofertasCardImage" />
+                <img src={data.imagemUrl ? data.imagemUrl : "https://cdn.vectorstock.com/i/preview-1x/65/30/default-image-icon-missing-picture-page-vector-40546530.jpg"} alt="" className="ofertasCardImage" />
                 <div className="ofertasCardType">
-                    <span>{data.tipo}</span>
+                    <span>{data.tipoAtendimento?.join(', ')}</span>
                     <div >
                         SC
                         <img src={brazilIcon} alt="" />
@@ -125,7 +125,7 @@ const OfertasCard = ({ associado, index }) => {
                     {data.descricao}
                 </div>
                 <div className="ofertasCardValor">
-                    RT$ {formatarNumeroParaReal(data.valor)}
+                    RT$ {formatarNumeroParaReal(data.valorRT)}
                 </div>
                 <ButtonMotion className="buttonContainer">
                     <button className="border-none" onClick={handleNavigation}>Ver Mais</button>

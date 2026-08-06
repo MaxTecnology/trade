@@ -5,7 +5,6 @@ import defaultImage from '@/assets/images/default_img.png';
 import Footer from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import RealInput from '@/components/Inputs/CampoMoeda';
-import { getId, getName } from '@/hooks/getId';
 import { activePage } from "@/utils/functions/setActivePage";
 import { BiSolidImageAdd } from "react-icons/bi";
 import CategoriesOptions from "@/components/Options/CategoriesOptions";
@@ -43,9 +42,9 @@ const OfertasCadastrar = () => {
                     setImageReference(null)
                     return <b>Oferta Cadastrada com sucesso!</b>
                 },
-                error: () => {
+                error: (error) => {
                     setLoading(false)
-                    return <b>Erro ao Cadastrar Oferta</b>
+                    return <b>Erro ao Cadastrar Oferta: {error.message}</b>
                 },
             })
             setReference(true)
@@ -68,35 +67,27 @@ const OfertasCadastrar = () => {
                                 <input type="text" className="form-control" id="razaoSocial" name="titulo" required />
                             </div>
                             <div className="form-group f1">
-                                <label className="required-field-label" >Tipo</label>
-                                <select name="tipo" defaultValue={""} required >
-                                    <option value="" disabled>Selecionar</option>
-                                    <option value="Produto">Produto</option>
-                                    <option value="Serviço">Serviço</option>
-                                </select>
-                            </div>
-                            <div className="form-group f1">
-                                <label className="required-field-label" name="">Status</label>
-                                <select name="status" defaultValue={""} required>
-                                    <option value="" disabled >Selecionar</option>
-                                    <option value={true}>Disponível</option>
-                                    <option value={false}>Indisponível</option>
-                                </select>
-                            </div>
-                            <div className="form-group f1">
                                 <label className="required-field-label">Categorias</label>
-                                <select id="planoAssociado" defaultValue={""} name="categoriaId">
+                                <select id="planoAssociado" defaultValue={""} name="categoriaId" required>
                                     <option value="" disabled>
                                         Selecione
                                     </option>
                                     <CategoriesOptions />
                                 </select>
                             </div>
+                            <div className="form-group f2">
+                                <label className="required-field-label">Tipo de Atendimento</label>
+                                <select name="tipoAtendimento" multiple required>
+                                    <option value="presencial">Presencial</option>
+                                    <option value="online">Online</option>
+                                    <option value="voucher">Voucher</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="form-group f4 desc">
                             <label className="required-field-label">Descrição</label>
-                            <textarea maxLength="150" type="text" rows={9} name="descricao" required />
+                            <textarea maxLength="150" minLength="10" type="text" rows={9} name="descricao" required />
                         </div>
                     </div>
                 </div>
@@ -104,7 +95,7 @@ const OfertasCadastrar = () => {
                     <div className="form-group">
                         <label htmlFor="img_path" className="inputLabel">
                             <BiSolidImageAdd /> Selecione uma imagem
-                            <input type="file" required accept="image/*" className="custom-file-input" id="img_path" name="imagens" onChange={(e) => imageReferenceHandler(e, setImageReference)} />
+                            <input type="file" accept="image/*" className="custom-file-input" id="img_path" name="imagens" onChange={(e) => imageReferenceHandler(e, setImageReference)} />
                         </label>
                     </div>
                     <div className="form-group"></div>
@@ -113,53 +104,28 @@ const OfertasCadastrar = () => {
 
                 <div className="containerRow">
                     <div className="form-group f2">
-                        <label className="required-field-label">Quantidade</label>
-                        <input type="number" className="form-control" id="nomeContato" name="quantidade" required />
+                        <label className="required-field-label">Quantidade Disponível</label>
+                        <input type="number" min="1" className="form-control" id="nomeContato" name="quantidadeDisponivel" required />
                     </div>
                     <div className="form-group f2">
-                        <label>Valor</label>
-                        <RealInput name="valor" reference={reference} required />
-                    </div>
-                    <div className="form-group f2">
-                        <label className="required-field-label">Limite de Compra</label>
-                        <input type="number" className="form-control" name="limiteCompra" required />
+                        <label className="required-field-label">Valor (RT)</label>
+                        <RealInput name="valorRT" reference={reference} required />
                     </div>
                 </div>
                 <div className="containerRow">
                     <div className="form-group f2">
-                        <label className="required-field-label">Vencimento</label>
-                        <input type="datetime-local" className="form-control" name="vencimento" required />
+                        <label>Vencimento</label>
+                        <input type="datetime-local" className="form-control" name="vencimento" />
                     </div>
                     <div className="form-group f2">
-                        <label>Cidade</label>
-                        <input type="text" className="form-control" name="cidade" />
+                        <label className="required-field-label">Cidade</label>
+                        <input type="text" className="form-control" name="cidade" required />
                     </div>
                     <div className="form-group f1">
-                        <label>Estado</label>
-                        <input type="text" className="form-control" name="estado" />
-                    </div>
-                    <div className="form-group f2">
-                        <label className="required-field-label">Retirada</label>
-                        <select id="planoAssociado" defaultValue={""} name="retirada" required>
-                            <option value="" disabled>
-                                Selecione
-                            </option>
-                            <option value="Local">
-                                Local
-                            </option>
-                            <option value="Entrega" >
-                                Entrega
-                            </option>
-                        </select>
+                        <label className="required-field-label">Estado</label>
+                        <input type="text" maxLength="2" className="form-control" name="estado" required />
                     </div>
                 </div>
-                <div className="form-group desc">
-                    <label>Observações</label>
-                    <textarea name="obs" rows={9} />
-                </div>
-                {/* INVISIBLE INPUT */}
-                <input readOnly style={{ display: "none" }} type="text" name="usuarioId" value={getId()} />
-                <input readOnly style={{ display: "none" }} type="text" name="nomeUsuario" value={getName()} />
 
                 <div className="buttonContainer">
                     <ButtonMotion onClick={handleclick} type="button">Voltar</ButtonMotion>

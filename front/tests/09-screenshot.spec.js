@@ -4,7 +4,7 @@ test('screenshot do formulário', async ({ page }) => {
     await page.goto('http://localhost:5173/login');
     await page.waitForLoadState('networkidle');
     await page.fill('input[name="login"]', 'admin@redetrade.com.br');
-    await page.fill('input[name="senha"]', 'Admin@123456');
+    await page.fill('input[name="senha"]', 'At2KnAH9GMFj90fHMBDVqArz');
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3000);
     await page.goto('http://localhost:5173/associadosCadastrar');

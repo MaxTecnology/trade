@@ -13,7 +13,7 @@ const Ofertas = () => {
         activePage("ofertas")
     }, []);
 
-    const active = data && data.ofertas ? data.ofertas.filter(oferta => oferta.status === true) : [];
+    const active = data && data.data ? data.data.filter(oferta => oferta.status === 'aberta') : [];
 
     const [currentPage, setCurrentPage] = useState(1);
     const [cardsPerPage, setCardsPerPage] = useState(3);

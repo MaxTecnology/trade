@@ -7,36 +7,36 @@ import TransacoesTable from "@/components/Tables/TransacoesTable";
 import useModal from "@/hooks/useModal";
 import { useQueryEncaminhadasExtorno } from "@/hooks/ReactQuery/estornos/useQueryEncaminhadasExtorno";
 import { useQueryExtornoMatriz } from "@/hooks/ReactQuery/estornos/useQueryExtornoMatriz";
-import { getType } from "@/hooks/getId";
+import state from "@/store";
+import { useSnapshot } from "valtio";
 import { columns } from "./extornoConstants";
 
 const TransaçõesExtorno = () => {
+    const snap = useSnapshot(state);
+    const isMatriz = snap.user?.tipo === "superadmin";
+
     const { data: agencia } = useQueryEncaminhadasExtorno()
     const { data: matriz } = useQueryExtornoMatriz()
     const [modalIsOpen, modalToggle] = useModal();
-    const type = getType()
     const [info, setInfo] = useState({})
     const [id, setId] = useState()
-    const data = matriz && agencia && agencia["Solicitações de estorno"] ? [...agencia["Solicitações de estorno"], ...matriz.transacoes] : ["AAA"]
 
-    const dataToDisplay = type === "Matriz" ? data : (agencia && agencia["Solicitações de estorno"]) || [];
+    const dataToDisplay = isMatriz ? (matriz?.data ?? []) : (agencia?.data ?? []);
 
     useEffect(() => {
         activePage("transações")
     }, []);
-    console.log(agencia)
-    console.log(matriz)
-    console.log("THE DATA", data)
+
     return (
         <div className="container">
             {modalIsOpen ?
                 <TransaçõesModal
                     isOpen={true}
                     modalToggle={modalToggle}
-                    info={info} // Substitua associadoData pelo seu objeto associado
+                    info={info}
                 />
                 : null}
-            <div className="containerHeader">Solicitações de Extorno</div>
+            <div className="containerHeader">Solicitações de Estorno</div>
             <SearchfieldTrade />
             <div className="containerList">
                 <TransacoesTable
@@ -45,8 +45,8 @@ const TransaçõesExtorno = () => {
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
-                    agencia={type !== "Matriz" ? true : false}
-                    matriz={type === "Matriz" ? true : false}
+                    agencia={!isMatriz}
+                    matriz={isMatriz}
                 />
             </div>
             <Footer />

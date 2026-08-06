@@ -17,8 +17,7 @@ const MeusVouchers = () => {
         activePage("voucher")
     }, []);
 
-    const filteredData = data && data.transacoesComprador ? data.transacoesComprador.concat(data.transacoesVendedor) : []
-    console.log(filteredData)
+    const filteredData = data?.data ?? []
     return (
         <div className="container">
             {modalIsOpen ?

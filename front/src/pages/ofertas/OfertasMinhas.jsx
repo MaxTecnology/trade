@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import Footer from "@/components/Footer";
 import SearchfieldOfertas from "@/components/Search/SearchfieldOfertas";
-import { getId } from "@/hooks/getId";
 import { activePage } from "@/utils/functions/setActivePage";
 import MinhasOfertasModal from "@/Modals/MinhasOfertasModal";
 import OfertasTable from "@/components/Tables/OfertasTable";
 import { columns } from "./constants";
 import useModal from "@/hooks/useModal";
-import { useQueryOfertas } from "@/hooks/ReactQuery/useQueryOfertas";
+import { useQueryMinhaLoja } from "@/hooks/ReactQuery/useQueryOfertas";
 
 const OfertasMinhas = () => {
-    const { data } = useQueryOfertas()
+    const { data } = useQueryMinhaLoja()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState({ nome: "", porcentagem: "" })
     const [id, setId] = useState()
@@ -18,16 +17,6 @@ const OfertasMinhas = () => {
     useEffect(() => {
         activePage("ofertas")
     }, []);
-
-    const filter = (data) => {
-        var ofertas = []
-        data.map((item) => {
-            if (item.usuarioId === getId()) {
-                ofertas.push(item)
-            }
-        })
-        return ofertas
-    }
 
     return (
         <div className="container">
@@ -42,7 +31,7 @@ const OfertasMinhas = () => {
             <div className="containerList">
                 <OfertasTable
                     columns={columns}
-                    data={data && data.ofertas ? filter(data.ofertas) : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}

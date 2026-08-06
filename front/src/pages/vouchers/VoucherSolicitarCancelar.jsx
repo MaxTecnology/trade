@@ -17,7 +17,6 @@ const VoucherSolicitarCancelar = () => {
         activePage("voucher")
     }, []);
 
-    console.log(data)
     return (
         <div className="container">
             {modalIsOpen ?
@@ -32,10 +31,11 @@ const VoucherSolicitarCancelar = () => {
             <div className="containerList">
                 <VoucherTable
                     columns={columns}
-                    data={data && data.transacoesComVoucher ? data.transacoesComVoucher : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
+                    type
                 />
             </div>
             <Footer />

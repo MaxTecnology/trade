@@ -3,13 +3,22 @@ import SearchFieldVoucher from '@/components/Search/SearchFieldVoucher';
 import Footer from "@/components/Footer";
 import { activePage } from "@/utils/functions/setActivePage";
 import useModal from "@/hooks/useModal";
-import { useQueryVoucher } from "@/hooks/ReactQuery/useQueryVoucher";
 import TransaçõesModal from "@/Modals/TransaçõesModal";
 import VoucherTable from "@/components/Tables/VoucherTable";
-import { columns } from "./constants";
+import { useQueryEncaminhadasExtorno } from "@/hooks/ReactQuery/estornos/useQueryEncaminhadasExtorno";
+import { useQueryExtornoMatriz } from "@/hooks/ReactQuery/estornos/useQueryExtornoMatriz";
+import state from "@/store";
+import { useSnapshot } from "valtio";
+import { columns } from "@/pages/transacoes/extornoConstants";
 
+// Cancelar voucher = estornar a transação por trás dele — mesmo fluxo de
+// solicitação/aprovação de TransaçõesExtorno.jsx, exibido aqui na visão de Vouchers.
 const CancelarVouchers = () => {
-    const { data } = useQueryVoucher()
+    const snap = useSnapshot(state);
+    const isMatriz = snap.user?.tipo === "superadmin";
+
+    const { data: agencia } = useQueryEncaminhadasExtorno()
+    const { data: matriz } = useQueryExtornoMatriz()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState({})
     const [id, setId] = useState()
@@ -17,7 +26,8 @@ const CancelarVouchers = () => {
         activePage("voucher")
     }, []);
 
-    console.log(data)
+    const dataToDisplay = isMatriz ? (matriz?.data ?? []) : (agencia?.data ?? []);
+
     return (
         <div className="container">
             {modalIsOpen ?
@@ -33,10 +43,12 @@ const CancelarVouchers = () => {
             <div className="containerList">
                 <VoucherTable
                     columns={columns}
-                    data={data && data.transacoesComVoucher ? data.transacoesComVoucher : []}
+                    data={dataToDisplay}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
+                    agencia={!isMatriz}
+                    matriz={isMatriz}
                 />
             </div>
             <Footer />

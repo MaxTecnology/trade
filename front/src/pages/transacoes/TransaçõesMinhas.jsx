@@ -4,17 +4,18 @@ import Footer from "@/components/Footer";
 import SearchfieldTrade from "@/components/Search/SearchfieldTrade";
 import { activePage } from "@/utils/functions/setActivePage";
 import TransacoesTable from "@/components/Tables/TransacoesTable";
-import { useSnapshot } from "valtio";
-import state from "@/store";
 import useModal from "@/hooks/useModal";
+import { useQueryTransacoes } from "@/hooks/ReactQuery/useQueryTransacoes";
 
 const columns = [
     {
-        accessorKey: 'nomeComprador',
+        id: "comprador",
+        accessorKey: 'comprador.nome',
         header: 'Comprador',
     },
     {
-        accessorKey: 'nomeVendedor',
+        id: "vendedor",
+        accessorKey: 'vendedor.nome',
         header: 'Vendedor',
     },
     {
@@ -22,11 +23,11 @@ const columns = [
         header: 'Descrição',
     },
     {
-        accessorKey: 'createdAt',
+        accessorKey: 'criadoEm',
         header: 'Data',
     },
     {
-        accessorKey: 'valorRt',
+        accessorKey: 'valorRT',
         header: 'Valor RT$',
     },
     {
@@ -36,13 +37,12 @@ const columns = [
 ]
 
 const TransaçõesMinhas = () => {
-    const snap = useSnapshot(state);
-    const data = snap.user ? snap.user.transacoesComprador.concat(snap.user.transacoesVendedor) : null
+    const { data } = useQueryTransacoes()
     const [modalIsOpen, modalToggle] = useModal();
     const [info, setInfo] = useState({})
     useEffect(() => {
         activePage("transações")
-    }, [data]);
+    }, []);
 
     return (
         <div className="container">
@@ -58,9 +58,10 @@ const TransaçõesMinhas = () => {
             <div className="containerList">
                 <TransacoesTable
                     columns={columns}
-                    data={data ? data : []}
+                    data={data?.data ?? []}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
+                    type
                 />
             </div>
             <Footer />

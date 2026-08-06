@@ -7,6 +7,12 @@ import SortColumn from "./SortColumn";
 import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
 import filters from "@/store/filters";
+import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
+import { TbToggleLeft } from "react-icons/tb";
+import api from "@/services/api";
+import { toast } from "sonner";
+import state from "@/store";
+import { popup } from "@/hooks/Popup";
 
 const OfertasTable = ({
     columns,
@@ -77,20 +83,30 @@ const OfertasTable = ({
                                 </td>
                             ))}
                             <td className="flex justify-end gap-2">
-                                {admin ? <Buttons
-                                    type="Delete"
-                                    confirm="Deseja excluir essa Oferta?"
-                                    titulo="Oferta"
-                                    resultDelete="Oferta excluida com sucesso!"
-                                    url={`ofertas/${row.original.id}`}
-                                    revalidate={() => revalidate("ofertas")}
-                                /> : null}
+                                {admin ? <ButtonMotion
+                                    className="buttonDelete"
+                                    type="button"
+                                    onClick={() => {
+                                        state.action = () => toast.promise(
+                                            api.patch(`ofertas/${row.original.id}/status`, { status: 'fechada' })
+                                                .then(() => revalidate("ofertas")),
+                                            {
+                                                loading: 'Fechando oferta...',
+                                                success: 'Oferta fechada!',
+                                                error: 'Erro ao fechar oferta',
+                                            }
+                                        )
+                                        popup("Deseja fechar esta oferta?", "Oferta")
+                                    }}
+                                >
+                                    <TbToggleLeft />
+                                </ButtonMotion> : null}
                                 <Buttons
                                     type="Edit"
                                     setId={setId}
                                     setInfo={setInfo}
                                     info={row.original}
-                                    value={row.original.idPlano}
+                                    value={row.original.id}
                                     modal={modaltoggle}
                                 />
                                 <Buttons type="Eye" info={row.original} />

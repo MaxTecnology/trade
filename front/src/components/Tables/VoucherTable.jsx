@@ -24,10 +24,10 @@ const VoucherTable = ({
     const [columnFilters, setColumnFilters] = useState([])
     console.log(data)
     const formattedColumns = columns.map((column) => {
-        if (column.accessorKey === 'createdAt') {
+        if (column.accessorKey === 'createdAt' || column.accessorKey === 'criadoEm') {
             return {
                 ...column,
-                cell: (value) => formatDate(value.getValue()),
+                cell: (value) => value.getValue() ? formatDate(value.getValue()) : '-',
             };
         }
         if (column.accessorKey === 'conta.nomeFranquia') {
@@ -42,7 +42,7 @@ const VoucherTable = ({
                 cell: (value) => value.getValue() ? value.getValue() : "Indefinido",
             };
         }
-        if (column.accessorKey === 'valorRt') {
+        if (column.accessorKey === 'valorRT') {
             return {
                 ...column,
                 cell: (value) => value.getValue() ? `RT$ ${formatarNumeroParaRT(value.getValue())}` : "Indefinido",
@@ -129,14 +129,24 @@ const VoucherTable = ({
                                     : null
                                 }
                                 {matriz ?
-                                    <Buttons
-                                        type="Aprove"
-                                        url={row.original.id}
-                                        confirm={"Deseja aprovar o extorno?"}
-                                        titulo={"Voucher"}
-                                        resultDelete={"Extorno aprovado com sucesso"}
-                                        revalidate={() => resetQuery()}
-                                    />
+                                    <>
+                                        <Buttons
+                                            type="Aprove"
+                                            url={row.original.id}
+                                            confirm={"Deseja aprovar o extorno?"}
+                                            titulo={"Voucher"}
+                                            resultDelete={"Extorno aprovado com sucesso"}
+                                            revalidate={() => resetQuery()}
+                                        />
+                                        <Buttons
+                                            type="Reject"
+                                            url={row.original.id}
+                                            confirm={"Deseja negar o extorno?"}
+                                            titulo={"Voucher"}
+                                            resultDelete={"Extorno negado"}
+                                            revalidate={() => resetQuery()}
+                                        />
+                                    </>
                                     : null
                                 }
                                 <Buttons
