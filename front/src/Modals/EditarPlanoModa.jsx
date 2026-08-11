@@ -5,6 +5,7 @@ import { closeModal } from '../hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
 import { toast } from 'sonner';
 import useRevalidate from '@/hooks/ReactQuery/useRevalidate';
+import MoneyInputRT from '@/components/Form/MoneyInputRT';
 
 const appElement = document.getElementById('root');
 Modal.setAppElement(appElement);
@@ -57,11 +58,11 @@ const EditarPlanoModal = ({ isOpen, modalToggle, url, info, tipoPlano }) => {
                     {tipoPlano === 'associado' && <>
                         <div className="form-group f2">
                             <label>Taxa de Inscrição (RT$)</label>
-                            <input type="number" step="0.01" defaultValue={data.taxaInscricaoRT} name="taxaInscricaoRT" />
+                            <MoneyInputRT defaultValue={data.taxaInscricaoRT} name="taxaInscricaoRT" />
                         </div>
                         <div className="form-group f2">
                             <label>Taxa de Manutenção Anual (RT$)</label>
-                            <input type="number" step="0.01" defaultValue={data.taxaManutencaoAnualRT} name="taxaManutencaoAnualRT" />
+                            <MoneyInputRT defaultValue={data.taxaManutencaoAnualRT} name="taxaManutencaoAnualRT" />
                         </div>
                     </>}
                 </div>

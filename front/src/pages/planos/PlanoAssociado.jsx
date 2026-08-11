@@ -11,6 +11,7 @@ import { useQueryPlanos } from "@/hooks/ReactQuery/useQueryPlanos";
 import { setPlano } from "./setPlano";
 import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
+import MoneyInputRT from "@/components/Form/MoneyInputRT";
 
 const PlanoAssociado = () => {
     const { data } = useQueryPlanos();
@@ -52,7 +53,7 @@ const PlanoAssociado = () => {
                     </div>
                     <div className="form-group f2">
                         <label>Taxa de Inscrição (RT$)</label>
-                        <input type="number" step="0.01" name="taxaInscricaoRT" defaultValue={0} />
+                        <MoneyInputRT name="taxaInscricaoRT" defaultValue={0} />
                     </div>
                     <div className="form-group f2">
                         <label>Taxa de Comissão %</label>
@@ -60,7 +61,7 @@ const PlanoAssociado = () => {
                     </div>
                     <div className="form-group f2">
                         <label>Taxa de Manutenção Anual (RT$)</label>
-                        <input type="number" step="0.01" name="taxaManutencaoAnualRT" defaultValue={0} />
+                        <MoneyInputRT name="taxaManutencaoAnualRT" defaultValue={0} />
                     </div>
                     <div className="form-group f2">
                         <label>Data de Criação</label>
