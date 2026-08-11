@@ -155,7 +155,10 @@ export async function create(input: CreateAssociateInput) {
 
 export async function list(requester: { role: string; entityId: string }, page = 1, limit = 20) {
   const skip = (page - 1) * limit
-  const where = requester.role === 'agency_admin' ? { agenciaId: requester.entityId } : {}
+  const where = {
+    plano: { tipoPlano: { not: 'gerente' as const } },
+    ...(requester.role === 'agency_admin' ? { agenciaId: requester.entityId } : {}),
+  }
 
   const [items, total] = await prisma.$transaction([
     prisma.associado.findMany({
