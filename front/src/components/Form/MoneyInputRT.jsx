@@ -1,11 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-// Convenção de digitação direta já usada no resto do app (ver formHandler.js):
-// sem separador de milhar, vírgula opcional pra decimais (ex: "2000" = 2000,
-// "2000,50" = 2000.5). O ponto nunca é válido nesse formato — permitir digitá-lo
-// é o que causava "2.000" virar 2,0 (parseFloat interpretando o ponto como
-// separador decimal). Filtra na digitação em vez de tentar adivinhar a intenção
-// depois.
+// Só dígitos e uma vírgula (decimais) — nunca ponto. É o usuário quem digita
+// os dígitos "crus"; o ponto de milhar é sempre calculado, nunca digitado
+// diretamente (isso evitava a ambiguidade que causava "2.000" virar 2,0).
 const sanitize = (raw) => {
     const digitsAndComma = raw.replace(/[^0-9,]/g, "").replace(/^,+/, "");
     const firstComma = digitsAndComma.indexOf(",");
@@ -13,20 +10,60 @@ const sanitize = (raw) => {
     return digitsAndComma.slice(0, firstComma + 1) + digitsAndComma.slice(firstComma + 1).replace(/,/g, "");
 };
 
-const toDisplayValue = (decimalValue) => {
-    if (decimalValue === undefined || decimalValue === null || decimalValue === "") return "";
-    return String(decimalValue).replace(".", ",");
+const groupThousands = (integerDigits) => integerDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+// Prefixo "RT$" faz o valor bater no branch de formHandler.js que já remove
+// pontos e troca vírgula por ponto antes do parseFloat (usado também por
+// FormInputMoney) — a máscara nunca passa pelo parsing "sem vírgula" que
+// causava o bug original.
+const formatDisplay = (sanitized) => {
+    if (!sanitized) return "";
+    const [intPart, decPart] = sanitized.split(",");
+    const grouped = groupThousands(intPart);
+    return decPart !== undefined ? `RT$ ${grouped},${decPart}` : `RT$ ${grouped}`;
 };
 
+const toSanitizedInitial = (decimalValue) => {
+    if (decimalValue === undefined || decimalValue === null || decimalValue === "") return "";
+    return sanitize(String(decimalValue).replace(".", ","));
+};
+
+const isContentChar = (char) => /[0-9,]/.test(char);
+
 const MoneyInputRT = ({ name, defaultValue, required }) => {
-    const [value, setValue] = useState(toDisplayValue(defaultValue));
+    const inputRef = useRef(null);
+    const [value, setValue] = useState(formatDisplay(toSanitizedInitial(defaultValue)));
 
     const handleChange = (event) => {
-        setValue(sanitize(event.target.value));
+        const input = event.target;
+        const cursorBefore = input.selectionStart ?? input.value.length;
+        const contentCharsBeforeCursor = input.value.slice(0, cursorBefore).split("").filter(isContentChar).length;
+
+        const sanitized = sanitize(input.value);
+        const formatted = formatDisplay(sanitized);
+        setValue(formatted);
+
+        requestAnimationFrame(() => {
+            if (!inputRef.current) return;
+            let seen = 0;
+            let pos = formatted.length;
+            for (let i = 0; i < formatted.length; i++) {
+                if (isContentChar(formatted[i])) {
+                    seen++;
+                    if (seen === contentCharsBeforeCursor) {
+                        pos = i + 1;
+                        break;
+                    }
+                }
+            }
+            if (contentCharsBeforeCursor === 0) pos = formatted.startsWith("RT$ ") ? 4 : 0;
+            inputRef.current.setSelectionRange(pos, pos);
+        });
     };
 
     return (
         <input
+            ref={inputRef}
             type="text"
             inputMode="decimal"
             name={name}
