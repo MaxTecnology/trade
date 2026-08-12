@@ -12,16 +12,22 @@ const sanitize = (raw) => {
 
 const groupThousands = (integerDigits) => integerDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
-// Prefixo "RT$" faz o valor bater no branch de formHandler.js que já remove
-// pontos e troca vírgula por ponto antes do parseFloat (usado também por
-// FormInputMoney) — a máscara nunca passa pelo parsing "sem vírgula" que
-// causava o bug original.
 const formatDisplay = (sanitized) => {
     if (!sanitized) return "";
-    const [intPart, decPart] = sanitized.split(",");
+    const [rawIntPart, decPart] = sanitized.split(",");
+    const intPart = rawIntPart.replace(/^0+(?=\d)/, "");
     const grouped = groupThousands(intPart);
-    return decPart !== undefined ? `RT$ ${grouped},${decPart}` : `RT$ ${grouped}`;
+    return decPart !== undefined ? `${grouped},${decPart}` : grouped;
 };
+
+// O input visível nunca mostra prefixo de moeda (fica só no label). O valor
+// de fato submetido no FormData vem de um input hidden com prefixo "RT$" —
+// isso faz bater no branch de formHandler.js que já remove pontos e troca
+// vírgula por ponto antes do parseFloat (mesmo usado por FormInputMoney),
+// então a máscara nunca passa pelo parsing "sem vírgula" que causava o bug
+// original. O prefixo em si não chega na API (formHandler descarta), então
+// não importa se o campo é RT ou R$ de verdade.
+const toSubmitValue = (sanitized) => (sanitized ? `RT$ ${formatDisplay(sanitized)}` : "");
 
 const toSanitizedInitial = (decimalValue) => {
     if (decimalValue === undefined || decimalValue === null || decimalValue === "") return "";
@@ -32,21 +38,21 @@ const isContentChar = (char) => /[0-9,]/.test(char);
 
 const MoneyInputRT = ({ name, defaultValue, required }) => {
     const inputRef = useRef(null);
-    const [value, setValue] = useState(formatDisplay(toSanitizedInitial(defaultValue)));
+    const [sanitized, setSanitized] = useState(toSanitizedInitial(defaultValue));
 
     const handleChange = (event) => {
         const input = event.target;
         const cursorBefore = input.selectionStart ?? input.value.length;
         const contentCharsBeforeCursor = input.value.slice(0, cursorBefore).split("").filter(isContentChar).length;
 
-        const sanitized = sanitize(input.value);
-        const formatted = formatDisplay(sanitized);
-        setValue(formatted);
+        const nextSanitized = sanitize(input.value);
+        setSanitized(nextSanitized);
 
         requestAnimationFrame(() => {
             if (!inputRef.current) return;
-            let seen = 0;
+            const formatted = formatDisplay(nextSanitized);
             let pos = formatted.length;
+            let seen = 0;
             for (let i = 0; i < formatted.length; i++) {
                 if (isContentChar(formatted[i])) {
                     seen++;
@@ -56,21 +62,24 @@ const MoneyInputRT = ({ name, defaultValue, required }) => {
                     }
                 }
             }
-            if (contentCharsBeforeCursor === 0) pos = formatted.startsWith("RT$ ") ? 4 : 0;
+            if (contentCharsBeforeCursor === 0) pos = 0;
             inputRef.current.setSelectionRange(pos, pos);
         });
     };
 
     return (
-        <input
-            ref={inputRef}
-            type="text"
-            inputMode="decimal"
-            name={name}
-            value={value}
-            onChange={handleChange}
-            required={required}
-        />
+        <>
+            <input
+                ref={inputRef}
+                type="text"
+                inputMode="decimal"
+                value={formatDisplay(sanitized)}
+                onChange={handleChange}
+                onFocus={(event) => event.target.select()}
+                required={required}
+            />
+            <input type="hidden" name={name} value={toSubmitValue(sanitized)} />
+        </>
     );
 };
 
