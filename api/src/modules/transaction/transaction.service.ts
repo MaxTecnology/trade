@@ -1,6 +1,6 @@
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
-import { saldoSuficienteParaDebito, validarLimiteVenda } from '../../shared/utils/limites.js'
+import { saldoSuficienteParaDebito, validarLimiteVenda, getLimiteCreditoDaConta } from '../../shared/utils/limites.js'
 import { queues } from '../queues/bullmq.js'
 import type {
   PermutaInput,
@@ -275,7 +275,10 @@ export async function avaliar(transacaoId: string, input: AvaliarInput, usuarioI
 export async function transferencia(input: TransferenciaInput, usuarioId: string, contaOrigemId: string) {
   const contaOrigem = await prisma.conta.findUnique({ where: { id: contaOrigemId } })
   if (!contaOrigem || !contaOrigem.ativo) throw Errors.notFound('Conta de origem')
-  if (Number(contaOrigem.saldo) < input.valorRT) throw Errors.insufficientBalance()
+  const limiteCreditoOrigem = await getLimiteCreditoDaConta(contaOrigemId)
+  if (!saldoSuficienteParaDebito(Number(contaOrigem.saldo), input.valorRT, limiteCreditoOrigem)) {
+    throw Errors.insufficientBalance()
+  }
 
   const contaDestino = await prisma.conta.findUnique({ where: { id: input.contaDestinoId } })
   if (!contaDestino || !contaDestino.ativo) throw Errors.notFound('Conta de destino')
