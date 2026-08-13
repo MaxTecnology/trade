@@ -152,10 +152,10 @@ export async function relatorioUsoPlanoConta(associadoId: string) {
 
   return {
     plano: associado.plano.nome,
-    limiteRT: associado.plano.limiteRT,
+    limiteVendaMensal: associado.limiteVendaMensal,
     usadoMes: usadoMes._sum.valor ?? 0,
     disponivelMes:
-      Number(associado.plano.limiteRT) - Number(usadoMes._sum.valor ?? 0),
+      Number(associado.limiteVendaMensal ?? 0) - Number(usadoMes._sum.valor ?? 0),
   }
 }
 

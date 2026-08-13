@@ -1,5 +1,5 @@
 import { prisma } from '../../config/prisma.js'
-import { AppError, Errors } from '../errors/AppError.js'
+import { Errors } from '../errors/AppError.js'
 
 export function saldoSuficienteParaDebito(
   saldoAtual: number,
@@ -12,13 +12,9 @@ export function saldoSuficienteParaDebito(
 export async function getLimiteCreditoDaConta(contaId: string): Promise<number> {
   const conta = await prisma.conta.findUnique({
     where: { id: contaId },
-    select: {
-      associado: { select: { limiteCredito: true } },
-      agencia: { select: { limiteCredito: true } },
-    },
+    select: { limiteCredito: true },
   })
-  const limite = conta?.associado?.limiteCredito ?? conta?.agencia?.limiteCredito ?? 0
-  return Number(limite)
+  return Number(conta?.limiteCredito ?? 0)
 }
 
 export async function validarLimiteVenda(params: {
@@ -49,6 +45,6 @@ export async function validarLimiteVenda(params: {
 
   if (totalMes + valorNovaOperacao > limiteVendaMensal) throw Errors.planLimitReached()
   if (totalGeral + valorNovaOperacao > limiteVendaTotal) {
-    throw new AppError('PLAN_LIMIT_REACHED', 'Limite total de venda atingido.', 422)
+    throw Errors.saleLimitTotalReached()
   }
 }

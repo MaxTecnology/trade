@@ -72,7 +72,12 @@ export async function create(input: CreateAgencyInput, creatorId: string, creato
 
     const numero = await gerarNumeroConta()
     await tx.conta.create({
-      data: { numero, entityType: 'agencia', agenciaId: agencia.id },
+      data: {
+        numero,
+        entityType: 'agencia',
+        agenciaId: agencia.id,
+        limiteCredito: input.limiteCredito ?? 0,
+      },
     })
 
     if (input.senha && input.usuarioEmail) {
@@ -142,6 +147,13 @@ export async function update(id: string, input: UpdateAgencyInput) {
           : {}),
       },
     })
+
+    if (input.limiteCredito !== undefined) {
+      const conta = await tx.conta.findUnique({ where: { agenciaId: id }, select: { id: true } })
+      if (conta) {
+        await tx.conta.update({ where: { id: conta.id }, data: { limiteCredito: input.limiteCredito } })
+      }
+    }
 
     const temContato = nomeContato || celular || emailSecundario
     if (temContato) {

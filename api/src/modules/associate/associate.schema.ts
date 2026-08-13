@@ -47,9 +47,9 @@ export const createAssociateSchema = z.object({
   diaVencimentoFatura: z.number().int().optional(),
   valorInscricaoBRL: z.number().optional(),
   valorInscricaoRT: z.number().optional(),
-  limiteCredito: z.number().optional(),
-  limiteVendaMensal: z.number().optional(),
-  limiteVendaTotal: z.number().optional(),
+  limiteCredito: z.number(),
+  limiteVendaMensal: z.number(),
+  limiteVendaTotal: z.number(),
 
   // Acesso
   senha: z.string().min(8),

@@ -277,6 +277,7 @@ model Conta {
   id           String     @id @default(uuid())
   numero       String     @unique
   saldo        Decimal    @default(0) @db.Decimal(15, 2)
+  limiteCredito Decimal   @default(0) @db.Decimal(15, 2)
   entityType   EntityType
   ativo        Boolean    @default(true)
   criadoEm    DateTime   @default(now())

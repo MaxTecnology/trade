@@ -42,7 +42,9 @@ export const Errors = {
   insufficientBalance: () =>
     new AppError('INSUFFICIENT_BALANCE', 'Saldo insuficiente para realizar a operação.', 422),
   planLimitReached: () =>
-    new AppError('PLAN_LIMIT_REACHED', 'Limite mensal do plano atingido.', 422),
+    new AppError('PLAN_LIMIT_REACHED', 'Limite mensal de venda atingido.', 422),
+  saleLimitTotalReached: () =>
+    new AppError('PLAN_LIMIT_REACHED', 'Limite total de venda atingido.', 422),
   duplicateCnpj: () => new AppError('DUPLICATE_CNPJ', 'CNPJ já cadastrado no sistema.', 409),
   duplicateEmail: () => new AppError('DUPLICATE_EMAIL', 'E-mail já cadastrado no sistema.', 409),
   maxUsersReached: () =>

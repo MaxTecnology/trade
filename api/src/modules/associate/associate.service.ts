@@ -53,9 +53,9 @@ export async function create(input: CreateAssociateInput) {
         diaVencimentoFatura: input.diaVencimentoFatura ?? null,
         valorInscricaoBRL: input.valorInscricaoBRL ?? null,
         valorInscricaoRT: input.valorInscricaoRT ?? null,
-        limiteCredito: input.limiteCredito ?? null,
-        limiteVendaMensal: input.limiteVendaMensal ?? null,
-        limiteVendaTotal: input.limiteVendaTotal ?? null,
+        limiteCredito: input.limiteCredito,
+        limiteVendaMensal: input.limiteVendaMensal,
+        limiteVendaTotal: input.limiteVendaTotal,
         logradouro: input.logradouro,
         numero: input.numero,
         complemento: input.complemento,
@@ -84,7 +84,12 @@ export async function create(input: CreateAssociateInput) {
 
     const numero = await gerarNumeroConta()
     const conta = await tx.conta.create({
-      data: { numero, entityType: 'associado', associadoId: associado.id },
+      data: {
+        numero,
+        entityType: 'associado',
+        associadoId: associado.id,
+        limiteCredito: input.limiteCredito,
+      },
     })
 
     const senhaHash = await bcrypt.hash(input.senha, env.BCRYPT_SALT_ROUNDS)
@@ -227,6 +232,13 @@ export async function update(id: string, input: UpdateAssociateInput) {
       where: { id },
       data: rest,
     })
+
+    if (input.limiteCredito !== undefined) {
+      const conta = await tx.conta.findUnique({ where: { associadoId: id }, select: { id: true } })
+      if (conta) {
+        await tx.conta.update({ where: { id: conta.id }, data: { limiteCredito: input.limiteCredito } })
+      }
+    }
 
     // Atualiza ou cria contato
     const temContato = nomeContato || celular || emailContato || emailSecundario || site

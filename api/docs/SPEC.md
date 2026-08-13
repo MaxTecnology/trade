@@ -564,7 +564,7 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
 | GET | `/relatorios/permutas` | Relatório de permutas | `associate_admin`, `agency_admin` |
 | GET | `/relatorios/comissoes` | Relatório de comissões da plataforma (BRL) | `agency_admin`, `superadmin` |
 | GET | `/relatorios/comissoes-gerentes` | Relatório de comissões de todos os gerentes | `agency_admin`, `superadmin` |
-| GET | `/relatorios/uso-plano` | Uso do limite do plano | `associate_admin` |
+| GET | `/relatorios/uso-plano` | Uso do `limiteVendaMensal` do associado (substituiu `plano.limiteRT`) | `associate_admin` |
 | GET | `/relatorios/associados` | Consolidado de associados | `agency_admin`, `superadmin`, `gerente` (apenas os próprios) |
 
 ### Filtros comuns

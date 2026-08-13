@@ -28,7 +28,7 @@ export async function permuta(input: PermutaInput, compradorAssociadoId: string,
   if (compradorAssociado.status !== 'ativo') throw Errors.associateSuspended()
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
-  const limiteCredito = Number(compradorAssociado.limiteCredito ?? 0)
+  const limiteCredito = Number(compradorAssociado.conta.limiteCredito ?? 0)
   if (!saldoSuficienteParaDebito(Number(compradorAssociado.conta.saldo), valorTotal, limiteCredito)) {
     throw Errors.insufficientBalance()
   }
@@ -153,7 +153,7 @@ export async function negociada(input: NegociadaInput, compradorAssociadoId: str
   if (vendedorAssociado.status !== 'ativo') throw Errors.associateSuspended()
 
   const valorTotal = input.valorRT
-  const limiteCreditoComprador = Number(compradorAssociado.limiteCredito ?? 0)
+  const limiteCreditoComprador = Number(compradorAssociado.conta.limiteCredito ?? 0)
   if (!saldoSuficienteParaDebito(Number(compradorAssociado.conta.saldo), valorTotal, limiteCreditoComprador)) {
     throw Errors.insufficientBalance()
   }
