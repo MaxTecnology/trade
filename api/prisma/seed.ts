@@ -98,15 +98,6 @@ async function main() {
   await prisma.$executeRaw`
     DO $$ BEGIN
       IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'saldo_nao_negativo'
-      ) THEN
-        ALTER TABLE conta ADD CONSTRAINT saldo_nao_negativo CHECK (saldo >= 0);
-      END IF;
-    END $$;
-  `
-  await prisma.$executeRaw`
-    DO $$ BEGIN
-      IF NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = 'valor_rt_positivo'
       ) THEN
         ALTER TABLE oferta ADD CONSTRAINT valor_rt_positivo CHECK ("valorRT" > 0);
