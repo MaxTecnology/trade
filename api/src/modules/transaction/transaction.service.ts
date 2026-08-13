@@ -153,22 +153,17 @@ export async function negociada(input: NegociadaInput, compradorAssociadoId: str
   if (vendedorAssociado.status !== 'ativo') throw Errors.associateSuspended()
 
   const valorTotal = input.valorRT
-  if (Number(compradorAssociado.conta.saldo) < valorTotal) throw Errors.insufficientBalance()
+  const limiteCreditoComprador = Number(compradorAssociado.limiteCredito ?? 0)
+  if (!saldoSuficienteParaDebito(Number(compradorAssociado.conta.saldo), valorTotal, limiteCreditoComprador)) {
+    throw Errors.insufficientBalance()
+  }
 
-  const inicioMes = new Date()
-  inicioMes.setDate(1)
-  inicioMes.setHours(0, 0, 0, 0)
-  const movimentacoesMes = await prisma.movimentacaoConta.aggregate({
-    where: {
-      contaId: compradorAssociado.conta.id,
-      tipo: 'debito',
-      criadoEm: { gte: inicioMes },
-    },
-    _sum: { valor: true },
+  await validarLimiteVenda({
+    contaId: compradorAssociado.conta.id,
+    valorNovaOperacao: valorTotal,
+    limiteVendaMensal: Number(compradorAssociado.limiteVendaMensal ?? 0),
+    limiteVendaTotal: Number(compradorAssociado.limiteVendaTotal ?? 0),
   })
-  const totalMes = Number(movimentacoesMes._sum.valor ?? 0)
-  const limiteRT = Number(compradorAssociado.plano.limiteRT)
-  if (totalMes + valorTotal > limiteRT) throw Errors.planLimitReached()
 
   const vendedorConta = vendedorAssociado.conta
   const valorParcela = valorTotal / input.parcelas
