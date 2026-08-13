@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import state from "@/store";
 import { useNavigate } from 'react-router-dom';
 import brazilIcon from "@/assets/images/flagofBrazil.png"
+import defaultImg from "@/assets/images/default_img.png"
 import { activePage } from "@/utils/functions/setActivePage";
 import { formatarNumeroParaReal } from "@/utils/functions/formartNumber";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
@@ -84,7 +85,7 @@ const OfertasCard = ({ associado, index }) => {
                 exit={{ opacity: 0, scale: 0 }}
                 className=" ofertasCard"
             >
-                <img src={data.imagemUrl ? data.imagemUrl : "https://cdn.vectorstock.com/i/preview-1x/65/30/default-image-icon-missing-picture-page-vector-40546530.jpg"} alt="" className="ofertasCardImage" />
+                <img src={data.imagemUrl ? data.imagemUrl : defaultImg} alt="" className="ofertasCardImage" />
                 <div className="ofertasCardType">
                     <span>{data.tipoAtendimento?.join(', ')}</span>
                     <div >

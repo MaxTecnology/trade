@@ -4,6 +4,7 @@ import Footer from '../../components/Footer';
 import { activePage } from '../../utils/functions/setActivePage';
 import { useQueryCategorias } from '@/hooks/ReactQuery/useQueryCategorias';
 import StarRating from '@/components/Stars/StarRating';
+import defaultImg from '@/assets/images/default_img.png';
 const AssociadoInfo = () => {
     const { data: categorias } = useQueryCategorias()
     const storedData = JSON.parse(localStorage.getItem("userCard")) ?? {}
@@ -20,7 +21,7 @@ const AssociadoInfo = () => {
                 <h1>{storedData.nomeFantasia}</h1>
                 <div className="associadoInfo">
                     <div className='associadoImage'>
-                        <img src={storedData.imagemUrl || "https://cdn.vectorstock.com/i/preview-1x/65/30/default-image-icon-missing-picture-page-vector-40546530.jpg"} alt="" />
+                        <img src={storedData.imagemUrl || defaultImg} alt="" />
                     </div>
                     <div className="associadoInfoItens">
                         <h2 className="associadoInfoCategoria">{associadoCategoria}</h2>

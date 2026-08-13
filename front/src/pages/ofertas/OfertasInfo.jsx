@@ -5,6 +5,7 @@ import { activePage } from "@/utils/functions/setActivePage";
 import api from "@/services/api";
 import { toast } from "sonner";
 import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
+import defaultImg from "@/assets/images/default_img.png";
 
 const OfertasInfo = () => {
     const [quantidade, setQuantidade] = useState(1);
@@ -46,7 +47,7 @@ const OfertasInfo = () => {
                 <h1>{storedData.titulo}</h1>
                 <div className="associadoInfo ofertasInfo">
                     <div className="ofertasImage">
-                        <img src={storedData.imagemUrl ? storedData.imagemUrl : "https://cdn.vectorstock.com/i/preview-1x/65/30/default-image-icon-missing-picture-page-vector-40546530.jpg"} alt="" />
+                        <img src={storedData.imagemUrl ? storedData.imagemUrl : defaultImg} alt="" />
                     </div>
                     <div className="associadoInfoItens">
                         <h2 className="associadoInfoCategoria ofertasInfoH2">
