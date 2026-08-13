@@ -31,7 +31,7 @@ const filterSub = (data) => {
 
 const Categorias = () => {
     const revalidate = useRevalidate()
-    const { data } = useQueryCategorias()
+    const { data } = useQueryCategorias(true)
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState({ name: "", createAT: "" })
     const [id, setId] = useState()

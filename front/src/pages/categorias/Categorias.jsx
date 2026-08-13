@@ -25,7 +25,7 @@ const columns = [
 
 const Categorias = () => {
     // Estados
-    const { data } = useQueryCategorias()
+    const { data } = useQueryCategorias(true)
     const [modalIsOpen, modalToggle] = useModal();
     const [info, setInfo] = useState({ name: "", createAT: "" })
     const [id, setId] = useState()

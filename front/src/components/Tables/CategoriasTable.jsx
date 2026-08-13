@@ -4,6 +4,12 @@ import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
 import PaginationTable from "./PaginationTable";
 import { formatColumns } from "./tableFunctions";
 import SortColumn from "./SortColumn";
+import api from "@/services/api";
+import { toast } from "sonner";
+import state from "@/store";
+import { popup } from "@/hooks/Popup";
+import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
+import { TbToggleLeft, TbToggleRight } from "react-icons/tb";
 
 const CategoriasTable = ({
     columns,
@@ -22,6 +28,22 @@ const CategoriasTable = ({
     })
 
     const revalidate = useRevalidate();
+
+    const handleToggleStatus = (categoria) => {
+        const novoStatus = !categoria.ativo
+        const acao = novoStatus ? 'ativar' : 'desativar'
+        state.action = () => toast.promise(
+            api.patch(`categorias/${categoria.id}/status`, { ativo: novoStatus })
+                .then(() => revalidate("categorias")),
+            {
+                loading: `${novoStatus ? 'Ativando' : 'Desativando'} categoria...`,
+                success: `Categoria ${novoStatus ? 'ativada' : 'desativada'}!`,
+                error: (e) => e?.response?.data?.error?.message || 'Erro ao alterar status da categoria'
+            }
+        )
+        popup(`Deseja ${acao} esta categoria?`, "Categorias")
+    }
+
     return (
         <div className="w-full">
             <table className="w-full border-separate border-spacing-y-1">
@@ -49,14 +71,14 @@ const CategoriasTable = ({
                                 </td>
                             ))}
                             <td className="flex justify-end gap-2">
-                                <Buttons
-                                    type="Delete"
-                                    confirm="Deseja excluir essa Categoria?"
-                                    titulo="Categoria"
-                                    resultDelete="Categoria excluida com sucesso!"
-                                    url={`categorias/${row.original.id}`}
-                                    revalidate={() => revalidate("categorias")}
-                                />
+                                <ButtonMotion
+                                    className={row.original.ativo ? "buttonGreen" : "buttonDelete"}
+                                    type="button"
+                                    title={row.original.ativo ? 'Desativar categoria' : 'Ativar categoria'}
+                                    onClick={() => handleToggleStatus(row.original)}
+                                >
+                                    {row.original.ativo ? <TbToggleRight /> : <TbToggleLeft />}
+                                </ButtonMotion>
                                 <Buttons
                                     type="Edit"
                                     setId={setId}
