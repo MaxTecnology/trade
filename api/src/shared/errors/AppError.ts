@@ -73,7 +73,7 @@ export const Errors = {
   categoriaInUse: () =>
     new AppError(
       'CATEGORIA_IN_USE',
-      'Categoria possui ofertas vinculadas e não pode ser excluída.',
+      'Categoria possui ofertas vinculadas e não pode ser desativada.',
       422,
     ),
 }

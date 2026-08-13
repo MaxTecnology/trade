@@ -24,13 +24,17 @@ export async function create(input: CreateCategoryInput) {
   })
 }
 
-export async function tree() {
+// incluirInativas: true na tela admin (gerenciar categorias, precisa ver/reativar
+// as desativadas) — false (default) em qualquer contexto público/seleção de oferta,
+// onde categoria inativa nunca deveria aparecer pro usuário final.
+export async function tree(incluirInativas = false) {
+  const ativoFilter = incluirInativas ? {} : { ativo: true }
   const all = await prisma.categoria.findMany({
-    where: { ativo: true, categoriaParenteId: null },
+    where: { ...ativoFilter, categoriaParenteId: null },
     include: {
       categoriasFilhas: {
-        where: { ativo: true },
-        include: { categoriasFilhas: { where: { ativo: true } } },
+        where: ativoFilter,
+        include: { categoriasFilhas: { where: ativoFilter } },
       },
     },
   })

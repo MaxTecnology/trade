@@ -9,8 +9,9 @@ export async function createController(request: FastifyRequest, reply: FastifyRe
   return reply.status(201).send(success(cat))
 }
 
-export async function treeController(_request: FastifyRequest, reply: FastifyReply) {
-  const cats = await categoryService.tree()
+export async function treeController(request: FastifyRequest, reply: FastifyReply) {
+  const { incluirInativas } = request.query as { incluirInativas?: string }
+  const cats = await categoryService.tree(incluirInativas === 'true')
   return reply.send(success(cats))
 }
 
