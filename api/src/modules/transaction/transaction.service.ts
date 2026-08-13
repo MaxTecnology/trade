@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
+import { saldoSuficienteParaDebito, validarLimiteVenda } from '../../shared/utils/limites.js'
 import { queues } from '../queues/bullmq.js'
 import type {
   PermutaInput,
@@ -27,23 +28,17 @@ export async function permuta(input: PermutaInput, compradorAssociadoId: string,
   if (compradorAssociado.status !== 'ativo') throw Errors.associateSuspended()
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
-  if (Number(compradorAssociado.conta.saldo) < valorTotal) throw Errors.insufficientBalance()
+  const limiteCredito = Number(compradorAssociado.limiteCredito ?? 0)
+  if (!saldoSuficienteParaDebito(Number(compradorAssociado.conta.saldo), valorTotal, limiteCredito)) {
+    throw Errors.insufficientBalance()
+  }
 
-  // Verificar limite mensal do plano
-  const inicioMes = new Date()
-  inicioMes.setDate(1)
-  inicioMes.setHours(0, 0, 0, 0)
-  const movimentacoesMes = await prisma.movimentacaoConta.aggregate({
-    where: {
-      contaId: compradorAssociado.conta.id,
-      tipo: 'debito',
-      criadoEm: { gte: inicioMes },
-    },
-    _sum: { valor: true },
+  await validarLimiteVenda({
+    contaId: compradorAssociado.conta.id,
+    valorNovaOperacao: valorTotal,
+    limiteVendaMensal: Number(compradorAssociado.limiteVendaMensal ?? 0),
+    limiteVendaTotal: Number(compradorAssociado.limiteVendaTotal ?? 0),
   })
-  const totalMes = Number(movimentacoesMes._sum.valor ?? 0)
-  const limiteRT = Number(compradorAssociado.plano.limiteRT)
-  if (totalMes + valorTotal > limiteRT) throw Errors.planLimitReached()
 
 const vendedorConta = oferta.associado.conta
   if (!vendedorConta) throw Errors.notFound('Conta do vendedor')
