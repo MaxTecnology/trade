@@ -1,5 +1,5 @@
 import { prisma } from '../../config/prisma.js'
-import { Errors } from '../errors/AppError.js'
+import { AppError, Errors } from '../errors/AppError.js'
 
 export function saldoSuficienteParaDebito(
   saldoAtual: number,
@@ -48,5 +48,7 @@ export async function validarLimiteVenda(params: {
   const totalGeral = Number(totalAgg._sum.valor ?? 0)
 
   if (totalMes + valorNovaOperacao > limiteVendaMensal) throw Errors.planLimitReached()
-  if (totalGeral + valorNovaOperacao > limiteVendaTotal) throw Errors.planLimitReached()
+  if (totalGeral + valorNovaOperacao > limiteVendaTotal) {
+    throw new AppError('PLAN_LIMIT_REACHED', 'Limite total de venda atingido.', 422)
+  }
 }
