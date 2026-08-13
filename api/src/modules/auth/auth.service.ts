@@ -145,12 +145,13 @@ export async function me(userId: string) {
       where: { id: usuario.associadoId },
       select: {
         nome: true,
+        nomeFantasia: true,
         limiteCredito: true,
         conta: { select: { id: true, numero: true, saldo: true } },
       },
     })
     if (associado) {
-      entityName = associado.nome
+      entityName = associado.nomeFantasia ?? associado.nome
       if (associado.conta) {
         conta = {
           id: associado.conta.id,
@@ -165,11 +166,12 @@ export async function me(userId: string) {
       where: { id: usuario.agenciaId },
       select: {
         nome: true,
+        nomeFantasia: true,
         conta: { select: { id: true, numero: true, saldo: true } },
       },
     })
     if (agencia) {
-      entityName = agencia.nome
+      entityName = agencia.nomeFantasia ?? agencia.nome
       if (agencia.conta) {
         conta = {
           id: agencia.conta.id,
