@@ -191,4 +191,4 @@ O Vite proxy em `front/vite.config.js` elimina CORS em dev.
 - `conta.saldo` é desnormalizado — atualizado junto com a movimentação via `prisma.$transaction`; nunca recalcular via SUM em produção
 - `associado.gerenteId` é **permanente** — nunca atualizar após o cadastro
 - Toda operação financeira deve ser **atômica** via `prisma.$transaction`
-- Saldo nunca pode ser negativo (constraint no banco + validação no service)
+- Saldo nunca pode ficar abaixo de `-limiteCredito` do associado — validado na aplicação (`api/src/shared/utils/limites.ts`) em toda operação de débito (permuta, negociada, transferência, quitação de cobrança RT); não há mais `CHECK` de banco para isso.

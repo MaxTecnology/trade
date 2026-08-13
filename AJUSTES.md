@@ -464,3 +464,28 @@ Perguntado se a lógica de negócio geral estava coerente. Ao investigar, dois p
 - As constraints antigas (`saldo_nao_negativo`, `valor_rt_positivo`, `quantidade_nao_negativa`, `valor_transacao_positivo`, `parcelas_validas`, `nivel_maximo`) continuam aplicadas via `$executeRaw` idempotente dentro do `seed.ts`, não numa migration formal. Não movidas nesta rodada — mexer nisso significa uma migration que assume que essas constraints já existem no banco de produção (aplicadas pelo seed), risco de conflito se não for feito com cuidado.
 - `Cobranca.contaId`/`associadoId`/`agenciaId` é uma denormalização de três campos que, na prática, já são deriváveis via `Conta.associadoId`/`agenciaId` (a própria conta já sabe de quem ela é). Funciona, é o mesmo padrão usado em outros models do projeto — não é um bug, só uma escolha de design que favorece leitura rápida sobre normalização estrita.
 - Nenhuma constraint de unicidade no banco impede duas `SolicitacaoEstorno` simultaneamente `em_analise`/`encaminhado` para a mesma transação — hoje isso é checado só na camada de aplicação (`estorno.service.ts::solicitarEstorno`). Um índice único parcial (`WHERE status IN (...)`) resolveria isso no nível do banco, mas o Prisma não suporta índice parcial nativamente (precisaria de SQL bruto na migration, como as CHECKs acima). Baixo risco dado o volume/concorrência esperados — registrado como possível melhoria futura, não implementado.
+
+---
+
+## `limiteCredito`/`limiteVendaMensal`/`limiteVendaTotal` ativados, `plano.limiteRT` aposentado das validações (2026-08-13)
+
+### Motivação
+
+A taxa de inscrição de um associado pode ser paga parte em dinheiro (BRL) e parte em permuta (RT) — a parte em RT é debitada da própria conta do associado no momento em que ele ainda não tem saldo nenhum, o que sempre deixava a conta negativa. Até aqui isso só funcionava porque o `CHECK (saldo >= 0)` do banco tinha sido contornado com gambiarras pontuais. A decisão de produto: cada associado pode ficar negativo até um limite de crédito individual (`limiteCredito`), não existe mais "saldo nunca pode ser negativo" como regra universal — é "saldo nunca pode passar do limite de crédito *daquele* associado". Um `CHECK` de banco não expressa isso (é um valor por linha, não uma constante), então a validação teve que virar 100% de aplicação.
+
+Aproveitando a mudança, os campos `limiteVendaMensal`/`limiteVendaTotal` do `Associado` (já existiam no schema, nunca eram lidos) também foram ativados como teto de volume de venda, substituindo `plano.limiteRT` — que era compartilhado por todos os associados do mesmo plano e não permitia ajuste individual.
+
+### O que mudou
+
+- **`api/src/shared/utils/limites.ts`** (novo): três funções puras/de acesso a dado —
+  - `saldoSuficienteParaDebito(saldoAtual, valorDebito, limiteCredito)`: `saldoAtual - valorDebito >= -limiteCredito`.
+  - `getLimiteCreditoDaConta(contaId)`: busca `limiteCredito` do `Associado` dono da conta, ou da `Agencia` se for conta de agência (fallback `0` se nenhum dos dois tiver valor).
+  - `validarLimiteVenda({ contaId, valorNovaOperacao, limiteVendaMensal, limiteVendaTotal })`: soma débitos do mês corrente e do histórico total via `movimentacaoConta.aggregate` e lança `PLAN_LIMIT_REACHED` (422) se a nova operação estourar qualquer um dos dois tetos.
+- **`transaction.service.ts`**: permuta, negociação direta e transferência agora chamam `saldoSuficienteParaDebito`/`getLimiteCreditoDaConta` (em vez de checar só `saldo >= valor`) e `validarLimiteVenda` com `limiteVendaMensal`/`limiteVendaTotal` do comprador (em vez de `plano.limiteRT`).
+- **`cobranca.service.ts`**: quitação de cobrança em RT usa a mesma `saldoSuficienteParaDebito`/`getLimiteCreditoDaConta` antes de debitar.
+- **`plano.limiteRT`**: deixou de ser lido em qualquer validação de transação. Continua no schema e obrigatório no cadastro do plano, só como valor de referência (sugestão para o operador preencher `limiteVendaMensal` do associado — o front ainda não pré-preenche automaticamente, ver `TASK.md`/pendências).
+- **Migration `20260813015241_remove_saldo_nao_negativo_constraint`**: `ALTER TABLE conta DROP CONSTRAINT saldo_nao_negativo`. Não é mais possível o banco recusar um saldo negativo por conta própria — a garantia agora é só via `prisma.$transaction` + validação de aplicação antes do débito.
+- **Bug corrigido — `GET /auth/me` não retornava `limiteCredito` real do associado**: `conta.limiteCredito` no payload de `/auth/me` (`auth.service.ts`) agora vem de `associado.limiteCredito` (com fallback `0`); para conta de agência, permanece `0` (agência não participa desta regra pelo front ainda). Sem esse fix, o front não teria como validar/exibir a margem negativa disponível do associado logado.
+
+### Documentação atualizada
+`api/docs/SCHEMA.md`, `api/docs/SPEC.md` (§3, §6, §8, §9, §13), `api/docs/ARCHITECTURE.md` e `CLAUDE.md` (raiz) — regra "saldo nunca negativo" reescrita em todos, refletindo o teto por `limiteCredito` em vez de `>= 0` fixo.

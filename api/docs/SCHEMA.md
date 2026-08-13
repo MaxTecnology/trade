@@ -188,7 +188,7 @@ model Agencia {
   cep         String?
   regiao      String?
 
-  limiteCredito       Decimal? @db.Decimal(15, 2)
+  limiteCredito       Decimal? @db.Decimal(15, 2) // teto de saldo negativo da conta da agência (mesma lógica de Associado.limiteCredito)
   limiteVendaMensal   Decimal? @db.Decimal(15, 2)
   limiteVendaTotal    Decimal? @db.Decimal(15, 2)
   taxaRepasseMatriz   Decimal? @db.Decimal(5, 2)
@@ -250,9 +250,9 @@ model Associado {
   diaVencimentoFatura Int?
   valorInscricaoBRL   Decimal?      @db.Decimal(15, 2)
   valorInscricaoRT    Decimal?      @db.Decimal(15, 2)
-  limiteCredito       Decimal?      @db.Decimal(15, 2)
-  limiteVendaMensal Decimal?        @db.Decimal(15, 2)
-  limiteVendaTotal  Decimal?        @db.Decimal(15, 2)
+  limiteCredito       Decimal?      @db.Decimal(15, 2) // teto de saldo negativo — validado em app (limites.ts), não há mais CHECK de banco
+  limiteVendaMensal Decimal?        @db.Decimal(15, 2) // teto de volume debitado no mês corrente — substitui plano.limiteRT nas validações
+  limiteVendaTotal  Decimal?        @db.Decimal(15, 2) // teto de volume debitado histórico total — substitui plano.limiteRT nas validações
   criadoEm       DateTime          @default(now())
   atualizadoEm   DateTime          @updatedAt
 
@@ -650,12 +650,11 @@ Já aplicados nos modelos do schema acima (via `@@index`):
 
 ## 4. Regras de Integridade no Banco
 
+> **`saldo_nao_negativo` foi removida** (migration `20260813015241_remove_saldo_nao_negativo_constraint`). Um `CHECK (saldo >= 0)` único no banco não consegue expressar um teto de saldo negativo *por associado* — cada `Associado` (e cada `Agencia`) tem seu próprio `limiteCredito`. A validação passou a ser 100% de aplicação: `saldoSuficienteParaDebito()`/`getLimiteCreditoDaConta()`/`validarLimiteVenda()` em `api/src/shared/utils/limites.ts`, chamadas em toda operação de débito (permuta, negociada, transferência, quitação de cobrança RT). `limiteVendaMensal`/`limiteVendaTotal` do `Associado` substituem `plano.limiteRT` como teto de volume nessas mesmas validações — `plano.limiteRT` continua no schema, mas só como valor de referência no cadastro.
+
 Aplicadas via `$executeRaw` idempotente no `seed.ts` (débito técnico conhecido — deveriam estar em migration):
 
 ```sql
--- Saldo nunca negativo
-ALTER TABLE conta ADD CONSTRAINT saldo_nao_negativo CHECK (saldo >= 0);
-
 -- Valor de oferta maior que zero
 ALTER TABLE oferta ADD CONSTRAINT valor_rt_positivo CHECK ("valorRT" > 0);
 

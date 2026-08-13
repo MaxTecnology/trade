@@ -59,7 +59,7 @@ O papel é um atributo do **usuário dentro de uma entidade**, não uma entidade
 - Toda entidade (Agência Master, Agência Comum, Associado) possui **uma única conta RT**.
 - Cada conta tem um **número único** no formato `XXXXXXX` (7 dígitos).
 - Sub-usuários de um Associado recebem um **identificador de acesso** derivado: `XXXXXXX-01`, `XXXXXXX-02`, até `XXXXXXX-04`. Este identificador é apenas para identificação de operador — **não representa uma conta financeira separada**.
-- O saldo da conta **nunca pode ser negativo**.
+- O saldo da conta **nunca pode ficar abaixo de `-limiteCredito`** do associado (ou da agência, para conta de agência) — validado na aplicação (`api/src/shared/utils/limites.ts`) em toda operação de débito (permuta, negociada, transferência, quitação de cobrança RT); não há mais `CHECK` de banco para isso (removido na migration `20260813015241_remove_saldo_nao_negativo_constraint`).
 - Toda movimentação é registrada em uma tabela de ledger imutável (`movimentacao_conta`).
 
 ---

@@ -144,6 +144,8 @@ Associados são as empresas que efetivamente realizam permutas. São vinculados 
 - Associados suspensos não podem realizar operações.
 - CNPJ deve ser único no sistema.
 - O vínculo gerente → associado é **permanente** e não pode ser reatribuído.
+- `limiteCredito` define o teto de quanto a conta RT do associado pode ficar negativa (`saldo - valorDebito >= -limiteCredito`). `0`/não informado = nenhuma margem negativa.
+- `limiteVendaMensal`/`limiteVendaTotal` definem o teto de volume debitado da conta (mês corrente / histórico total). Substituem `plano.limiteRT`, que deixou de ser usado nas validações de transação — permanece só como valor de referência ao cadastrar o associado.
 
 ### Payload de Criação
 ```json
@@ -306,7 +308,7 @@ Planos definem as regras financeiras de uma entidade (Associado, Agência ou Ger
 - Nome é único **por tipo de plano** (`@@unique([nome, tipoPlano])`) — pode haver "Plano Básico" tanto para associado quanto para agência.
 - Planos inativos não podem ser atribuídos a novas entidades.
 - Alterar um plano não afeta retroativamente entidades já vinculadas — é necessário reatribuir explicitamente.
-- O limite RT é de **movimentação** (soma de débitos no período). Ao atingir, novas permutas são bloqueadas.
+- `limiteRT` **não é mais usado nas validações de transação** — substituído por `limiteVendaMensal`/`limiteVendaTotal` do próprio `Associado` (ver §3). Permanece obrigatório no cadastro do plano apenas como valor de referência.
 
 ### Payload de Criação
 ```json
@@ -392,7 +394,7 @@ Ofertas são produtos ou serviços disponibilizados por Associados para troca em
 
 - O Associado deve estar com loja `aberta` para criar ofertas.
 - Toda oferta deve ter: título, descrição, categoriaId, valorRT (> 0), quantidadeDisponivel (> 0), cidade, estado.
-- O Associado não pode ultrapassar o `limiteRT` do plano ao criar/executar a oferta.
+- Limite de venda é validado no momento da compra (permuta/negociada — `limiteVendaMensal`/`limiteVendaTotal` do comprador, ver §3 e §9), não na criação da oferta.
 - Quando `quantidadeDisponivel` chega a zero, a oferta é automaticamente fechada (via job BullMQ `offer.close`).
 - Ofertas fechadas ou de associados com loja fechada não aparecem na listagem pública.
 - Status possíveis: `aberta`, `fechada`, `pausada`.
@@ -437,8 +439,8 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 ### Regras de Negócio
 
 **Permuta:**
-- A conta compradora deve ter saldo suficiente.
-- O limite mensal do plano não pode estar atingido.
+- A conta compradora deve ter saldo suficiente — considerando `limiteCredito` do associado comprador (`saldo - valor >= -limiteCredito`), não apenas saldo >= 0.
+- `limiteVendaMensal`/`limiteVendaTotal` do associado comprador não podem estar atingidos (substituem `plano.limiteRT`).
 - A oferta deve estar com status `aberta` e `quantidadeDisponivel > 0`.
 - Pode ser parcelada em até `maxParcelas` do plano — sem juros.
 - Toda permuta gera um voucher obrigatoriamente.
@@ -457,7 +459,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 **Negociação direta (`negociada`):**
 - Fora do marketplace de Ofertas — o comprador escolhe qualquer associado ativo (via `GET /associados/diretorio`) e define o `valorRT` diretamente, sem oferta publicada.
 - **Sempre em RT** — não existe valor em dinheiro real (BRL) numa negociação direta. RT é a moeda interna do sistema e não circula para fora dele (ver `ARCHITECTURE.md §4`).
-- Mesmas validações de saldo e limite mensal do plano que a permuta.
+- Mesmas validações de saldo (`limiteCredito`) e limite de venda (`limiteVendaMensal`/`limiteVendaTotal`) que a permuta.
 - Não decrementa estoque de oferta (não há oferta envolvida) — `quantidade` fica `null`.
 - Gera voucher, comissão da plataforma e comissão de gerente, igual à permuta.
 - Não é permitido negociar consigo mesmo.
@@ -669,7 +671,7 @@ Registro de cobranças associadas a contas — taxas de plano, manutenção, ins
 - Cobranças já quitadas não podem ser quitadas novamente.
 - Toda cobrança tem `valorBRL` OU `valorRT` preenchido (nunca os dois nulos — validado por CHECK no banco).
 - **Quitar cobrança em BRL**: apenas marca `pago: true`. O pagamento acontece fora do sistema (PIX/boleto) — o endpoint só reconcilia manualmente.
-- **Quitar cobrança em RT**: move o RT de verdade, de forma atômica. Debita `contaId` (valida saldo suficiente antes — retorna `INSUFFICIENT_BALANCE` se não houver), credita a conta de `agenciaId` se a cobrança tiver uma agência vinculada. Sem agência, o RT é retirado de circulação (simétrico à injeção de RT pela Matriz, que credita sem debitar origem).
+- **Quitar cobrança em RT**: move o RT de verdade, de forma atômica. Debita `contaId` (valida saldo suficiente antes, considerando `limiteCredito` do associado/agência devedora — retorna `INSUFFICIENT_BALANCE` se ultrapassar), credita a conta de `agenciaId` se a cobrança tiver uma agência vinculada. Sem agência, o RT é retirado de circulação (simétrico à injeção de RT pela Matriz, que credita sem debitar origem).
 - **Comissão da plataforma**: gerada automaticamente pelo job `commission.calculate` após cada `permuta`/`negociada` concluída — cria uma `Cobranca` (BRL) vinculada à transação (`transacaoId`), cobrada do comprador. Idempotente (não duplica se o job reprocessar).
 
 ---
