@@ -18,6 +18,6 @@ export const columnsAssociado = [
     { accessorKey: 'criadoEm', header: 'Data', cell: ({ getValue }) => formatDate(getValue()) },
     { accessorKey: 'nome', header: 'Nome do Plano' },
     { accessorKey: 'percentualComissao', header: 'Comissão %' },
-    { accessorKey: 'taxaInscricaoRT', header: 'Inscrição (RT$)', cell: ({ getValue }) => formatRT(getValue()) },
-    { accessorKey: 'taxaManutencaoAnualRT', header: 'Manutenção Anual (RT$)', cell: ({ getValue }) => formatRT(getValue()) },
+    { accessorKey: 'taxaInscricao', header: 'Inscrição (R$)', cell: ({ getValue }) => formatRT(getValue()) },
+    { accessorKey: 'taxaManutencaoAnual', header: 'Manutenção Anual (R$)', cell: ({ getValue }) => formatRT(getValue()) },
 ]

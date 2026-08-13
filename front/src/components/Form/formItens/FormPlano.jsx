@@ -12,20 +12,20 @@ const FormPlano = ({ type, form }) => {
     useEffect(() => {
         if (planoId && Array.isArray(data)) {
             const plano = data.find(p => p.id === planoId) ?? null
-            form.setValue("planoValor", plano?.taxaInscricaoRT ?? '')
+            form.setValue("planoValor", plano?.taxaInscricao ?? '')
             form.setValue("comissao", plano?.percentualComissao ?? '')
-            form.setValue("planoTaxa", plano?.taxaManutencaoAnualRT ?? '')
+            form.setValue("planoTaxa", plano?.taxaManutencaoAnual ?? '')
         }
     }, [planoId, data])
 
     return <>
         <FormSelect required form={form} name="planoId" label="Plano de Inscrição" placeholder="Selecionar" options={<PlanosOptions type={type} />} />
         {type?.toLowerCase() === "associado" &&
-            <FormInput required form={form} name="planoValor" label="Valor do Plano (RT$)" disabled />
+            <FormInput required form={form} name="planoValor" label="Valor do Plano (R$)" disabled />
         }
         <FormInput required form={form} name="comissao" label="Percentual de Comissão %" disabled />
         {type?.toLowerCase() === "associado" &&
-            <FormInput required form={form} name="planoTaxa" label="Taxa de Manutenção Anual (RT$)" disabled />
+            <FormInput required form={form} name="planoTaxa" label="Taxa de Manutenção Anual (R$)" disabled />
         }
     </>
 };

@@ -52,16 +52,16 @@ const PlanoAssociado = () => {
                         <input type="text" name="nome" required />
                     </div>
                     <div className="form-group f2">
-                        <label>Taxa de Inscrição (RT$)</label>
-                        <MoneyInputRT name="taxaInscricaoRT" defaultValue={0} />
+                        <label>Taxa de Inscrição (R$)</label>
+                        <MoneyInputRT name="taxaInscricao" defaultValue={0} />
                     </div>
                     <div className="form-group f2">
                         <label>Taxa de Comissão %</label>
                         <input type="number" step="0.01" name="percentualComissao" required placeholder="Ex: 2.5" />
                     </div>
                     <div className="form-group f2">
-                        <label>Taxa de Manutenção Anual (RT$)</label>
-                        <MoneyInputRT name="taxaManutencaoAnualRT" defaultValue={0} />
+                        <label>Taxa de Manutenção Anual (R$)</label>
+                        <MoneyInputRT name="taxaManutencaoAnual" defaultValue={0} />
                     </div>
                     <div className="form-group f2">
                         <label>Data de Criação</label>

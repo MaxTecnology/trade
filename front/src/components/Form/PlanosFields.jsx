@@ -29,13 +29,13 @@ const PlanosFields = ({ type, defaultValue, optional }) => {
         </div>
         {type === "associado" &&
             <div className="form-group">
-                <label className="required">Valor do Plano (RT$)</label>
+                <label className="required">Valor do Plano (R$)</label>
                 <input
                     type="text"
                     className="readOnly"
                     readOnly
                     required
-                    value={selected?.taxaInscricaoRT ?? defaultPlano?.taxaInscricaoRT ?? ''}
+                    value={selected?.taxaInscricao ?? defaultPlano?.taxaInscricao ?? ''}
                 />
             </div>
         }
@@ -51,13 +51,13 @@ const PlanosFields = ({ type, defaultValue, optional }) => {
         </div>
         {type === "associado" &&
             <div className="form-group">
-                <label className="required">Taxa de Manutenção Anual (RT$)</label>
+                <label className="required">Taxa de Manutenção Anual (R$)</label>
                 <input
                     type="text"
                     className="readOnly"
                     readOnly
                     required
-                    value={selected?.taxaManutencaoAnualRT ?? defaultPlano?.taxaManutencaoAnualRT ?? ''}
+                    value={selected?.taxaManutencaoAnual ?? defaultPlano?.taxaManutencaoAnual ?? ''}
                 />
             </div>
         }

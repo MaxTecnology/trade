@@ -57,12 +57,12 @@ const EditarPlanoModal = ({ isOpen, modalToggle, url, info, tipoPlano }) => {
                     </div>
                     {tipoPlano === 'associado' && <>
                         <div className="form-group f2">
-                            <label>Taxa de Inscrição (RT$)</label>
-                            <MoneyInputRT defaultValue={data.taxaInscricaoRT} name="taxaInscricaoRT" />
+                            <label>Taxa de Inscrição (R$)</label>
+                            <MoneyInputRT defaultValue={data.taxaInscricao} name="taxaInscricao" />
                         </div>
                         <div className="form-group f2">
-                            <label>Taxa de Manutenção Anual (RT$)</label>
-                            <MoneyInputRT defaultValue={data.taxaManutencaoAnualRT} name="taxaManutencaoAnualRT" />
+                            <label>Taxa de Manutenção Anual (R$)</label>
+                            <MoneyInputRT defaultValue={data.taxaManutencaoAnual} name="taxaManutencaoAnual" />
                         </div>
                     </>}
                 </div>
