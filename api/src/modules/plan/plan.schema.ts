@@ -5,8 +5,8 @@ export const createPlanSchema = z.object({
   tipoPlano: z.enum(['agencia', 'associado', 'gerente']).default('associado'),
   limiteRT: z.number().nonnegative().default(0),
   percentualComissao: z.number().min(0).max(100),
-  taxaInscricaoRT: z.number().min(0).default(0),
-  taxaManutencaoAnualRT: z.number().min(0).default(0),
+  taxaInscricao: z.number().min(0).default(0),
+  taxaManutencaoAnual: z.number().min(0).default(0),
   ativo: z.boolean().default(true),
 })
 
