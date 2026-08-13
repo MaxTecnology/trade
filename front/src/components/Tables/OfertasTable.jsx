@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
 import filters from "@/store/filters";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
-import { TbToggleLeft } from "react-icons/tb";
+import { TbToggleLeft, TbToggleRight } from "react-icons/tb";
 import api from "@/services/api";
 import { toast } from "sonner";
 import state from "@/store";
@@ -39,6 +39,21 @@ const OfertasTable = ({
     })
 
     const revalidate = useRevalidate()
+
+    const handleToggleStatus = (oferta) => {
+        const novoStatus = oferta.status === 'aberta' ? 'fechada' : 'aberta'
+        const acao = novoStatus === 'aberta' ? 'reabrir' : 'fechar'
+        state.action = () => toast.promise(
+            api.patch(`ofertas/${oferta.id}/status`, { status: novoStatus })
+                .then(() => revalidate("ofertas")),
+            {
+                loading: `${novoStatus === 'aberta' ? 'Reabrindo' : 'Fechando'} oferta...`,
+                success: `Oferta ${novoStatus === 'aberta' ? 'reaberta' : 'fechada'}!`,
+                error: (e) => e?.response?.data?.error?.message || 'Erro ao alterar status da oferta',
+            }
+        )
+        popup(`Deseja ${acao} esta oferta?`, "Oferta")
+    }
 
     const invisibleFields = ["Agência", "Categoria", "Estado", "Cidade",]
 
@@ -84,22 +99,12 @@ const OfertasTable = ({
                             ))}
                             <td className="flex justify-end gap-2">
                                 {admin ? <ButtonMotion
-                                    className="buttonDelete"
+                                    className={row.original.status === 'aberta' ? "buttonGreen" : "buttonDelete"}
                                     type="button"
-                                    onClick={() => {
-                                        state.action = () => toast.promise(
-                                            api.patch(`ofertas/${row.original.id}/status`, { status: 'fechada' })
-                                                .then(() => revalidate("ofertas")),
-                                            {
-                                                loading: 'Fechando oferta...',
-                                                success: 'Oferta fechada!',
-                                                error: 'Erro ao fechar oferta',
-                                            }
-                                        )
-                                        popup("Deseja fechar esta oferta?", "Oferta")
-                                    }}
+                                    title={row.original.status === 'aberta' ? 'Fechar oferta' : 'Reabrir oferta'}
+                                    onClick={() => handleToggleStatus(row.original)}
                                 >
-                                    <TbToggleLeft />
+                                    {row.original.status === 'aberta' ? <TbToggleRight /> : <TbToggleLeft />}
                                 </ButtonMotion> : null}
                                 <Buttons
                                     type="Edit"

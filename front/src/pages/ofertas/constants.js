@@ -1,9 +1,5 @@
 export const columns = [
     {
-        accessorKey: 'id',
-        header: 'Id',
-    },
-    {
         accessorKey: 'titulo',
         header: 'Titulo',
     },
