@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import PlanosOptions from "../Options/PlanosOptions";
 import { useQueryPlanos } from "@/hooks/ReactQuery/useQueryPlanos";
 
+const formatMoney = (value) => {
+    if (value === null || value === undefined || value === '') return ''
+    return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 const PlanosFields = ({ type, defaultValue, optional }) => {
     const { data } = useQueryPlanos()
     const [selected, setSelected] = useState(null);
@@ -35,7 +40,7 @@ const PlanosFields = ({ type, defaultValue, optional }) => {
                     className="readOnly"
                     readOnly
                     required
-                    value={selected?.taxaInscricao ?? defaultPlano?.taxaInscricao ?? ''}
+                    value={formatMoney(selected?.taxaInscricao ?? defaultPlano?.taxaInscricao)}
                 />
             </div>
         }
@@ -57,7 +62,7 @@ const PlanosFields = ({ type, defaultValue, optional }) => {
                     className="readOnly"
                     readOnly
                     required
-                    value={selected?.taxaManutencaoAnual ?? defaultPlano?.taxaManutencaoAnual ?? ''}
+                    value={formatMoney(selected?.taxaManutencaoAnual ?? defaultPlano?.taxaManutencaoAnual)}
                 />
             </div>
         }

@@ -5,6 +5,11 @@ import FormSelect from "./FormSelect";
 import { useWatch } from "react-hook-form";
 import PlanosOptions from "@/components/Options/PlanosOptions";
 
+const formatMoney = (value) => {
+    if (value === null || value === undefined || value === '') return ''
+    return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 const FormPlano = ({ type, form }) => {
     const { data } = useQueryPlanos()
     const planoId = useWatch({ control: form.control, name: "planoId" });
@@ -12,9 +17,9 @@ const FormPlano = ({ type, form }) => {
     useEffect(() => {
         if (planoId && Array.isArray(data)) {
             const plano = data.find(p => p.id === planoId) ?? null
-            form.setValue("planoValor", plano?.taxaInscricao ?? '')
+            form.setValue("planoValor", formatMoney(plano?.taxaInscricao))
             form.setValue("comissao", plano?.percentualComissao ?? '')
-            form.setValue("planoTaxa", plano?.taxaManutencaoAnual ?? '')
+            form.setValue("planoTaxa", formatMoney(plano?.taxaManutencaoAnual))
         }
     }, [planoId, data])
 
