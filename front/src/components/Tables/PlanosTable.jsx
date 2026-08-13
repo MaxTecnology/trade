@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import state from "@/store";
 import { popup } from "@/hooks/Popup";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
-import { TbToggleLeft } from "react-icons/tb";
+import { TbToggleLeft, TbToggleRight } from "react-icons/tb";
 
 const PlanosTable = ({
     columns,
@@ -29,6 +29,21 @@ const PlanosTable = ({
     })
 
     const revalidate = useRevalidate()
+
+    const handleToggleStatus = (plano) => {
+        const novoStatus = !plano.ativo
+        const acao = novoStatus ? 'ativar' : 'desativar'
+        state.action = () => toast.promise(
+            api.patch(`planos/${plano.id}/status`, { ativo: novoStatus })
+                .then(() => revalidate("planos")),
+            {
+                loading: `${novoStatus ? 'Ativando' : 'Desativando'} plano...`,
+                success: `Plano ${novoStatus ? 'ativado' : 'desativado'}!`,
+                error: 'Erro ao alterar status do plano'
+            }
+        )
+        popup(`Deseja ${acao} este plano?`, "Planos")
+    }
 
     return (
         <div className="w-full">
@@ -58,22 +73,12 @@ const PlanosTable = ({
                             ))}
                             <td className="flex justify-end gap-2">
                                 <ButtonMotion
-                                    className="buttonDelete"
+                                    className={row.original.ativo ? "buttonGreen" : "buttonDelete"}
                                     type="button"
-                                    onClick={() => {
-                                        state.action = () => toast.promise(
-                                            api.patch(`planos/${row.original.id}/status`, { ativo: false })
-                                                .then(() => revalidate("planos")),
-                                            {
-                                                loading: 'Desativando plano...',
-                                                success: 'Plano desativado!',
-                                                error: 'Erro ao desativar plano'
-                                            }
-                                        )
-                                        popup("Deseja desativar este plano?", "Planos")
-                                    }}
+                                    title={row.original.ativo ? 'Desativar plano' : 'Ativar plano'}
+                                    onClick={() => handleToggleStatus(row.original)}
                                 >
-                                    <TbToggleLeft />
+                                    {row.original.ativo ? <TbToggleRight /> : <TbToggleLeft />}
                                 </ButtonMotion>
                                 <Buttons
                                     type="Edit"
