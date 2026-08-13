@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
+import { getLimiteCreditoDaConta, saldoSuficienteParaDebito } from '../../shared/utils/limites.js'
 import type { CriarCobrancaInput, ListCobrancaQueryType } from './cobranca.schema.js'
 
 const include = {
@@ -93,7 +94,10 @@ export async function quitarCobranca(id: string) {
   if (cobranca.valorRT) {
     const contaDevedora = await prisma.conta.findUniqueOrThrow({ where: { id: cobranca.contaId } })
     const valor = Number(cobranca.valorRT)
-    if (Number(contaDevedora.saldo) < valor) throw Errors.insufficientBalance()
+    const limiteCredito = await getLimiteCreditoDaConta(contaDevedora.id)
+    if (!saldoSuficienteParaDebito(Number(contaDevedora.saldo), valor, limiteCredito)) {
+      throw Errors.insufficientBalance()
+    }
 
     const contaCredora = cobranca.agencia?.conta ?? null
 
