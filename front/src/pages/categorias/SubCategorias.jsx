@@ -19,6 +19,10 @@ const columns = [
         header: 'Data',
     },
     {
+        accessorKey: 'categoriaNome',
+        header: 'Categoria',
+    },
+    {
         accessorKey: 'nome',
         header: 'Nome da Sub Categoria',
     },
@@ -26,7 +30,9 @@ const columns = [
 
 const filterSub = (data) => {
     if (!Array.isArray(data)) return []
-    return data.flatMap(category => category.categoriasFilhas ?? [])
+    return data.flatMap(category =>
+        (category.categoriasFilhas ?? []).map(sub => ({ ...sub, categoriaNome: category.nome }))
+    )
 }
 
 const Categorias = () => {
