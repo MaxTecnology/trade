@@ -28,36 +28,6 @@ async function main() {
     },
   })
 
-  // Planos padrão (tipo associado)
-  const planos = [
-    {
-      nome: 'Plano Básico',
-      tipoPlano: 'associado' as const,
-      limiteRT: 5000,
-      percentualComissao: 5.0,
-    },
-    {
-      nome: 'Plano Intermediário',
-      tipoPlano: 'associado' as const,
-      limiteRT: 15000,
-      percentualComissao: 4.0,
-    },
-    {
-      nome: 'Plano Avançado',
-      tipoPlano: 'associado' as const,
-      limiteRT: 50000,
-      percentualComissao: 3.0,
-    },
-  ]
-
-  for (const plano of planos) {
-    await prisma.plano.upsert({
-      where: { nome_tipoPlano: { nome: plano.nome, tipoPlano: plano.tipoPlano } },
-      update: {},
-      create: plano,
-    })
-  }
-
   // Categorias raiz — upsert não funciona com null em campos unique no Prisma 7
   async function upsertCategoriaRaiz(nome: string) {
     const existing = await prisma.categoria.findFirst({ where: { nome, categoriaParenteId: null } })
