@@ -10,7 +10,7 @@ export const columns = [
     },
     {
         id: 'unidade',
-        accessorKey: 'agencia.nome',
+        accessorFn: (row) => row.agencia?.nome ?? 'Matriz',
         header: 'Unidade',
     },
     {
