@@ -2,7 +2,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const handleInputChange = (event) => {
+const handleInputChange = (event, currency) => {
     const inputValue = event;
     // Remove caracteres não numéricos
     const numericValue = inputValue.replace(/[^0-9]/g, '');
@@ -13,25 +13,25 @@ const handleInputChange = (event) => {
     // Verifica se o valor é zero ou vazio
     const isZeroOrEmpty = numericAmount === 0 || isNaN(numericAmount);
 
-    // Formata o valor para o formato de moeda brasileira (Real) com o símbolo "RT$"
+    // Formata o valor para o formato de moeda brasileira (Real) com o símbolo da moeda passada
     const formattedValue = isZeroOrEmpty
         ? new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL',
-        }).format(0).replace('R$', 'RT$')
+        }).format(0).replace('R$', currency)
         : new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL',
         })
             .formatToParts(numericAmount / 100)
-            .map((part) => (part.type === 'currency' ? 'RT$' : part.value)) // Substitui "R$" por "RT$"
+            .map((part) => (part.type === 'currency' ? currency : part.value))
             .join('');
 
-    return formattedValue; // Retorna o valor formatado com "RT$"
+    return formattedValue;
 };
 
 
-const FormInputMoney = ({ form, name, label, placeholder, required, type, className, divClassName, disabled }) => {
+const FormInputMoney = ({ form, name, label, placeholder, required, type, className, divClassName, disabled, currency = 'RT$' }) => {
     return (<>
         <FormField
             control={form.control}
@@ -46,7 +46,7 @@ const FormInputMoney = ({ form, name, label, placeholder, required, type, classN
                         onChange={
                             (e) => {
                                 const { value } = e.target
-                                form.setValue(name, handleInputChange(value))
+                                form.setValue(name, handleInputChange(value, currency))
                             }
                         }
                     >

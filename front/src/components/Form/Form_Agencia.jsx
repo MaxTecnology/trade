@@ -19,7 +19,7 @@ const Form_Agencia = ({ form, type }) => {
             { value: 50, label: "Permuta / Dinheiro" },
         ]} />
         {showBRL && (
-            <FormInputMoney required name="valorInscricaoBRL" label="Valor em Dinheiro (R$)" form={form} placeholder={"R$ 0,00"} />
+            <FormInputMoney required name="valorInscricaoBRL" label="Valor em Dinheiro (R$)" form={form} placeholder={"R$ 0,00"} currency="R$" />
         )}
         {showRT && (
             <FormInputMoney required name="valorInscricaoRT" label="Valor em Permuta (RT$)" form={form} placeholder={"RT$ 0,00"} />
