@@ -145,7 +145,7 @@ export async function me(userId: string) {
       where: { id: usuario.associadoId },
       select: {
         nome: true,
-        plano: { select: { limiteRT: true } },
+        limiteCredito: true,
         conta: { select: { id: true, numero: true, saldo: true } },
       },
     })
@@ -156,7 +156,7 @@ export async function me(userId: string) {
           id: associado.conta.id,
           numero: associado.conta.numero,
           saldo: Number(associado.conta.saldo),
-          limiteCredito: Number(associado.plano?.limiteRT ?? 0),
+          limiteCredito: Number(associado.limiteCredito ?? 0),
         }
       }
     }
