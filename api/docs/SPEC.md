@@ -304,7 +304,7 @@ Planos definem as regras financeiras de uma entidade (Associado, Agência ou Ger
 ### Regras de Negócio
 
 - Todo plano deve ter: `nome`, `tipoPlano` (`agencia\|associado\|gerente`), `limiteRT`, `percentualComissao`.
-- `taxaInscricaoRT` e `taxaManutencaoAnualRT` são opcionais (default `0`) — usados só para planos de tipo `associado`.
+- `taxaInscricao` e `taxaManutencaoAnual` são opcionais (default `0`), em **R$** (dinheiro real recebido pela Matriz, não RT) — usados só para planos de tipo `associado`. Sem vínculo automático com a cobrança do associado: `valorInscricaoBRL`/`valorInscricaoRT` no cadastro do associado (§3) são digitados manualmente pelo admin, independentes deste valor de referência do plano.
 - Nome é único **por tipo de plano** (`@@unique([nome, tipoPlano])`) — pode haver "Plano Básico" tanto para associado quanto para agência.
 - Planos inativos não podem ser atribuídos a novas entidades.
 - Alterar um plano não afeta retroativamente entidades já vinculadas — é necessário reatribuir explicitamente.
@@ -317,8 +317,8 @@ Planos definem as regras financeiras de uma entidade (Associado, Agência ou Ger
   "tipoPlano": "associado",
   "limiteRT": 5000,
   "percentualComissao": 5.0,
-  "taxaInscricaoRT": 100,
-  "taxaManutencaoAnualRT": 50,
+  "taxaInscricao": 100,
+  "taxaManutencaoAnual": 50,
   "ativo": true
 }
 ```
@@ -703,8 +703,8 @@ Campos adicionados ao model `Plano` para suporte ao front:
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `tipoPlano` | `TipoPlano` (agencia/associado/gerente) | Classifica o plano por tipo de entidade |
-| `taxaInscricaoRT` | Decimal | Taxa de inscrição em RT cobrada ao criar associado |
-| `taxaManutencaoAnualRT` | Decimal | Taxa de manutenção anual em RT |
+| `taxaInscricao` | Decimal | Taxa de inscrição em R$ — valor de referência, não vinculado automaticamente à cobrança do associado |
+| `taxaManutencaoAnual` | Decimal | Taxa de manutenção anual em R$ — sem cobrança automática implementada ainda (só cadastro) |
 
 ---
 

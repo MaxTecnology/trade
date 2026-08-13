@@ -52,7 +52,7 @@ Ambas as entidades seguem o mesmo padrão de criação: uma entidade principal c
 5. Cria `Usuario` (`role: 'associate_admin'`) com email = email do associado
 6. Se `valorInscricaoBRL > 0` → cria `Cobranca` (`valorBRL`)
 7. Se `valorInscricaoRT > 0` → cria `Cobranca` (`valorRT`) — **não** debita a `Conta` diretamente (saldo nunca fica negativo, ver `AJUSTES.md` §Testes E2E)
-8. Se `gerenteId` e plano tem `taxaInscricaoRT > 0` → cria `ComissaoGerente` (inscrição)
+8. Se `gerenteId` e plano tem `taxaInscricao > 0` (R$) → cria `ComissaoGerente` (inscrição), 50% do valor, 100% em BRL
 
 ### Fluxo de atualização (`PUT /associados/:id`)
 1. Extrai campos de contato (`nomeContato`, `celular`, etc.) do payload

@@ -144,8 +144,8 @@ model Plano {
   tipoPlano             TipoPlano     @default(associado)
   limiteRT              Decimal       @db.Decimal(15, 2)
   percentualComissao    Decimal       @db.Decimal(5, 2)
-  taxaInscricaoRT       Decimal       @default(0) @db.Decimal(15, 2)
-  taxaManutencaoAnualRT Decimal       @default(0) @db.Decimal(15, 2)
+  taxaInscricao         Decimal       @default(0) @db.Decimal(15, 2)
+  taxaManutencaoAnual   Decimal       @default(0) @db.Decimal(15, 2)
   ativo                 Boolean       @default(true)
   criadoEm              DateTime      @default(now())
   atualizadoEm          DateTime      @updatedAt

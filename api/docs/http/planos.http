@@ -12,8 +12,8 @@ Content-Type: application/json
   "tipoPlano": "associado",
   "limiteRT": 100000,
   "percentualComissao": 2.5,
-  "taxaInscricaoRT": 100,
-  "taxaManutencaoAnualRT": 50,
+  "taxaInscricao": 100,
+  "taxaManutencaoAnual": 50,
   "ativo": true
 }
 

@@ -85,8 +85,6 @@ No frontend: `response.data` = envelope, `response.data.data` = payload real.
 | `conta.numeroConta` | `conta.numero` | |
 | `nomePlano` | `nome` | |
 | `taxaComissao` | `percentualComissao` | |
-| `taxaInscricao` | `taxaInscricaoRT` | |
-| `taxaManutencaoAnual` | `taxaManutencaoAnualRT` | |
 | `tipoDoPlano` | `tipoPlano` | enum: `agencia\|associado\|gerente` |
 | `nomeCategoria` | `nome` | |
 | `subcategorias` | `categoriasFilhas` | |
@@ -98,7 +96,7 @@ No frontend: `response.data` = envelope, `response.data.data` = payload real.
 
 Gerente = Associado com comissão. Tecnicamente: registro `Associado` + `Usuario` com `role: 'gerente'`.
 - `entityType: 'associado'` no JWT → `/auth/me` retorna dados do Associado
-- Comissão de inscrição: 50% da `taxaInscricaoRT` → 25% BRL + 25% RT
+- Comissão de inscrição: 50% da `taxaInscricao` do plano (R$, dinheiro real) → 100% em BRL, sem parte em RT
 - Comissão de transação (Opção A): `valorRT * percentualComissao_do_plano / 100` em RT
 - Comissão registrada em `ComissaoGerente` com `tipoComissao: 'inscricao' | 'transacao'`
 

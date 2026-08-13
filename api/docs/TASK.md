@@ -350,7 +350,7 @@
 ## ETAPA 19 — Integração Frontend (novos módulos para o front)
 
 ### Schema e modelos
-- [x] Estender `Plano` com `tipoPlano`, `taxaInscricaoRT`, `taxaManutencaoAnualRT`
+- [x] Estender `Plano` com `tipoPlano`, `taxaInscricao`, `taxaManutencaoAnual` (renomeados de `*RT` — passaram a representar R$, ver `AJUSTES.md`)
 - [x] Adicionar `imagemUrl` e `vencimento` em `Oferta`
 - [x] Criar model `SolicitacaoCredito` com fluxo de status
 - [x] Criar model `Cobranca` (faturas BRL)

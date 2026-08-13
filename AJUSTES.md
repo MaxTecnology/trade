@@ -489,3 +489,21 @@ Aproveitando a mudança, os campos `limiteVendaMensal`/`limiteVendaTotal` do `As
 
 ### Documentação atualizada
 `api/docs/SCHEMA.md`, `api/docs/SPEC.md` (§3, §6, §8, §9, §13), `api/docs/ARCHITECTURE.md` e `CLAUDE.md` (raiz) — regra "saldo nunca negativo" reescrita em todos, refletindo o teto por `limiteCredito` em vez de `>= 0` fixo.
+
+---
+
+## `Plano.taxaInscricaoRT`/`taxaManutencaoAnualRT` renomeados para `taxaInscricao`/`taxaManutencaoAnual` — viram R$ (2026-08-13)
+
+### Motivação
+
+Taxa de Inscrição e Taxa de Manutenção Anual do Plano são valores que a Matriz recebe em dinheiro real, não em RT (moeda de permuta). Manter o sufixo `RT` no nome do campo era enganoso — investigação prévia confirmou que esses campos nunca tiveram vínculo automático com a cobrança de fato feita ao associado (`valorInscricaoBRL`/`valorInscricaoRT`, digitados manualmente pelo admin no cadastro do associado) — servem só de referência visual e como base do cálculo de comissão de inscrição do gerente.
+
+### O que mudou
+
+- **Migration `20260813001554_renomeia_taxa_inscricao_e_manutencao_para_brl`**: `ALTER TABLE plano RENAME COLUMN` (preserva dados, não é drop+add) — `taxaInscricaoRT` → `taxaInscricao`, `taxaManutencaoAnualRT` → `taxaManutencaoAnual`. Validado com dado real antes/depois da migration (valores decimais preservados byte a byte).
+- **Comissão de inscrição do gerente** (`associate.service.ts`): antes dividia 50% da base em 25% BRL + 25% RT (fazia sentido quando a base era RT). Com a base virando R$, a divisão em RT deixou de fazer sentido — regra nova, confirmada com o usuário: **50% da `taxaInscricao`, 100% em BRL** (`comissaoBRL: base * 0.5`, `comissaoRT: 0`). Campo `ComissaoGerente.baseValorRT` manteve o nome (compartilhado com comissão de transação, que continua sendo RT de verdade) — comentário inline no código avisa que ele guarda R$ para `tipoComissao: 'inscricao'`.
+- **`Plano.taxaManutencaoAnual` continua sem nenhuma cobrança automática implementada** — só campo de cadastro, sem job/trigger de cobrança anual recorrente nem controle de inadimplência. Confirmado com o usuário como gap conhecido, fora de escopo desta rodada (feature própria, futura).
+- Front: labels trocados de "(RT$)" para "(R$)" em `PlanoAssociado.jsx`, `EditarPlanoModa.jsx`, `constants.js` (colunas da tabela), e nos dois pontos de referência somente-leitura no cadastro de Associado (`FormPlano.jsx`, `PlanosFields.jsx` — "Valor do Plano"/"Taxa de Manutenção Anual").
+
+### Documentação atualizada
+`CLAUDE.md` (raiz — mapeamento de campos, regra de comissão do gerente), `api/docs/SPEC.md` (§6, §15), `api/docs/SCHEMA.md`, `api/docs/PATTERNS.md`, `api/docs/TASK.md`, `api/docs/http/planos.http`.
