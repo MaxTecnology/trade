@@ -69,7 +69,7 @@ const OfertasInfo = () => {
                         </div>
                         <div className="ofertasInfoInfo">
                             <h3>Informações:</h3>
-                            <p><span>Vendido por:</span> {storedData.associado?.nome ?? "Ninguem"}</p>
+                            <p><span>Vendido por:</span> {storedData.conta?.associado?.nome ?? storedData.conta?.agencia?.nome ?? "Matriz"}</p>
                             <p><span>Cidade:</span> {storedData.cidade}</p>
                             <p><span>Tipo:</span> {storedData.tipoAtendimento?.join(', ')}</p>
                             <p><span>Disponível:</span> {storedData.quantidadeDisponivel}</p>

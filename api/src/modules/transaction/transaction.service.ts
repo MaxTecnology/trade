@@ -11,42 +11,78 @@ import type {
   ListTransactionQuery,
 } from './transaction.schema.js'
 
-export async function permuta(input: PermutaInput, compradorAssociadoId: string, usuarioId: string) {
+export async function permuta(input: PermutaInput, compradorContaId: string, usuarioId: string) {
   const oferta = await prisma.oferta.findUnique({
     where: { id: input.ofertaId },
-    include: { associado: { include: { plano: true, conta: true } } },
+    include: { conta: true },
   })
   if (!oferta || oferta.status !== 'aberta' || oferta.quantidadeDisponivel <= 0) {
     throw Errors.offerUnavailable()
   }
 
-  const compradorAssociado = await prisma.associado.findUnique({
-    where: { id: compradorAssociadoId },
-    include: { plano: true, conta: true },
+  const compradorConta = await prisma.conta.findUnique({
+    where: { id: compradorContaId },
+    include: {
+      associado: { include: { plano: true } },
+      agencia: { include: { plano: true } },
+    },
   })
-  if (!compradorAssociado?.conta) throw Errors.notFound('Conta do comprador')
-  if (compradorAssociado.status !== 'ativo') throw Errors.associateSuspended()
+  if (!compradorConta) throw Errors.notFound('Conta do comprador')
+
+  let percentualComissao = 0
+  let limiteVendaMensal = 0
+  let limiteVendaTotal = 0
+  // Matriz nunca tem teto de volume (fica de fora da checagem de validarLimiteVenda
+  // abaixo). Agência também fica de fora QUANDO limiteVendaMensal/limiteVendaTotal
+  // ainda não foram configurados (null) — diferente de Associado, esses campos nunca
+  // foram exigidos no cadastro de Agência (agency.service.ts não os torna
+  // obrigatórios), então null significa "sem teto configurado ainda", não "zerado por
+  // esquecimento" — tratar como bloqueio mataria a compra por Agência no nascedouro.
+  let pularValidacaoLimiteVenda = compradorConta.entityType === 'matriz'
+  if (compradorConta.entityType === 'associado') {
+    if (!compradorConta.associado) throw Errors.notFound('Associado')
+    if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
+    percentualComissao = Number(compradorConta.associado.plano.percentualComissao)
+    limiteVendaMensal = Number(compradorConta.associado.limiteVendaMensal ?? 0)
+    limiteVendaTotal = Number(compradorConta.associado.limiteVendaTotal ?? 0)
+  } else if (compradorConta.entityType === 'agencia') {
+    if (!compradorConta.agencia) throw Errors.notFound('Agência')
+    if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
+    percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
+    if (compradorConta.agencia.limiteVendaMensal === null || compradorConta.agencia.limiteVendaTotal === null) {
+      pularValidacaoLimiteVenda = true
+    } else {
+      limiteVendaMensal = Number(compradorConta.agencia.limiteVendaMensal)
+      limiteVendaTotal = Number(compradorConta.agencia.limiteVendaTotal)
+    }
+  }
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
-  const limiteCredito = Number(compradorAssociado.conta.limiteCredito ?? 0)
-  if (!saldoSuficienteParaDebito(Number(compradorAssociado.conta.saldo), valorTotal, limiteCredito)) {
+  const limiteCredito = Number(compradorConta.limiteCredito ?? 0)
+  if (!saldoSuficienteParaDebito(Number(compradorConta.saldo), valorTotal, limiteCredito)) {
     throw Errors.insufficientBalance()
   }
 
-  await validarLimiteVenda({
-    contaId: compradorAssociado.conta.id,
-    valorNovaOperacao: valorTotal,
-    limiteVendaMensal: Number(compradorAssociado.limiteVendaMensal ?? 0),
-    limiteVendaTotal: Number(compradorAssociado.limiteVendaTotal ?? 0),
-  })
+  if (!pularValidacaoLimiteVenda) {
+    await validarLimiteVenda({
+      contaId: compradorConta.id,
+      valorNovaOperacao: valorTotal,
+      limiteVendaMensal,
+      limiteVendaTotal,
+    })
+  }
 
-const vendedorConta = oferta.associado.conta
+  const vendedorConta = oferta.conta
   if (!vendedorConta) throw Errors.notFound('Conta do vendedor')
 
+  if (compradorConta.id === vendedorConta.id) {
+    throw new AppError('VALIDATION_ERROR', 'Não é possível comprar a própria oferta.', 422)
+  }
+
   const valorParcela = valorTotal / input.parcelas
-  const compradorContaSaldo = Number(compradorAssociado.conta.saldo)
+  const compradorContaSaldo = Number(compradorConta.saldo)
   const vendedorContaSaldo = Number(vendedorConta.saldo)
-  const comissaoBRL = valorTotal * (Number(compradorAssociado.plano.percentualComissao) / 100)
+  const comissaoBRL = valorTotal * (percentualComissao / 100)
 
   const transacao = await prisma.$transaction(async (tx) => {
     const t = await tx.transacao.create({
@@ -57,11 +93,11 @@ const vendedorConta = oferta.associado.conta
         comissaoBRL,
         parcelas: input.parcelas,
         quantidade: input.quantidade,
-        compradorId: compradorAssociadoId,
+        compradorId: compradorConta.associado?.id ?? null,
         vendedorId: oferta.associadoId,
         ofertaId: input.ofertaId,
         usuarioIniciadorId: usuarioId,
-        contaOrigemId: compradorAssociado.conta!.id,
+        contaOrigemId: compradorConta.id,
         contaDestinoId: vendedorConta.id,
       },
     })
@@ -74,7 +110,7 @@ const vendedorConta = oferta.associado.conta
 
       await tx.movimentacaoConta.create({
         data: {
-          contaId: compradorAssociado.conta!.id,
+          contaId: compradorConta.id,
           tipo: 'debito',
           valor: valorParcela,
           saldoApos: novoSaldoComprador,
@@ -102,7 +138,7 @@ const vendedorConta = oferta.associado.conta
     }
 
     await tx.conta.update({
-      where: { id: compradorAssociado.conta!.id },
+      where: { id: compradorConta.id },
       data: { saldo: { decrement: valorTotal } },
     })
 
@@ -133,17 +169,45 @@ const vendedorConta = oferta.associado.conta
 
 // Negociação direta entre associados, fora do marketplace de ofertas — sempre em RT
 // (mesmas validações de saldo/limite de plano da permuta, sem vínculo com Oferta).
-export async function negociada(input: NegociadaInput, compradorAssociadoId: string, usuarioId: string) {
-  if (input.vendedorId === compradorAssociadoId) {
+export async function negociada(input: NegociadaInput, compradorContaId: string, usuarioId: string) {
+  const compradorConta = await prisma.conta.findUnique({
+    where: { id: compradorContaId },
+    include: {
+      associado: { include: { plano: true } },
+      agencia: { include: { plano: true } },
+    },
+  })
+  if (!compradorConta) throw Errors.notFound('Conta do comprador')
+
+  if (compradorConta.entityType === 'associado' && input.vendedorId === compradorConta.associadoId) {
     throw new AppError('VALIDATION_ERROR', 'Não é possível negociar consigo mesmo.', 422)
   }
 
-  const compradorAssociado = await prisma.associado.findUnique({
-    where: { id: compradorAssociadoId },
-    include: { plano: true, conta: true },
-  })
-  if (!compradorAssociado?.conta) throw Errors.notFound('Conta do comprador')
-  if (compradorAssociado.status !== 'ativo') throw Errors.associateSuspended()
+  let percentualComissao = 0
+  let limiteVendaMensal = 0
+  let limiteVendaTotal = 0
+  // Mesma regra de permuta(): Matriz nunca tem teto de volume; Agência fica de fora
+  // quando limiteVendaMensal/limiteVendaTotal ainda não foram configurados (null) —
+  // agency.service.ts não exige esses campos no cadastro, então null é "sem teto
+  // configurado ainda", não "zerado por esquecimento".
+  let pularValidacaoLimiteVenda = compradorConta.entityType === 'matriz'
+  if (compradorConta.entityType === 'associado') {
+    if (!compradorConta.associado) throw Errors.notFound('Associado')
+    if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
+    percentualComissao = Number(compradorConta.associado.plano.percentualComissao)
+    limiteVendaMensal = Number(compradorConta.associado.limiteVendaMensal ?? 0)
+    limiteVendaTotal = Number(compradorConta.associado.limiteVendaTotal ?? 0)
+  } else if (compradorConta.entityType === 'agencia') {
+    if (!compradorConta.agencia) throw Errors.notFound('Agência')
+    if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
+    percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
+    if (compradorConta.agencia.limiteVendaMensal === null || compradorConta.agencia.limiteVendaTotal === null) {
+      pularValidacaoLimiteVenda = true
+    } else {
+      limiteVendaMensal = Number(compradorConta.agencia.limiteVendaMensal)
+      limiteVendaTotal = Number(compradorConta.agencia.limiteVendaTotal)
+    }
+  }
 
   const vendedorAssociado = await prisma.associado.findUnique({
     where: { id: input.vendedorId },
@@ -153,23 +217,25 @@ export async function negociada(input: NegociadaInput, compradorAssociadoId: str
   if (vendedorAssociado.status !== 'ativo') throw Errors.associateSuspended()
 
   const valorTotal = input.valorRT
-  const limiteCreditoComprador = Number(compradorAssociado.conta.limiteCredito ?? 0)
-  if (!saldoSuficienteParaDebito(Number(compradorAssociado.conta.saldo), valorTotal, limiteCreditoComprador)) {
+  const limiteCreditoComprador = Number(compradorConta.limiteCredito ?? 0)
+  if (!saldoSuficienteParaDebito(Number(compradorConta.saldo), valorTotal, limiteCreditoComprador)) {
     throw Errors.insufficientBalance()
   }
 
-  await validarLimiteVenda({
-    contaId: compradorAssociado.conta.id,
-    valorNovaOperacao: valorTotal,
-    limiteVendaMensal: Number(compradorAssociado.limiteVendaMensal ?? 0),
-    limiteVendaTotal: Number(compradorAssociado.limiteVendaTotal ?? 0),
-  })
+  if (!pularValidacaoLimiteVenda) {
+    await validarLimiteVenda({
+      contaId: compradorConta.id,
+      valorNovaOperacao: valorTotal,
+      limiteVendaMensal,
+      limiteVendaTotal,
+    })
+  }
 
   const vendedorConta = vendedorAssociado.conta
   const valorParcela = valorTotal / input.parcelas
-  const compradorContaSaldo = Number(compradorAssociado.conta.saldo)
+  const compradorContaSaldo = Number(compradorConta.saldo)
   const vendedorContaSaldo = Number(vendedorConta.saldo)
-  const comissaoBRL = valorTotal * (Number(compradorAssociado.plano.percentualComissao) / 100)
+  const comissaoBRL = valorTotal * (percentualComissao / 100)
 
   const transacao = await prisma.$transaction(async (tx) => {
     const t = await tx.transacao.create({
@@ -180,10 +246,10 @@ export async function negociada(input: NegociadaInput, compradorAssociadoId: str
         comissaoBRL,
         parcelas: input.parcelas,
         descricao: input.descricao,
-        compradorId: compradorAssociadoId,
+        compradorId: compradorConta.associado?.id ?? null,
         vendedorId: input.vendedorId,
         usuarioIniciadorId: usuarioId,
-        contaOrigemId: compradorAssociado.conta!.id,
+        contaOrigemId: compradorConta.id,
         contaDestinoId: vendedorConta.id,
       },
     })
@@ -196,7 +262,7 @@ export async function negociada(input: NegociadaInput, compradorAssociadoId: str
 
       await tx.movimentacaoConta.create({
         data: {
-          contaId: compradorAssociado.conta!.id,
+          contaId: compradorConta.id,
           tipo: 'debito',
           valor: valorParcela,
           saldoApos: novoSaldoComprador,
@@ -224,7 +290,7 @@ export async function negociada(input: NegociadaInput, compradorAssociadoId: str
     }
 
     await tx.conta.update({
-      where: { id: compradorAssociado.conta!.id },
+      where: { id: compradorConta.id },
       data: { saldo: { decrement: valorTotal } },
     })
 

@@ -13,8 +13,8 @@ type Params = { id: string }
 
 export async function createController(request: FastifyRequest, reply: FastifyReply) {
   const input = createOfferSchema.parse(request.body)
-  const associadoId = request.user.entityId
-  const oferta = await offerService.create(input, associadoId)
+  if (!request.user.contaId) throw Errors.forbidden()
+  const oferta = await offerService.create(input, request.user.contaId)
   return reply.status(201).send(success(oferta))
 }
 
@@ -37,7 +37,8 @@ export async function updateController(
   reply: FastifyReply,
 ) {
   const input = updateOfferSchema.parse(request.body)
-  const oferta = await offerService.update((request.params as Params).id, input, request.user.entityId)
+  if (!request.user.contaId) throw Errors.forbidden()
+  const oferta = await offerService.update((request.params as Params).id, input, request.user.contaId)
   return reply.send(success(oferta))
 }
 
@@ -46,13 +47,15 @@ export async function setStatusController(
   reply: FastifyReply,
 ) {
   const { status } = statusSchema.parse(request.body)
-  const oferta = await offerService.setStatus((request.params as Params).id, status, request.user.entityId)
+  if (!request.user.contaId) throw Errors.forbidden()
+  const oferta = await offerService.setStatus((request.params as Params).id, status, request.user.contaId)
   return reply.send(success(oferta))
 }
 
 export async function minhaLojaController(request: FastifyRequest, reply: FastifyReply) {
   const page = Number((request.query as { page?: number }).page ?? 1)
   const limit = Math.min(Number((request.query as { limit?: number }).limit ?? 20), 100)
-  const { items, total } = await offerService.minhaLoja(request.user.entityId, page, limit)
+  if (!request.user.contaId) throw Errors.forbidden()
+  const { items, total } = await offerService.minhaLoja(request.user.contaId, page, limit)
   return reply.send(paginated(items, page, limit, total))
 }

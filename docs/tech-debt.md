@@ -26,3 +26,62 @@ Só `saldoSuficienteParaDebito` (função pura) tem teste automatizado. `getLimi
 
 ## `TASK.md` desatualizado após a migração de limiteRT do plano pra limiteVendaMensal/Total
 `api/docs/TASK.md` ainda lista como concluído "Validar limite RT do plano antes de criar oferta" e "Validar limite mensal do plano" — ambos descrevem comportamento retirado por essa branch (ver `SPEC.md` §9, já atualizado). `TASK.md` é checklist histórico de construção, baixo risco, mas vale sincronizar numa próxima passada de limpeza de docs.
+
+## `negociada()` só generaliza o lado comprador — Agência/Matriz não conseguem vender por negociação direta
+`negociadaSchema.vendedorId` continua exigindo um `Associado.id` — a compra/venda por Agência e Matriz (Task 9, ver `AJUSTES.md` 2026-08-13) generalizou o **comprador** de `permuta()`/`negociada()` e o dono de `Oferta`, mas não o **vendedor** de `negociada()`. Agência/Matriz só conseguem vender via `Oferta` (marketplace), não por negociação direta sem oferta.
+**Ação futura:** se o negócio precisar, `negociadaSchema.vendedorId` precisa aceitar um `contaId` genérico, com ajuste correspondente no front (hoje o "diretório de associados" só lista Associados).
+
+## Sem tela de front pra Agência/Matriz cadastrar oferta ou comprar
+A API de Ofertas/Transações está pronta e validada end-to-end (curl + Postgres real, ver `task-9-report.md`) para Agência e Matriz como compradoras/donas de oferta — mas não existe nenhuma tela no front que use isso. Front é rodada separada, fora do escopo desta branch.
+
+## `estorno.service.ts`/`report.service.ts` filtram por `compradorId`/`vendedorId`, ignorando compra/venda de Agência e Matriz
+Ambos os módulos filtram transações por `compradorId`/`vendedorId` — campos que são FK só de `Associado` e ficam `null` quando quem compra/vende é Agência ou Matriz (ver Task 9). Resultado: compras/vendas de Agência ou Matriz somem dos relatórios (`report.service.ts`) e do fluxo de solicitação de estorno por `agency_operator` (`estorno.service.ts`). Achado e registrado durante a revisão das Tasks 1-8 (ruling do controlador do processo: fora do escopo desta rodada, não é regressão nova — esses filtros já existiam antes e nunca cobriram compra/venda por conta genérica).
+**Ação futura:** migrar esses filtros pra `contaOrigemId`/`contaDestinoId`, que já cobrem 100% dos casos (Associado, Agência e Matriz).
+
+## Agência sem `planoId` vinculado compra com comissão 0%, silenciosamente
+Quando a Agência compradora não tem `planoId` preenchido, `permuta()`/`negociada()` calculam `comissaoBRL = 0` sem erro nem log. Achado durante a revisão das Tasks 1-8; ruling do controlador do processo: não é uma decisão técnica, é uma decisão de produto pendente (bloquear a compra? logar um aviso? deixar como está?) — precisa de definição do dono do produto antes de mudar o comportamento.
+
+## Lógica de resolução do comprador duplicada entre `permuta()` e `negociada()`
+O branch por `entityType` da conta compradora (resolver Associado/Agência/Matriz, comissão, limites — ~27 linhas) está duplicado entre `permuta()` e `negociada()` em `transaction.service.ts`. Aceito nesta rodada (ruling do controlador do processo durante as revisões das Tasks 1-8) porque as duas funções têm nuances próprias (uma envolve oferta e decremento de estoque, a outra não) e a duplicação ainda é pequena o bastante pra não compensar o risco de uma abstração prematura.
+**Ação futura:** se essa lógica crescer, ou um terceiro ponto de entrada financeiro similar aparecer, extrair um helper compartilhado (ex: `resolverCompradorParaCompra(contaId)`).
+
+## Checagem de saldo em `permuta()`/`negociada()` acontece fora da transação Prisma
+Mesmo padrão pré-existente (não é regressão desta rodada) — a validação de `saldoSuficienteParaDebito` roda antes do `prisma.$transaction`, então duas operações concorrentes da mesma conta podem ambas passar a validação de aplicação; só a `CHECK` constraint do banco barra a segunda, retornando um erro genérico de constraint em vez de `INSUFFICIENT_BALANCE`. Achado e registrado durante a revisão das Tasks 1-8.
+**Ação futura:** mapear esse erro de constraint do banco pra uma resposta HTTP amigável (`INSUFFICIENT_BALANCE`, 422), ou mover a checagem pra dentro da transação com lock explícito.
+
+## `GET /auth/me` continua retornando `conta: null` pra Matriz
+Desde a Task 1 (2026-08-13) o JWT da Matriz já carrega um `contaId` real, mas `/auth/me` (`auth.service.ts`) não foi atualizado para resolver e retornar essa conta — continua tratando Matriz como `conta: null` (mesmo padrão do superadmin sem conta, mas agora incorreto pra Matriz especificamente). Inconsistência entre o que o login/JWT já sabe e o que `/me` expõe, que pode confundir consumidores futuros do endpoint. Achado durante a revisão das Tasks 1-8; `/me` ficou fora do escopo desta rodada.
+
+## Runbook de deploy da migration `20260814190919_oferta_conta_generica`
+Migration da Task 3 (compra/venda por Agência e Matriz) que torna `oferta.contaId` genérico (dono pode ser Associado, Agência ou Matriz) e faz `oferta.associadoId` virar opcional. **Antes de aplicar em produção**, rodar essa checagem de sanidade do backfill:
+```sql
+SELECT count(*) FROM oferta o LEFT JOIN conta c ON c."associadoId" = o."associadoId" WHERE c.id IS NULL;
+```
+Tem que dar **0** — se não der, o `UPDATE` de backfill (que popula `oferta.contaId` a partir de `conta.associadoId`) vai deixar linhas com `contaId` nulo, e o `ALTER COLUMN "contaId" SET NOT NULL` subsequente falha, travando o deploy.
+
+Além disso, a migration segura locks em `oferta` **e** em `conta` (a tabela financeira mais usada do sistema) até o commit — o Prisma envolve o arquivo inteiro numa transação, então `ALTER COLUMN ... SET NOT NULL`, `ADD CONSTRAINT ... FOREIGN KEY` e `CREATE INDEX` (sem `CONCURRENTLY`) seguram esses locks o tempo todo, bloqueando escritas concorrentes em `conta` durante a aplicação. Se `oferta` crescer muito antes do deploy real acontecer, vale considerar rodar em janela de baixo tráfego.
+
+## [P0 — CRÍTICO] `POST /usuarios` aceita `entityType`/`entityId` do corpo da requisição sem checar posse
+
+Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-08-14), mas é uma vulnerabilidade **pré-existente**, que não foi introduzida por essa branch nem por nenhuma anterior — `user.service.ts`/`user.controller.ts`/`user.schema.ts` nunca foram tocados por essas branches. Hoje, um usuário com role `associate_admin` ou `agency_admin` pode chamar `POST /usuarios` informando `entityType`/`entityId` de **qualquer** entidade no sistema (não só a própria), sem nenhuma validação cruzada contra `request.user`. Um atacante autenticado como admin de qualquer conta pode forjar um usuário com `entityType: 'agencia'`/`entityId: <uuid de outra agência>`, logar com ele e receber um JWT com o `contaId` real da agência-vítima.
+
+**Por que isso virou P0 agora:** antes da branch de compra/venda por Agência/Matriz, esse furo já permitia acesso indevido a gestão de usuários e a `/transacoes/:id/estorno`. Depois dela, o mesmo JWT forjado permite **gastar** o saldo/limite de crédito da agência-vítima via `/transacoes/permuta`/`/negociada` e publicar/alterar ofertas em nome dela — movimentação financeira real, registrada em ledger imutável (não reversível sem estorno manual).
+
+**Ação futura — urgente, tratar como fix de segurança separado, não como parte de uma feature:** derivar `entityType`/`entityId` de `request.user` no controller (só `superadmin` deveria poder informar outra entidade explicitamente), e validar em `user.service.create` que o `role` do payload é compatível com o `entityType` resolvido.
+
+## [Alto] `transaction.service.ts` `getById()` não filtra por posse — qualquer operador lê qualquer transação
+
+Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-08-14) — pré-existente (a função em si não foi tocada por essa branch, só o shape dos dados que ela expõe mudou). `GET /transacoes/:id` não filtra por `contaOrigemId`/`contaDestinoId` do usuário autenticado — qualquer `associate_operator`+ autenticado consegue ler qualquer transação por id (valor, comissão, comprador, vendedor, movimentações), inclusive agora de Agência e Matriz.
+
+**Ação futura:** filtrar por `OR: [{ contaOrigemId: contaId }, { contaDestinoId: contaId }]` usando o `contaId` do JWT, mesmo padrão que `list()` já aplica corretamente.
+
+## [Alto] Matriz emitindo RT via `permuta()`/`negociada()` sem rastreio contábil equivalente ao de `credito()`
+
+Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-08-14) — interação nova entre a Task 1 (Matriz ganhou `Conta` real com `limiteCredito` altíssimo, "sem limite na prática") e a Task 7 (guard de `/transacoes/permuta`/`/negociada` abriu pra `superadmin`). Um `superadmin` "comprando" como Matriz cria RT novo levando o saldo da Matriz a negativo — exatamente como o fluxo já existente `credito()`, mas gravado como `tipo: 'permuta'`/`'negociada'`, fora do relatório/tela de emissão que hoje só olha o fluxo `credito()`.
+
+**Ação futura:** decisão de produto pendente — marcar/filtrar essas transações quando `contaOrigem.entityType === 'matriz'` e incluí-las no relatório de emissão existente, ou baixar `limiteCredito` da Matriz pra um teto operacional revisável em vez de um valor praticamente infinito.
+
+## Visibilidade pós-compra de Agência/Matriz — efeito combinado de vários itens já registrados individualmente
+
+Consolidação de achados já registrados separadamente (`estorno.service.ts`/`report.service.ts` acima, e a decisão da Task 7 de manter `GET /transacoes*`/`PATCH /transacoes/:id/avaliar` só pra roles de Associado): o efeito combinado é que uma Agência pode gastar RT normalmente (permuta/negociada funcionam), mas **não consegue ver a própria transação pela API** (`GET /transacoes*` é Associado-only), **não consegue avaliar o vendedor**, e a compra **não aparece em relatórios nem no fluxo de estorno**. Cada peça foi uma decisão isolada e consciente durante o desenvolvimento; o valor deste item é nomear o efeito somado, pra não ser redescoberto como bug de produção.
+**Ação futura:** ao decidir abrir `GET /transacoes*`/`avaliar` pra Agência/Matriz (ou resolver os filtros de relatório/estorno), tratar como uma única entrega de "visibilidade pós-compra", não itens soltos.

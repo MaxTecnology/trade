@@ -293,6 +293,7 @@ model Conta {
   transacoesOrigem  Transacao[]         @relation("ContaOrigem")
   transacoesDestino Transacao[]         @relation("ContaDestino")
   cobranças         Cobranca[]
+  ofertas           Oferta[]
 
   @@index([numero])
   @@map("conta")
@@ -436,7 +437,8 @@ model Oferta {
   status               StatusOferta      @default(aberta)
   tipoAtendimento      TipoAtendimento[]
   categoriaId          String
-  associadoId          String
+  associadoId          String?
+  contaId              String
   cidade               String
   estado               String            @db.Char(2)
   imagemUrl            String?
@@ -445,12 +447,14 @@ model Oferta {
   atualizadoEm        DateTime          @updatedAt
 
   categoria  Categoria   @relation(fields: [categoriaId], references: [id])
-  associado  Associado   @relation(fields: [associadoId], references: [id])
+  associado  Associado?  @relation(fields: [associadoId], references: [id])
+  conta      Conta       @relation(fields: [contaId], references: [id])
   transacoes Transacao[]
 
   @@index([status, cidade, estado])
   @@index([categoriaId])
   @@index([associadoId])
+  @@index([contaId])
   @@map("oferta")
 }
 

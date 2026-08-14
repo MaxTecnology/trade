@@ -364,18 +364,20 @@ Categorias são globais e hierárquicas. Classificam as ofertas de permuta. Gere
 
 ### Contexto
 
-Ofertas são produtos ou serviços disponibilizados por Associados para troca em RT. Possuem localização, categoria, valor em RT, quantidade e status.
+Ofertas são produtos ou serviços disponibilizados para troca em RT — por Associados, Agências ou pela própria Matriz (ver `AJUSTES.md`, 2026-08-13). Possuem localização, categoria, valor em RT, quantidade e status, e pertencem a uma `Conta` genérica (`contaId`), não mais exclusivamente a um Associado.
 
 ### Endpoints
 
 | Método | Rota | Descrição | Role mínimo | Auth |
 |---|---|---|---|---|
-| POST | `/ofertas` | Criar oferta | `associate_admin`, `associate_operator` | ✅ |
+| POST | `/ofertas` | Criar oferta | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator`, `superadmin` | ✅ |
 | GET | `/ofertas` | Listar ofertas (busca pública) | — | ❌ |
 | GET | `/ofertas/:id` | Detalhar oferta | — | ❌ |
-| PUT | `/ofertas/:id` | Atualizar oferta | `associate_admin`, `associate_operator` | ✅ |
-| PATCH | `/ofertas/:id/status` | Abrir/fechar/pausar | `associate_admin`, `associate_operator` | ✅ |
-| GET | `/ofertas/minha-loja` | Listar ofertas do associado | `associate_admin`, `associate_operator` | ✅ |
+| PUT | `/ofertas/:id` | Atualizar oferta | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator`, `superadmin` | ✅ |
+| PATCH | `/ofertas/:id/status` | Abrir/fechar/pausar | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator`, `superadmin` | ✅ |
+| GET | `/ofertas/minha-loja` | Listar ofertas da própria conta (Associado, Agência ou Matriz) | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator`, `superadmin` | ✅ |
+
+`POST`/`PUT`/`PATCH /ofertas*` aceitam também `agency_admin`, `agency_operator` e `superadmin` — cada role opera em nome da própria conta (Associado, Agência ou Matriz), resolvida a partir do `contaId` do JWT.
 
 ### Filtros em `GET /ofertas`
 
@@ -392,13 +394,14 @@ Ofertas são produtos ou serviços disponibilizados por Associados para troca em
 
 ### Regras de Negócio
 
-- O Associado deve estar com loja `aberta` para criar ofertas.
+- Associado precisa de loja `aberta` para criar ofertas; Agência precisa estar `ativo`; Matriz não tem restrição de status para criar ofertas.
 - Toda oferta deve ter: título, descrição, categoriaId, valorRT (> 0), quantidadeDisponivel (> 0), cidade, estado.
 - Limite de venda é validado no momento da compra (permuta/negociada — `limiteVendaMensal`/`limiteVendaTotal` do comprador, ver §3 e §9), não na criação da oferta.
 - Quando `quantidadeDisponivel` chega a zero, a oferta é automaticamente fechada (via job BullMQ `offer.close`).
 - Ofertas fechadas ou de associados com loja fechada não aparecem na listagem pública.
 - Status possíveis: `aberta`, `fechada`, `pausada`.
-- Usuários só podem editar/fechar ofertas do próprio Associado.
+- Usuários só podem editar/fechar ofertas da própria conta (Associado, Agência ou Matriz).
+- `associadoId` agora é opcional — só preenchido quando a oferta pertence a um Associado (mantido por compatibilidade/consulta). `contaId` é o campo obrigatório que identifica o dono real da oferta (Associado, Agência ou Matriz), via `Conta.entityType`.
 
 ### Payload de Criação
 ```json
@@ -426,8 +429,8 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 
 | Método | Rota | Descrição | Role mínimo |
 |---|---|---|---|
-| POST | `/transacoes/permuta` | Realizar permuta (comprar oferta) | `associate_operator`, `associate_admin` |
-| POST | `/transacoes/negociada` | Negociação direta com outro associado (sem oferta) | `associate_operator`, `associate_admin` |
+| POST | `/transacoes/permuta` | Realizar permuta (comprar oferta) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
+| POST | `/transacoes/negociada` | Negociação direta com outro associado (sem oferta) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 | PATCH | `/transacoes/:id/avaliar` | Avaliar atendimento do vendedor (1-5 + comentário) | `associate_operator`, `associate_admin` |
 | POST | `/transacoes/transferencia` | Transferir RT entre contas | `associate_admin` |
 | POST | `/transacoes/credito` | Injetar RT (Matriz → Agência/Associado) | `superadmin` |
@@ -439,12 +442,13 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 ### Regras de Negócio
 
 **Permuta:**
-- A conta compradora deve ter saldo suficiente — considerando `limiteCredito` do associado comprador (`saldo - valor >= -limiteCredito`), não apenas saldo >= 0.
-- `limiteVendaMensal`/`limiteVendaTotal` do associado comprador não podem estar atingidos (substituem `plano.limiteRT`).
+- A conta compradora deve ter saldo suficiente — considerando `limiteCredito` da conta compradora (`saldo - valor >= -limiteCredito`), não apenas saldo >= 0.
+- `limiteVendaMensal`/`limiteVendaTotal` do comprador não podem estar atingidos (substituem `plano.limiteRT`).
 - A oferta deve estar com status `aberta` e `quantidadeDisponivel > 0`.
-- Pode ser parcelada em até `maxParcelas` do plano — sem juros.
+- Pode ser parcelada (`parcelas`/`totalParcelas` na `Transacao`) sem juros — não é mais limitada pelo plano (`maxParcelas` foi removido, ver §Planos).
 - Toda permuta gera um voucher obrigatoriamente.
 - Operação atômica (ver fluxo em ARCHITECTURE.md §8).
+- `/transacoes/permuta` e `/transacoes/negociada` aceitam também `agency_admin`/`agency_operator`/`superadmin` — o comprador pode ser Associado, Agência ou Matriz, resolvido a partir do `contaId` do JWT. A comissão da plataforma (`comissaoBRL`) sempre usa o plano de **quem compra** (Associado ou Agência); quando o comprador é a Matriz, não há comissão (Matriz não tem plano). Comissão de gerente (`comissao_gerente`) só é gerada quando o comprador é um Associado com `gerenteId` vinculado — Agência e Matriz nunca geram comissão de gerente.
 
 **Transferência:**
 - Somente `associate_admin` pode iniciar transferências.
@@ -463,6 +467,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 - Não decrementa estoque de oferta (não há oferta envolvida) — `quantidade` fica `null`.
 - Gera voucher, comissão da plataforma e comissão de gerente, igual à permuta.
 - Não é permitido negociar consigo mesmo.
+- `negociada()` como **vendedor** continua exigindo um Associado (`vendedorId` aponta sempre para `Associado.id`) — Agência/Matriz vendendo por negociação direta (sem oferta) não é suportado nesta rodada (ver `docs/tech-debt.md`).
 
 **Avaliação (`avaliar`):**
 - Apenas o `usuarioIniciador` (quem fez a compra) pode avaliar, e só uma vez por transação.

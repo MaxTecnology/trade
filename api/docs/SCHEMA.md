@@ -302,13 +302,14 @@ model ContatoAssociado {
 // ─────────────────────────────────────────
 
 model Conta {
-  id           String     @id @default(uuid())
-  numero       String     @unique
-  saldo        Decimal    @default(0) @db.Decimal(15, 2)
-  entityType   EntityType
-  ativo        Boolean    @default(true)
-  criadoEm     DateTime   @default(now())
-  atualizadoEm DateTime   @updatedAt
+  id            String     @id @default(uuid())
+  numero        String     @unique
+  saldo         Decimal    @default(0) @db.Decimal(15, 2)
+  limiteCredito Decimal    @default(0) @db.Decimal(15, 2)
+  entityType    EntityType
+  ativo         Boolean    @default(true)
+  criadoEm      DateTime   @default(now())
+  atualizadoEm  DateTime   @updatedAt
 
   associadoId String? @unique
   agenciaId   String? @unique
@@ -320,6 +321,7 @@ model Conta {
   transacoesOrigem  Transacao[]         @relation("ContaOrigem")
   transacoesDestino Transacao[]         @relation("ContaDestino")
   cobrancas         Cobranca[]
+  ofertas           Oferta[]
 
   @@index([numero])
   @@map("conta")
@@ -463,7 +465,8 @@ model Oferta {
   status               StatusOferta      @default(aberta)
   tipoAtendimento      TipoAtendimento[]
   categoriaId          String
-  associadoId          String
+  associadoId          String?
+  contaId              String
   cidade               String
   estado               String            @db.Char(2)
   imagemUrl            String?
@@ -472,12 +475,14 @@ model Oferta {
   atualizadoEm         DateTime          @updatedAt
 
   categoria  Categoria   @relation(fields: [categoriaId], references: [id])
-  associado  Associado   @relation(fields: [associadoId], references: [id])
+  associado  Associado?  @relation(fields: [associadoId], references: [id])
+  conta      Conta       @relation(fields: [contaId], references: [id])
   transacoes Transacao[]
 
   @@index([status, cidade, estado])
   @@index([categoriaId])
   @@index([associadoId])
+  @@index([contaId])
   @@map("oferta")
 }
 
