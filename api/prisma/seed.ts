@@ -28,6 +28,20 @@ async function main() {
     },
   })
 
+  // Conta real da Matriz — não tem associadoId/agenciaId (não é 1:1 com nenhuma
+  // entidade). limiteCredito alto o bastante pra nunca bloquear na prática (não é
+  // uma exceção na constraint do banco, é só um valor que nunca é atingido).
+  const contaMatrizExistente = await prisma.conta.findFirst({ where: { entityType: 'matriz' } })
+  if (!contaMatrizExistente) {
+    await prisma.conta.create({
+      data: {
+        numero: '0000000',
+        entityType: 'matriz',
+        limiteCredito: 999999999999,
+      },
+    })
+  }
+
   // Categorias raiz — upsert não funciona com null em campos unique no Prisma 7
   async function upsertCategoriaRaiz(nome: string) {
     const existing = await prisma.categoria.findFirst({ where: { nome, categoriaParenteId: null } })

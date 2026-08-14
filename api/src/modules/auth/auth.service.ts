@@ -56,6 +56,9 @@ export async function login(input: LoginInput) {
   } else if (usuario.entityType === 'agencia' && usuario.agenciaId) {
     const conta = await prisma.conta.findUnique({ where: { agenciaId: usuario.agenciaId } })
     contaId = conta?.id
+  } else if (usuario.entityType === 'matriz') {
+    const conta = await prisma.conta.findFirst({ where: { entityType: 'matriz' } })
+    contaId = conta?.id
   }
 
   const accessToken = jwt.sign(
