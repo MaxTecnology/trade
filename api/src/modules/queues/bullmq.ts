@@ -76,12 +76,15 @@ export function startWorkers() {
     'commission.calculate',
     async (job) => {
       const { transacaoId } = job.data as { transacaoId: string }
-      const transacao = await prisma.transacao.findUnique({
-        where: { id: transacaoId },
-        include: { comprador: true },
-      })
+      const transacao = await prisma.transacao.findUnique({ where: { id: transacaoId } })
       if (!transacao || !transacao.comissaoBRL || Number(transacao.comissaoBRL) <= 0) return
-      if (!transacao.comprador || !transacao.contaOrigemId) return
+      if (!transacao.contaOrigemId) return
+
+      const contaOrigem = await prisma.conta.findUnique({
+        where: { id: transacao.contaOrigemId },
+        include: { associado: true, agencia: true },
+      })
+      if (!contaOrigem) return
 
       // A comissão calculada (comissaoBRL) só ficava guardada na própria transação, sem
       // nenhum jeito de efetivamente ser cobrada de alguém. Vira uma Cobrança BRL no
@@ -89,15 +92,17 @@ export function startWorkers() {
       const jaExiste = await prisma.cobranca.findFirst({ where: { transacaoId } })
       if (jaExiste) return
 
-      const vencimento = calcularVencimento(transacao.comprador.diaVencimentoFatura ?? 10)
+      const diaVencimentoFatura =
+        contaOrigem.associado?.diaVencimentoFatura ?? contaOrigem.agencia?.diaVencimentoFatura ?? 10
+      const vencimento = calcularVencimento(diaVencimentoFatura)
       await prisma.cobranca.create({
         data: {
           descricao: `Comissão da plataforma — transação #${transacaoId.slice(0, 8)}`,
           valorBRL: transacao.comissaoBRL,
           vencimento,
           contaId: transacao.contaOrigemId,
-          associadoId: transacao.compradorId,
-          agenciaId: transacao.comprador.agenciaId,
+          associadoId: contaOrigem.associadoId,
+          agenciaId: contaOrigem.agenciaId,
           transacaoId,
         },
       })
@@ -109,13 +114,20 @@ export function startWorkers() {
     'commission.gerente',
     async (job) => {
       const { transacaoId } = job.data as { transacaoId: string }
-      const transacao = await prisma.transacao.findUnique({
-        where: { id: transacaoId },
-        include: { comprador: { include: { gerente: true } } },
-      })
-      if (!transacao?.comprador?.gerenteId || !transacao.comprador.gerente) return
+      const transacao = await prisma.transacao.findUnique({ where: { id: transacaoId } })
+      if (!transacao?.contaOrigemId) return
 
-      const gerente = transacao.comprador.gerente
+      const contaOrigem = await prisma.conta.findUnique({
+        where: { id: transacao.contaOrigemId },
+        include: { associado: { include: { gerente: true } } },
+      })
+
+      // Comissão de gerente só existe quando quem comprou é um Associado cadastrado
+      // por um gerente — Agência e Matriz nunca geram essa comissão.
+      if (contaOrigem?.entityType !== 'associado') return
+      if (!contaOrigem.associado?.gerenteId || !contaOrigem.associado.gerente) return
+
+      const gerente = contaOrigem.associado.gerente
       if (!gerente.percentualComissao) return
 
       // Opção A: comissão é X% do valor RT da transação
@@ -125,7 +137,7 @@ export function startWorkers() {
       await prisma.comissaoGerente.create({
         data: {
           gerenteId: gerente.id,
-          associadoId: transacao.compradorId!,
+          associadoId: contaOrigem.associado.id,
           transacaoId,
           tipoComissao: 'transacao',
           baseValorRT: transacao.valorRT,
