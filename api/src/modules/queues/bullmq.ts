@@ -95,6 +95,18 @@ export function startWorkers() {
       const diaVencimentoFatura =
         contaOrigem.associado?.diaVencimentoFatura ?? contaOrigem.agencia?.diaVencimentoFatura ?? 10
       const vencimento = calcularVencimento(diaVencimentoFatura)
+
+      // Conta.agenciaId só é preenchido quando a própria conta pertence a uma Agência
+      // (entityType: 'agencia'). Pra conta de Associado, a agência que gerencia o associado
+      // vem de Associado.agenciaId — mesmo padrão usado na cobrança de inscrição
+      // (associate.service.ts).
+      const agenciaId =
+        contaOrigem.entityType === 'associado'
+          ? (contaOrigem.associado?.agenciaId ?? null)
+          : contaOrigem.entityType === 'agencia'
+            ? contaOrigem.agenciaId
+            : null
+
       await prisma.cobranca.create({
         data: {
           descricao: `Comissão da plataforma — transação #${transacaoId.slice(0, 8)}`,
@@ -102,7 +114,7 @@ export function startWorkers() {
           vencimento,
           contaId: transacao.contaOrigemId,
           associadoId: contaOrigem.associadoId,
-          agenciaId: contaOrigem.agenciaId,
+          agenciaId,
           transacaoId,
         },
       })
