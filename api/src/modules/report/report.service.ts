@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma.js'
 import { TipoMovimentacao } from '@prisma/client'
+import { inicioMesBrasilia } from '../../shared/utils/limites.js'
 
 interface ReportFilters {
   dataInicio?: string
@@ -159,9 +160,7 @@ export async function relatorioUsoPlanoConta(associadoId: string) {
   })
   if (!associado) return null
 
-  const inicioMes = new Date()
-  inicioMes.setDate(1)
-  inicioMes.setHours(0, 0, 0, 0)
+  const inicioMes = inicioMesBrasilia()
 
   const usadoMes = await prisma.movimentacaoConta.aggregate({
     where: {
