@@ -22,7 +22,8 @@ export async function permutaController(request: FastifyRequest, reply: FastifyR
 
 export async function negociadaController(request: FastifyRequest, reply: FastifyReply) {
   const input = negociadaSchema.parse(request.body)
-  const t = await txService.negociada(input, request.user.entityId, request.user.id)
+  if (!request.user.contaId) throw Errors.forbidden()
+  const t = await txService.negociada(input, request.user.contaId, request.user.id)
   return reply.status(201).send(success(t))
 }
 
