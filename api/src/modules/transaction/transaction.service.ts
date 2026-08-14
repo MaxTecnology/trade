@@ -547,11 +547,13 @@ export async function list(query: ListTransactionQuery, contaId: string) {
   return { items, total }
 }
 
-export async function getById(id: string) {
+export async function getById(id: string, contaId: string) {
   const t = await prisma.transacao.findUnique({
     where: { id },
     include: { voucher: true, movimentacoes: true },
   })
-  if (!t) throw Errors.notFound('Transação')
+  if (!t || (t.contaOrigemId !== contaId && t.contaDestinoId !== contaId)) {
+    throw Errors.notFound('Transação')
+  }
   return t
 }

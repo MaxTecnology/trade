@@ -65,6 +65,7 @@ export async function getByIdController(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const t = await txService.getById((request.params as Params).id)
+  if (!request.user.contaId) throw Errors.forbidden()
+  const t = await txService.getById((request.params as Params).id, request.user.contaId)
   return reply.send(success(t))
 }

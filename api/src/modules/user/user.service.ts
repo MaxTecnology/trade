@@ -1,16 +1,45 @@
 import bcrypt from 'bcrypt'
+import type { RoleUsuario, EntityType } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import { env } from '../../config/env.js'
 import type { CreateUserInput, UpdateUserInput } from './user.schema.js'
 
-export async function create(input: CreateUserInput) {
+export type Requester = {
+  id: string
+  role: RoleUsuario
+  entityType: EntityType
+  entityId: string
+}
+
+// Um usuário só pode ver/gerenciar usuários do próprio tenant (mesma
+// Agência ou mesmo Associado) — exceto superadmin, que enxerga todos.
+function mesmoTenant(requester: Requester, target: { associadoId: string | null; agenciaId: string | null }) {
+  if (requester.role === 'superadmin') return true
+  if (requester.entityType === 'associado') return target.associadoId === requester.entityId
+  if (requester.entityType === 'agencia') return target.agenciaId === requester.entityId
+  return false
+}
+
+export async function create(input: CreateUserInput, requester: Requester) {
+  if (requester.entityType !== 'associado' && requester.entityType !== 'agencia') {
+    throw Errors.forbidden()
+  }
+  const roleCompativel =
+    requester.entityType === 'associado'
+      ? input.role === 'associate_admin' || input.role === 'associate_operator'
+      : input.role === 'agency_admin' || input.role === 'agency_operator'
+  if (!roleCompativel) throw Errors.forbidden()
+
+  const entityType = requester.entityType
+  const entityId = requester.entityId
+
   const emailExists = await prisma.usuario.findUnique({ where: { email: input.email } })
   if (emailExists) throw Errors.duplicateEmail()
 
-  if (input.entityType === 'associado' && input.role === 'associate_operator') {
+  if (entityType === 'associado' && input.role === 'associate_operator') {
     const count = await prisma.usuario.count({
-      where: { associadoId: input.entityId, role: 'associate_operator' },
+      where: { associadoId: entityId, role: 'associate_operator' },
     })
     if (count >= 4) throw Errors.maxUsersReached()
   }
@@ -19,11 +48,11 @@ export async function create(input: CreateUserInput) {
 
   let codigoOperador: string | undefined
   if (input.role === 'associate_operator') {
-    const conta = await prisma.conta.findUnique({ where: { associadoId: input.entityId } })
+    const conta = await prisma.conta.findUnique({ where: { associadoId: entityId } })
     if (!conta) throw Errors.notFound('Conta do associado')
 
     const lastOperator = await prisma.usuario.findFirst({
-      where: { associadoId: input.entityId, codigoOperador: { not: null } },
+      where: { associadoId: entityId, codigoOperador: { not: null } },
       orderBy: { codigoOperador: 'desc' },
     })
 
@@ -39,9 +68,9 @@ export async function create(input: CreateUserInput) {
       email: input.email,
       senhaHash,
       role: input.role,
-      entityType: input.entityType,
-      associadoId: input.entityType === 'associado' ? input.entityId : undefined,
-      agenciaId: input.entityType === 'agencia' ? input.entityId : undefined,
+      entityType,
+      associadoId: entityType === 'associado' ? entityId : undefined,
+      agenciaId: entityType === 'agencia' ? entityId : undefined,
       codigoOperador,
     },
     select: {
@@ -68,7 +97,7 @@ export async function list(requester: { entityId: string; entityType: string }) 
   })
 }
 
-export async function getById(id: string) {
+export async function getById(id: string, requester: Requester) {
   const u = await prisma.usuario.findUnique({
     where: { id },
     select: {
@@ -80,14 +109,19 @@ export async function getById(id: string) {
       ativo: true,
       codigoOperador: true,
       criadoEm: true,
+      associadoId: true,
+      agenciaId: true,
     },
   })
-  if (!u) throw Errors.notFound('Usuário')
-  return u
+  // 404 em vez de 403 quando o id existe mas é de outro tenant — não
+  // confirma pra quem não tem acesso que aquele id existe.
+  if (!u || !mesmoTenant(requester, u)) throw Errors.notFound('Usuário')
+  const { associadoId: _associadoId, agenciaId: _agenciaId, ...safe } = u
+  return safe
 }
 
-export async function update(id: string, input: UpdateUserInput) {
-  await getById(id)
+export async function update(id: string, input: UpdateUserInput, requester: Requester) {
+  await getById(id, requester)
   return prisma.usuario.update({
     where: { id },
     data: input,
@@ -95,7 +129,15 @@ export async function update(id: string, input: UpdateUserInput) {
   })
 }
 
-export async function changePassword(id: string, senhaAtual: string, novaSenha: string) {
+export async function changePassword(
+  id: string,
+  senhaAtual: string,
+  novaSenha: string,
+  requester: Requester,
+) {
+  // Troca de senha é sempre self-service (exige a senha atual) — nunca em
+  // nome de outro usuário, nem por admin do mesmo tenant.
+  if (id !== requester.id) throw Errors.forbidden()
   const u = await prisma.usuario.findUnique({ where: { id } })
   if (!u) throw Errors.notFound('Usuário')
   const valid = await bcrypt.compare(senhaAtual, u.senhaHash)
@@ -104,8 +146,8 @@ export async function changePassword(id: string, senhaAtual: string, novaSenha: 
   await prisma.usuario.update({ where: { id }, data: { senhaHash } })
 }
 
-export async function setStatus(id: string, ativo: boolean) {
-  await getById(id)
+export async function setStatus(id: string, ativo: boolean, requester: Requester) {
+  await getById(id, requester)
   return prisma.usuario.update({
     where: { id },
     data: { ativo },
@@ -113,7 +155,7 @@ export async function setStatus(id: string, ativo: boolean) {
   })
 }
 
-export async function remove(id: string) {
-  await getById(id)
+export async function remove(id: string, requester: Requester) {
+  await getById(id, requester)
   await prisma.usuario.delete({ where: { id } })
 }

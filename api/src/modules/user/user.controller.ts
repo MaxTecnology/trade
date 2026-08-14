@@ -12,7 +12,7 @@ type Params = { id: string }
 
 export async function createController(request: FastifyRequest, reply: FastifyReply) {
   const input = createUserSchema.parse(request.body)
-  const u = await userService.create(input)
+  const u = await userService.create(input, request.user)
   return reply.status(201).send(success(u))
 }
 
@@ -23,33 +23,33 @@ export async function listController(request: FastifyRequest, reply: FastifyRepl
 
 export async function getByIdController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
-  const u = await userService.getById(id)
+  const u = await userService.getById(id, request.user)
   return reply.send(success(u))
 }
 
 export async function updateController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
   const input = updateUserSchema.parse(request.body)
-  const u = await userService.update(id, input)
+  const u = await userService.update(id, input, request.user)
   return reply.send(success(u))
 }
 
 export async function changePasswordController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
   const { senhaAtual, novaSenha } = changePasswordSchema.parse(request.body)
-  await userService.changePassword(id, senhaAtual, novaSenha)
+  await userService.changePassword(id, senhaAtual, novaSenha, request.user)
   return reply.send(success({ message: 'Senha alterada com sucesso.' }))
 }
 
 export async function setStatusController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
   const { ativo } = statusSchema.parse(request.body)
-  const u = await userService.setStatus(id, ativo)
+  const u = await userService.setStatus(id, ativo, request.user)
   return reply.send(success(u))
 }
 
 export async function removeController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
-  await userService.remove(id)
+  await userService.remove(id, request.user)
   return reply.status(204).send()
 }
