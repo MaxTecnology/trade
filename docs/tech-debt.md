@@ -51,3 +51,12 @@ Mesmo padrão pré-existente (não é regressão desta rodada) — a validação
 
 ## `GET /auth/me` continua retornando `conta: null` pra Matriz
 Desde a Task 1 (2026-08-13) o JWT da Matriz já carrega um `contaId` real, mas `/auth/me` (`auth.service.ts`) não foi atualizado para resolver e retornar essa conta — continua tratando Matriz como `conta: null` (mesmo padrão do superadmin sem conta, mas agora incorreto pra Matriz especificamente). Inconsistência entre o que o login/JWT já sabe e o que `/me` expõe, que pode confundir consumidores futuros do endpoint. Achado durante a revisão das Tasks 1-8; `/me` ficou fora do escopo desta rodada.
+
+## Runbook de deploy da migration `20260814190919_oferta_conta_generica`
+Migration da Task 3 (compra/venda por Agência e Matriz) que torna `oferta.contaId` genérico (dono pode ser Associado, Agência ou Matriz) e faz `oferta.associadoId` virar opcional. **Antes de aplicar em produção**, rodar essa checagem de sanidade do backfill:
+```sql
+SELECT count(*) FROM oferta o LEFT JOIN conta c ON c."associadoId" = o."associadoId" WHERE c.id IS NULL;
+```
+Tem que dar **0** — se não der, o `UPDATE` de backfill (que popula `oferta.contaId` a partir de `conta.associadoId`) vai deixar linhas com `contaId` nulo, e o `ALTER COLUMN "contaId" SET NOT NULL` subsequente falha, travando o deploy.
+
+Além disso, a migration segura locks em `oferta` **e** em `conta` (a tabela financeira mais usada do sistema) até o commit — o Prisma envolve o arquivo inteiro numa transação, então `ALTER COLUMN ... SET NOT NULL`, `ADD CONSTRAINT ... FOREIGN KEY` e `CREATE INDEX` (sem `CONCURRENTLY`) seguram esses locks o tempo todo, bloqueando escritas concorrentes em `conta` durante a aplicação. Se `oferta` crescer muito antes do deploy real acontecer, vale considerar rodar em janela de baixo tráfego.

@@ -445,7 +445,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 - A conta compradora deve ter saldo suficiente — considerando `limiteCredito` da conta compradora (`saldo - valor >= -limiteCredito`), não apenas saldo >= 0.
 - `limiteVendaMensal`/`limiteVendaTotal` do comprador não podem estar atingidos (substituem `plano.limiteRT`).
 - A oferta deve estar com status `aberta` e `quantidadeDisponivel > 0`.
-- Pode ser parcelada em até `maxParcelas` do plano — sem juros.
+- Pode ser parcelada (`parcelas`/`totalParcelas` na `Transacao`) sem juros — não é mais limitada pelo plano (`maxParcelas` foi removido, ver §Planos).
 - Toda permuta gera um voucher obrigatoriamente.
 - Operação atômica (ver fluxo em ARCHITECTURE.md §8).
 - `/transacoes/permuta` e `/transacoes/negociada` aceitam também `agency_admin`/`agency_operator`/`superadmin` — o comprador pode ser Associado, Agência ou Matriz, resolvido a partir do `contaId` do JWT. A comissão da plataforma (`comissaoBRL`) sempre usa o plano de **quem compra** (Associado ou Agência); quando o comprador é a Matriz, não há comissão (Matriz não tem plano). Comissão de gerente (`comissao_gerente`) só é gerada quando o comprador é um Associado com `gerenteId` vinculado — Agência e Matriz nunca geram comissão de gerente.
