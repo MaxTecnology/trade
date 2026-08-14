@@ -11,42 +11,65 @@ import type {
   ListTransactionQuery,
 } from './transaction.schema.js'
 
-export async function permuta(input: PermutaInput, compradorAssociadoId: string, usuarioId: string) {
+export async function permuta(input: PermutaInput, compradorContaId: string, usuarioId: string) {
   const oferta = await prisma.oferta.findUnique({
     where: { id: input.ofertaId },
-    include: { associado: { include: { plano: true, conta: true } } },
+    include: { conta: true },
   })
   if (!oferta || oferta.status !== 'aberta' || oferta.quantidadeDisponivel <= 0) {
     throw Errors.offerUnavailable()
   }
 
-  const compradorAssociado = await prisma.associado.findUnique({
-    where: { id: compradorAssociadoId },
-    include: { plano: true, conta: true },
+  const compradorConta = await prisma.conta.findUnique({
+    where: { id: compradorContaId },
+    include: {
+      associado: { include: { plano: true } },
+      agencia: { include: { plano: true } },
+    },
   })
-  if (!compradorAssociado?.conta) throw Errors.notFound('Conta do comprador')
-  if (compradorAssociado.status !== 'ativo') throw Errors.associateSuspended()
+  if (!compradorConta) throw Errors.notFound('Conta do comprador')
+
+  let percentualComissao = 0
+  let limiteVendaMensal = 0
+  let limiteVendaTotal = 0
+  if (compradorConta.entityType === 'associado') {
+    if (!compradorConta.associado) throw Errors.notFound('Associado')
+    if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
+    percentualComissao = Number(compradorConta.associado.plano.percentualComissao)
+    limiteVendaMensal = Number(compradorConta.associado.limiteVendaMensal ?? 0)
+    limiteVendaTotal = Number(compradorConta.associado.limiteVendaTotal ?? 0)
+  } else if (compradorConta.entityType === 'agencia') {
+    if (!compradorConta.agencia) throw Errors.notFound('Agência')
+    if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
+    percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
+    limiteVendaMensal = Number(compradorConta.agencia.limiteVendaMensal ?? 0)
+    limiteVendaTotal = Number(compradorConta.agencia.limiteVendaTotal ?? 0)
+  }
+  // Matriz: sem status pra checar, sem comissão, sem teto de volume (fica de fora
+  // da checagem de validarLimiteVenda abaixo).
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
-  const limiteCredito = Number(compradorAssociado.conta.limiteCredito ?? 0)
-  if (!saldoSuficienteParaDebito(Number(compradorAssociado.conta.saldo), valorTotal, limiteCredito)) {
+  const limiteCredito = Number(compradorConta.limiteCredito ?? 0)
+  if (!saldoSuficienteParaDebito(Number(compradorConta.saldo), valorTotal, limiteCredito)) {
     throw Errors.insufficientBalance()
   }
 
-  await validarLimiteVenda({
-    contaId: compradorAssociado.conta.id,
-    valorNovaOperacao: valorTotal,
-    limiteVendaMensal: Number(compradorAssociado.limiteVendaMensal ?? 0),
-    limiteVendaTotal: Number(compradorAssociado.limiteVendaTotal ?? 0),
-  })
+  if (compradorConta.entityType !== 'matriz') {
+    await validarLimiteVenda({
+      contaId: compradorConta.id,
+      valorNovaOperacao: valorTotal,
+      limiteVendaMensal,
+      limiteVendaTotal,
+    })
+  }
 
-const vendedorConta = oferta.associado.conta
+  const vendedorConta = oferta.conta
   if (!vendedorConta) throw Errors.notFound('Conta do vendedor')
 
   const valorParcela = valorTotal / input.parcelas
-  const compradorContaSaldo = Number(compradorAssociado.conta.saldo)
+  const compradorContaSaldo = Number(compradorConta.saldo)
   const vendedorContaSaldo = Number(vendedorConta.saldo)
-  const comissaoBRL = valorTotal * (Number(compradorAssociado.plano.percentualComissao) / 100)
+  const comissaoBRL = valorTotal * (percentualComissao / 100)
 
   const transacao = await prisma.$transaction(async (tx) => {
     const t = await tx.transacao.create({
@@ -57,11 +80,11 @@ const vendedorConta = oferta.associado.conta
         comissaoBRL,
         parcelas: input.parcelas,
         quantidade: input.quantidade,
-        compradorId: compradorAssociadoId,
+        compradorId: compradorConta.associado?.id ?? null,
         vendedorId: oferta.associadoId,
         ofertaId: input.ofertaId,
         usuarioIniciadorId: usuarioId,
-        contaOrigemId: compradorAssociado.conta!.id,
+        contaOrigemId: compradorConta.id,
         contaDestinoId: vendedorConta.id,
       },
     })
@@ -74,7 +97,7 @@ const vendedorConta = oferta.associado.conta
 
       await tx.movimentacaoConta.create({
         data: {
-          contaId: compradorAssociado.conta!.id,
+          contaId: compradorConta.id,
           tipo: 'debito',
           valor: valorParcela,
           saldoApos: novoSaldoComprador,
@@ -102,7 +125,7 @@ const vendedorConta = oferta.associado.conta
     }
 
     await tx.conta.update({
-      where: { id: compradorAssociado.conta!.id },
+      where: { id: compradorConta.id },
       data: { saldo: { decrement: valorTotal } },
     })
 
