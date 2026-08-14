@@ -60,3 +60,28 @@ SELECT count(*) FROM oferta o LEFT JOIN conta c ON c."associadoId" = o."associad
 Tem que dar **0** — se não der, o `UPDATE` de backfill (que popula `oferta.contaId` a partir de `conta.associadoId`) vai deixar linhas com `contaId` nulo, e o `ALTER COLUMN "contaId" SET NOT NULL` subsequente falha, travando o deploy.
 
 Além disso, a migration segura locks em `oferta` **e** em `conta` (a tabela financeira mais usada do sistema) até o commit — o Prisma envolve o arquivo inteiro numa transação, então `ALTER COLUMN ... SET NOT NULL`, `ADD CONSTRAINT ... FOREIGN KEY` e `CREATE INDEX` (sem `CONCURRENTLY`) seguram esses locks o tempo todo, bloqueando escritas concorrentes em `conta` durante a aplicação. Se `oferta` crescer muito antes do deploy real acontecer, vale considerar rodar em janela de baixo tráfego.
+
+## [P0 — CRÍTICO] `POST /usuarios` aceita `entityType`/`entityId` do corpo da requisição sem checar posse
+
+Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-08-14), mas é uma vulnerabilidade **pré-existente**, que não foi introduzida por essa branch nem por nenhuma anterior — `user.service.ts`/`user.controller.ts`/`user.schema.ts` nunca foram tocados por essas branches. Hoje, um usuário com role `associate_admin` ou `agency_admin` pode chamar `POST /usuarios` informando `entityType`/`entityId` de **qualquer** entidade no sistema (não só a própria), sem nenhuma validação cruzada contra `request.user`. Um atacante autenticado como admin de qualquer conta pode forjar um usuário com `entityType: 'agencia'`/`entityId: <uuid de outra agência>`, logar com ele e receber um JWT com o `contaId` real da agência-vítima.
+
+**Por que isso virou P0 agora:** antes da branch de compra/venda por Agência/Matriz, esse furo já permitia acesso indevido a gestão de usuários e a `/transacoes/:id/estorno`. Depois dela, o mesmo JWT forjado permite **gastar** o saldo/limite de crédito da agência-vítima via `/transacoes/permuta`/`/negociada` e publicar/alterar ofertas em nome dela — movimentação financeira real, registrada em ledger imutável (não reversível sem estorno manual).
+
+**Ação futura — urgente, tratar como fix de segurança separado, não como parte de uma feature:** derivar `entityType`/`entityId` de `request.user` no controller (só `superadmin` deveria poder informar outra entidade explicitamente), e validar em `user.service.create` que o `role` do payload é compatível com o `entityType` resolvido.
+
+## [Alto] `transaction.service.ts` `getById()` não filtra por posse — qualquer operador lê qualquer transação
+
+Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-08-14) — pré-existente (a função em si não foi tocada por essa branch, só o shape dos dados que ela expõe mudou). `GET /transacoes/:id` não filtra por `contaOrigemId`/`contaDestinoId` do usuário autenticado — qualquer `associate_operator`+ autenticado consegue ler qualquer transação por id (valor, comissão, comprador, vendedor, movimentações), inclusive agora de Agência e Matriz.
+
+**Ação futura:** filtrar por `OR: [{ contaOrigemId: contaId }, { contaDestinoId: contaId }]` usando o `contaId` do JWT, mesmo padrão que `list()` já aplica corretamente.
+
+## [Alto] Matriz emitindo RT via `permuta()`/`negociada()` sem rastreio contábil equivalente ao de `credito()`
+
+Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-08-14) — interação nova entre a Task 1 (Matriz ganhou `Conta` real com `limiteCredito` altíssimo, "sem limite na prática") e a Task 7 (guard de `/transacoes/permuta`/`/negociada` abriu pra `superadmin`). Um `superadmin` "comprando" como Matriz cria RT novo levando o saldo da Matriz a negativo — exatamente como o fluxo já existente `credito()`, mas gravado como `tipo: 'permuta'`/`'negociada'`, fora do relatório/tela de emissão que hoje só olha o fluxo `credito()`.
+
+**Ação futura:** decisão de produto pendente — marcar/filtrar essas transações quando `contaOrigem.entityType === 'matriz'` e incluí-las no relatório de emissão existente, ou baixar `limiteCredito` da Matriz pra um teto operacional revisável em vez de um valor praticamente infinito.
+
+## Visibilidade pós-compra de Agência/Matriz — efeito combinado de vários itens já registrados individualmente
+
+Consolidação de achados já registrados separadamente (`estorno.service.ts`/`report.service.ts` acima, e a decisão da Task 7 de manter `GET /transacoes*`/`PATCH /transacoes/:id/avaliar` só pra roles de Associado): o efeito combinado é que uma Agência pode gastar RT normalmente (permuta/negociada funcionam), mas **não consegue ver a própria transação pela API** (`GET /transacoes*` é Associado-only), **não consegue avaliar o vendedor**, e a compra **não aparece em relatórios nem no fluxo de estorno**. Cada peça foi uma decisão isolada e consciente durante o desenvolvimento; o valor deste item é nomear o efeito somado, pra não ser redescoberto como bug de produção.
+**Ação futura:** ao decidir abrir `GET /transacoes*`/`avaliar` pra Agência/Matriz (ou resolver os filtros de relatório/estorno), tratar como uma única entrega de "visibilidade pós-compra", não itens soltos.
