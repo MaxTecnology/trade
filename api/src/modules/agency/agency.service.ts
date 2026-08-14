@@ -22,11 +22,9 @@ export async function create(input: CreateAgencyInput, creatorId: string, creato
     throw new AppError('VALIDATION_ERROR', 'Agência comum requer agenciaParenteId.', 400)
   }
 
-  if (input.planoId) {
-    const plano = await prisma.plano.findUnique({ where: { id: input.planoId } })
-    if (!plano || !plano.ativo) throw Errors.planoInativo()
-    if (plano.tipoPlano !== 'agencia') throw new AppError('VALIDATION_ERROR', 'Plano inválido para agência.', 400)
-  }
+  const plano = await prisma.plano.findUnique({ where: { id: input.planoId } })
+  if (!plano || !plano.ativo) throw Errors.planoInativo()
+  if (plano.tipoPlano !== 'agencia') throw new AppError('VALIDATION_ERROR', 'Plano inválido para agência.', 400)
 
   return prisma.$transaction(async (tx) => {
     const agencia = await tx.agencia.create({
@@ -41,7 +39,7 @@ export async function create(input: CreateAgencyInput, creatorId: string, creato
         telefone: input.telefone,
         imagemUrl: input.imagemUrl,
         agenciaParenteId: input.agenciaParenteId ?? null,
-        planoId: input.planoId ?? null,
+        planoId: input.planoId,
         logradouro: input.endereco.logradouro,
         numero: input.endereco.numero,
         complemento: input.endereco.complemento,

@@ -23,7 +23,7 @@ export const createAgencySchema = z.object({
   telefone: z.string().optional(),
   imagemUrl: z.string().optional(),
   agenciaParenteId: z.string().uuid().nullable().optional(),
-  planoId: z.string().uuid().optional(),
+  planoId: z.string().uuid(),
 
   // Contato
   nomeContato: z.string().optional(),

@@ -231,7 +231,7 @@ const CadastrarAgencia = () => {
 
                 <div className="formDivider"><p>Unidade</p></div>
 
-                <PlanosFields type="agencia" optional />
+                <PlanosFields type="agencia" />
 
                 <div className="formDivider"><p>Operações</p></div>
 

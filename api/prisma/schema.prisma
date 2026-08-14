@@ -146,7 +146,7 @@ model Agencia {
   imagemUrl        String?
   status           StatusGeral @default(ativo)
   agenciaParenteId String?
-  planoId          String?
+  planoId          String
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
 
@@ -167,7 +167,7 @@ model Agencia {
 
   agenciaParente Agencia?         @relation("AgenciaHierarquia", fields: [agenciaParenteId], references: [id])
   agenciasFilhas Agencia[]        @relation("AgenciaHierarquia")
-  plano          Plano?           @relation(fields: [planoId], references: [id])
+  plano          Plano            @relation(fields: [planoId], references: [id])
   contatos       ContatoAgencia[]
   associados     Associado[]
   usuarios       Usuario[]
