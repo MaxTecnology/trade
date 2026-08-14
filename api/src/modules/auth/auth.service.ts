@@ -198,6 +198,19 @@ export async function me(userId: string) {
         }
       }
     }
+  } else if (usuario.entityType === 'matriz') {
+    const contaMatriz = await prisma.conta.findFirst({
+      where: { entityType: 'matriz' },
+      select: { id: true, numero: true, saldo: true, limiteCredito: true },
+    })
+    if (contaMatriz) {
+      conta = {
+        id: contaMatriz.id,
+        numero: contaMatriz.numero,
+        saldo: Number(contaMatriz.saldo),
+        limiteCredito: Number(contaMatriz.limiteCredito),
+      }
+    }
   }
 
   return {

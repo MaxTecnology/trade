@@ -49,8 +49,8 @@ O branch por `entityType` da conta compradora (resolver Associado/Agência/Matri
 Mesmo padrão pré-existente (não é regressão desta rodada) — a validação de `saldoSuficienteParaDebito` roda antes do `prisma.$transaction`, então duas operações concorrentes da mesma conta podem ambas passar a validação de aplicação; só a `CHECK` constraint do banco barra a segunda, retornando um erro genérico de constraint em vez de `INSUFFICIENT_BALANCE`. Achado e registrado durante a revisão das Tasks 1-8.
 **Ação futura:** mapear esse erro de constraint do banco pra uma resposta HTTP amigável (`INSUFFICIENT_BALANCE`, 422), ou mover a checagem pra dentro da transação com lock explícito.
 
-## `GET /auth/me` continua retornando `conta: null` pra Matriz
-Desde a Task 1 (2026-08-13) o JWT da Matriz já carrega um `contaId` real, mas `/auth/me` (`auth.service.ts`) não foi atualizado para resolver e retornar essa conta — continua tratando Matriz como `conta: null` (mesmo padrão do superadmin sem conta, mas agora incorreto pra Matriz especificamente). Inconsistência entre o que o login/JWT já sabe e o que `/me` expõe, que pode confundir consumidores futuros do endpoint. Achado durante a revisão das Tasks 1-8; `/me` ficou fora do escopo desta rodada.
+## [RESOLVIDO 2026-08-14] `GET /auth/me` retornava `conta: null` pra Matriz
+Desde a Task 1 (2026-08-13) o JWT da Matriz já carregava um `contaId` real, mas `/auth/me` (`auth.service.ts`) não tinha sido atualizado pra resolver e retornar essa conta — só existiam branches pra `associado`/`agencia`. Corrigido: `me()` ganhou o terceiro branch (`entityType === 'matriz'`), buscando a `Conta` por `entityType` (mesmo padrão do `login()`) e retornando `{ id, numero, saldo, limiteCredito }` real. Validado com Postgres real — Matriz e Associado confirmados sem regressão.
 
 ## Runbook de deploy da migration `20260814190919_oferta_conta_generica`
 Migration da Task 3 (compra/venda por Agência e Matriz) que torna `oferta.contaId` genérico (dono pode ser Associado, Agência ou Matriz) e faz `oferta.associadoId` virar opcional. **Antes de aplicar em produção**, rodar essa checagem de sanidade do backfill:
