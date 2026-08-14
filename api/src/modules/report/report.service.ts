@@ -50,7 +50,12 @@ export async function saldo(contaId: string) {
   return conta
 }
 
-export async function relatorioPermutas(entityId: string, role: string, filters: ReportFilters) {
+export async function relatorioPermutas(
+  entityId: string,
+  role: string,
+  filters: ReportFilters,
+  contaId?: string,
+) {
   const page = filters.page ?? 1
   const limit = Math.min(filters.limit ?? 20, 100)
   const skip = (page - 1) * limit
@@ -64,7 +69,15 @@ export async function relatorioPermutas(entityId: string, role: string, filters:
       select: { id: true },
     })
     const ids = associados.map((a) => a.id)
-    where = { ...where, OR: [{ compradorId: { in: ids } }, { vendedorId: { in: ids } }] }
+    // Cobre tanto os associados da agência (via compradorId/vendedorId) quanto
+    // a própria agência participando diretamente (via contaOrigemId/contaDestinoId,
+    // já que Transacao.compradorId/vendedorId só são preenchidos pra Associado).
+    const condicoes: Record<string, unknown>[] = [
+      { compradorId: { in: ids } },
+      { vendedorId: { in: ids } },
+    ]
+    if (contaId) condicoes.push({ contaOrigemId: contaId }, { contaDestinoId: contaId })
+    where = { ...where, OR: condicoes }
   }
 
   const [items, total] = await prisma.$transaction([
@@ -74,7 +87,12 @@ export async function relatorioPermutas(entityId: string, role: string, filters:
   return { items, total, page, limit }
 }
 
-export async function relatorioComissoes(entityId: string, role: string, filters: ReportFilters) {
+export async function relatorioComissoes(
+  entityId: string,
+  role: string,
+  filters: ReportFilters,
+  contaId?: string,
+) {
   const page = filters.page ?? 1
   const limit = Math.min(filters.limit ?? 20, 100)
   const skip = (page - 1) * limit
@@ -90,7 +108,11 @@ export async function relatorioComissoes(entityId: string, role: string, filters
       where: { agenciaId: entityId },
       select: { id: true },
     })
-    where = { ...where, compradorId: { in: associados.map((a) => a.id) } }
+    // Comissão é sempre cobrada de quem compra — cobre os associados da
+    // agência (compradorId) e a própria agência comprando direto (contaOrigemId).
+    const condicoes: Record<string, unknown>[] = [{ compradorId: { in: associados.map((a) => a.id) } }]
+    if (contaId) condicoes.push({ contaOrigemId: contaId })
+    where = { ...where, OR: condicoes }
   }
 
   const [items, total, soma] = await prisma.$transaction([

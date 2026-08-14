@@ -19,7 +19,7 @@ const include = {
 } as const
 
 export async function solicitarEstorno(
-  requester: { id: string; role: string; entityId: string },
+  requester: { id: string; role: string; entityId: string; contaId?: string },
   input: SolicitarEstornoInput,
 ) {
   const transacao = await prisma.transacao.findUnique({ where: { id: input.transacaoId } })
@@ -34,7 +34,14 @@ export async function solicitarEstorno(
   const diasDesde = (Date.now() - transacao.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
   if (diasDesde > 30) throw Errors.estornoPrazoExpirado()
 
-  const envolvido = transacao.compradorId === requester.entityId || transacao.vendedorId === requester.entityId
+  // compradorId/vendedorId só são preenchidos quando a parte é um Associado —
+  // Agência/Matriz participando diretamente (via Oferta) só aparecem em
+  // contaOrigemId/contaDestinoId, que já cobrem os três tipos de conta.
+  const envolvido =
+    transacao.compradorId === requester.entityId ||
+    transacao.vendedorId === requester.entityId ||
+    (!!requester.contaId &&
+      (transacao.contaOrigemId === requester.contaId || transacao.contaDestinoId === requester.contaId))
   const admin = requester.role === 'superadmin' || requester.role === 'agency_admin'
   if (!envolvido && !admin) throw Errors.forbidden()
 
@@ -67,13 +74,17 @@ export async function listarMinhas(usuarioId: string, query: ListEstornoQueryTyp
   return { items, total, page, limit }
 }
 
-export async function listarFilhas(agenciaId: string, query: ListEstornoQueryType) {
+export async function listarFilhas(agenciaId: string, query: ListEstornoQueryType, contaId?: string) {
   const { page, limit, status } = query
+  // Cobre tanto os associados da agência (via comprador/vendedor.agenciaId)
+  // quanto a própria agência participando diretamente da transação (via
+  // contaOrigemId/contaDestinoId, já que uma Agência comprando/vendendo não
+  // tem comprador/vendedor Associado nenhum pra casar com esse filtro).
+  const condicoes: Record<string, unknown>[] = [{ comprador: { agenciaId } }, { vendedor: { agenciaId } }]
+  if (contaId) condicoes.push({ contaOrigemId: contaId }, { contaDestinoId: contaId })
   const where = {
     ...(status ? { status } : {}),
-    transacao: {
-      OR: [{ comprador: { agenciaId } }, { vendedor: { agenciaId } }],
-    },
+    transacao: { OR: condicoes },
   }
   const [items, total] = await prisma.$transaction([
     prisma.solicitacaoEstorno.findMany({

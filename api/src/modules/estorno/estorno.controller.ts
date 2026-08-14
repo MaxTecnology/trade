@@ -19,7 +19,11 @@ export async function listarMinhasController(request: FastifyRequest, reply: Fas
 
 export async function listarFilhasController(request: FastifyRequest, reply: FastifyReply) {
   const query = ListEstornoQuery.parse(request.query)
-  const { items, total, page, limit } = await estornoService.listarFilhas(request.user.entityId, query)
+  const { items, total, page, limit } = await estornoService.listarFilhas(
+    request.user.entityId,
+    query,
+    request.user.contaId,
+  )
   return reply.send(paginated(items, page, limit, total))
 }
 

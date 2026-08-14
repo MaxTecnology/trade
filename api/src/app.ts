@@ -25,6 +25,7 @@ import { creditoRoutes } from './modules/credito/credito.routes.js'
 import { cobrancaRoutes } from './modules/cobranca/cobranca.routes.js'
 import { uploadRoutes } from './modules/upload/upload.routes.js'
 import { estornoRoutes } from './modules/estorno/estorno.routes.js'
+import { matrizRoutes } from './modules/matriz/matriz.routes.js'
 
 export async function buildApp() {
   const app = Fastify({
@@ -108,6 +109,7 @@ export async function buildApp() {
   await app.register(cobrancaRoutes, { prefix })
   await app.register(uploadRoutes, { prefix })
   await app.register(estornoRoutes, { prefix })
+  await app.register(matrizRoutes, { prefix })
 
   return app
 }

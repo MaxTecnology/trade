@@ -41,13 +41,23 @@ export async function saldoController(request: FastifyRequest, reply: FastifyRep
 
 export async function permutasController(request: FastifyRequest, reply: FastifyReply) {
   const q = request.query as Query
-  const result = await reportService.relatorioPermutas(request.user.entityId, request.user.role, q)
+  const result = await reportService.relatorioPermutas(
+    request.user.entityId,
+    request.user.role,
+    q,
+    request.user.contaId,
+  )
   return reply.send(paginated(result.items, result.page, result.limit, result.total))
 }
 
 export async function comissoesController(request: FastifyRequest, reply: FastifyReply) {
   const q = request.query as Query
-  const result = await reportService.relatorioComissoes(request.user.entityId, request.user.role, q)
+  const result = await reportService.relatorioComissoes(
+    request.user.entityId,
+    request.user.role,
+    q,
+    request.user.contaId,
+  )
   return reply.send({
     ...paginated(result.items, result.page, result.limit, result.total),
     totalComissaoBRL: result.totalComissaoBRL,
