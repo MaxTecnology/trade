@@ -145,7 +145,7 @@ Associados são as empresas que efetivamente realizam permutas. São vinculados 
 - CNPJ deve ser único no sistema.
 - O vínculo gerente → associado é **permanente** e não pode ser reatribuído.
 - `limiteCredito` define o teto de quanto a conta RT do associado pode ficar negativa (`saldo - valorDebito >= -limiteCredito`). `0`/não informado = nenhuma margem negativa.
-- `limiteVendaMensal`/`limiteVendaTotal` definem o teto de volume debitado da conta (mês corrente / histórico total). Substituem `plano.limiteRT`, que deixou de ser usado nas validações de transação — permanece só como valor de referência ao cadastrar o associado.
+- `limiteVendaMensal`/`limiteVendaTotal` definem o teto de volume **creditado** na conta por vender (mês corrente / histórico total) — limitam quem vende (recebe RT), não quem compra. Quem compra já é limitado por `saldo`+`limiteCredito`. Substituem `plano.limiteRT`, que deixou de ser usado nas validações de transação — permanece só como valor de referência ao cadastrar o associado.
 
 ### Payload de Criação
 ```json
@@ -396,7 +396,7 @@ Ofertas são produtos ou serviços disponibilizados para troca em RT — por Ass
 
 - Associado precisa de loja `aberta` para criar ofertas; Agência precisa estar `ativo`; Matriz não tem restrição de status para criar ofertas.
 - Toda oferta deve ter: título, descrição, categoriaId, valorRT (> 0), quantidadeDisponivel (> 0), cidade, estado.
-- Limite de venda é validado no momento da compra (permuta/negociada — `limiteVendaMensal`/`limiteVendaTotal` do comprador, ver §3 e §9), não na criação da oferta.
+- Limite de venda é validado no momento da compra (permuta/negociada — `limiteVendaMensal`/`limiteVendaTotal` do **vendedor**, ver §3 e §9), não na criação da oferta.
 - Quando `quantidadeDisponivel` chega a zero, a oferta é automaticamente fechada (via job BullMQ `offer.close`).
 - Ofertas fechadas ou de associados com loja fechada não aparecem na listagem pública.
 - Status possíveis: `aberta`, `fechada`, `pausada`.
@@ -443,7 +443,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 
 **Permuta:**
 - A conta compradora deve ter saldo suficiente — considerando `limiteCredito` da conta compradora (`saldo - valor >= -limiteCredito`), não apenas saldo >= 0.
-- `limiteVendaMensal`/`limiteVendaTotal` do comprador não podem estar atingidos (substituem `plano.limiteRT`).
+- `limiteVendaMensal`/`limiteVendaTotal` do **vendedor** não podem estar atingidos (substituem `plano.limiteRT`) — limita quem vende (recebe RT), não quem compra; o comprador já é limitado por `limiteCredito`.
 - A oferta deve estar com status `aberta` e `quantidadeDisponivel > 0`.
 - Pode ser parcelada (`parcelas`/`totalParcelas` na `Transacao`) sem juros — não é mais limitada pelo plano (`maxParcelas` foi removido, ver §Planos).
 - Toda permuta gera um voucher obrigatoriamente.
@@ -463,7 +463,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 **Negociação direta (`negociada`):**
 - Fora do marketplace de Ofertas — o comprador escolhe qualquer associado ativo (via `GET /associados/diretorio`) e define o `valorRT` diretamente, sem oferta publicada.
 - **Sempre em RT** — não existe valor em dinheiro real (BRL) numa negociação direta. RT é a moeda interna do sistema e não circula para fora dele (ver `ARCHITECTURE.md §4`).
-- Mesmas validações de saldo (`limiteCredito`) e limite de venda (`limiteVendaMensal`/`limiteVendaTotal`) que a permuta.
+- Mesmas validações de saldo do comprador (`limiteCredito`) e limite de venda do vendedor (`limiteVendaMensal`/`limiteVendaTotal`) que a permuta.
 - Não decrementa estoque de oferta (não há oferta envolvida) — `quantidade` fica `null`.
 - Gera voucher, comissão da plataforma e comissão de gerente, igual à permuta.
 - Não é permitido negociar consigo mesmo.
@@ -569,7 +569,7 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
 | GET | `/relatorios/permutas` | Relatório de permutas | `associate_admin`, `agency_admin` |
 | GET | `/relatorios/comissoes` | Relatório de comissões da plataforma (BRL) | `agency_admin`, `superadmin` |
 | GET | `/relatorios/comissoes-gerentes` | Relatório de comissões de todos os gerentes | `agency_admin`, `superadmin` |
-| GET | `/relatorios/uso-plano` | Uso do `limiteVendaMensal` do associado (substituiu `plano.limiteRT`) | `associate_admin` |
+| GET | `/relatorios/uso-plano` | Quanto o associado já **vendeu** este mês vs. `limiteVendaMensal` (substituiu `plano.limiteRT`) | `associate_admin` |
 | GET | `/relatorios/associados` | Consolidado de associados | `agency_admin`, `superadmin`, `gerente` (apenas os próprios) |
 
 ### Filtros comuns

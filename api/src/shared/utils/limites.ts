@@ -35,6 +35,14 @@ export async function getLimiteCreditoDaConta(contaId: string): Promise<number> 
   return Number(conta?.limiteCredito ?? 0)
 }
 
+/**
+ * Valida o teto de volume de VENDA — `contaId` deve ser a conta de quem
+ * está recebendo RT (vendedor), não de quem está pagando. Quem compra já é
+ * limitado por saldo + limiteCredito (`saldoSuficienteParaDebito`); um teto
+ * de volume adicional do lado do comprador seria redundante com isso. Do
+ * lado do vendedor não existe nenhum freio natural — vender é só crédito
+ * na conta — então é aqui que o negócio quer o teto mensal/total.
+ */
 export async function validarLimiteVenda(params: {
   contaId: string
   valorNovaOperacao: number
@@ -47,11 +55,11 @@ export async function validarLimiteVenda(params: {
 
   const [mesAgg, totalAgg] = await Promise.all([
     prisma.movimentacaoConta.aggregate({
-      where: { contaId, tipo: 'debito', criadoEm: { gte: inicioMes } },
+      where: { contaId, tipo: 'credito', criadoEm: { gte: inicioMes } },
       _sum: { valor: true },
     }),
     prisma.movimentacaoConta.aggregate({
-      where: { contaId, tipo: 'debito' },
+      where: { contaId, tipo: 'credito' },
       _sum: { valor: true },
     }),
   ])

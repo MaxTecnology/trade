@@ -162,10 +162,12 @@ export async function relatorioUsoPlanoConta(associadoId: string) {
 
   const inicioMes = inicioMesBrasilia()
 
+  // limiteVendaMensal limita quanto o associado pode VENDER (receber em
+  // crédito) por mês, não quanto ele compra/gasta.
   const usadoMes = await prisma.movimentacaoConta.aggregate({
     where: {
       contaId: associado.conta?.id,
-      tipo: 'debito',
+      tipo: 'credito',
       criadoEm: { gte: inicioMes },
     },
     _sum: { valor: true },

@@ -14,7 +14,7 @@ import type {
 export async function permuta(input: PermutaInput, compradorContaId: string, usuarioId: string) {
   const oferta = await prisma.oferta.findUnique({
     where: { id: input.ofertaId },
-    include: { conta: true },
+    include: { conta: { include: { associado: true, agencia: true } } },
   })
   if (!oferta || oferta.status !== 'aberta' || oferta.quantidadeDisponivel <= 0) {
     throw Errors.offerUnavailable()
@@ -30,32 +30,16 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
   if (!compradorConta) throw Errors.notFound('Conta do comprador')
 
   let percentualComissao = 0
-  let limiteVendaMensal = 0
-  let limiteVendaTotal = 0
-  // Matriz nunca tem teto de volume (fica de fora da checagem de validarLimiteVenda
-  // abaixo). Agência também fica de fora QUANDO limiteVendaMensal/limiteVendaTotal
-  // ainda não foram configurados (null) — diferente de Associado, esses campos nunca
-  // foram exigidos no cadastro de Agência (agency.service.ts não os torna
-  // obrigatórios), então null significa "sem teto configurado ainda", não "zerado por
-  // esquecimento" — tratar como bloqueio mataria a compra por Agência no nascedouro.
-  let pularValidacaoLimiteVenda = compradorConta.entityType === 'matriz'
   if (compradorConta.entityType === 'associado') {
     if (!compradorConta.associado) throw Errors.notFound('Associado')
     if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
     percentualComissao = Number(compradorConta.associado.plano.percentualComissao)
-    limiteVendaMensal = Number(compradorConta.associado.limiteVendaMensal ?? 0)
-    limiteVendaTotal = Number(compradorConta.associado.limiteVendaTotal ?? 0)
   } else if (compradorConta.entityType === 'agencia') {
     if (!compradorConta.agencia) throw Errors.notFound('Agência')
     if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
     percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
-    if (compradorConta.agencia.limiteVendaMensal === null || compradorConta.agencia.limiteVendaTotal === null) {
-      pularValidacaoLimiteVenda = true
-    } else {
-      limiteVendaMensal = Number(compradorConta.agencia.limiteVendaMensal)
-      limiteVendaTotal = Number(compradorConta.agencia.limiteVendaTotal)
-    }
   }
+  // Matriz: sem status pra checar, sem comissão (percentualComissao fica 0).
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
   const limiteCredito = Number(compradorConta.limiteCredito ?? 0)
@@ -63,20 +47,42 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
     throw Errors.insufficientBalance()
   }
 
-  if (!pularValidacaoLimiteVenda) {
-    await validarLimiteVenda({
-      contaId: compradorConta.id,
-      valorNovaOperacao: valorTotal,
-      limiteVendaMensal,
-      limiteVendaTotal,
-    })
-  }
-
   const vendedorConta = oferta.conta
   if (!vendedorConta) throw Errors.notFound('Conta do vendedor')
 
   if (compradorConta.id === vendedorConta.id) {
     throw new AppError('VALIDATION_ERROR', 'Não é possível comprar a própria oferta.', 422)
+  }
+
+  // Limite de venda é do lado de quem VENDE (recebe RT) — quem compra já é
+  // limitado por saldo + limiteCredito, não precisa de teto de volume extra.
+  let limiteVendaMensalVendedor = 0
+  let limiteVendaTotalVendedor = 0
+  let pularValidacaoLimiteVenda = vendedorConta.entityType === 'matriz'
+  if (vendedorConta.entityType === 'associado') {
+    if (!vendedorConta.associado) throw Errors.notFound('Associado vendedor')
+    limiteVendaMensalVendedor = Number(vendedorConta.associado.limiteVendaMensal ?? 0)
+    limiteVendaTotalVendedor = Number(vendedorConta.associado.limiteVendaTotal ?? 0)
+  } else if (vendedorConta.entityType === 'agencia') {
+    if (!vendedorConta.agencia) throw Errors.notFound('Agência vendedora')
+    // Mesma regra de null da Agência compradora (ver histórico): agency.service.ts
+    // não exige limiteVendaMensal/Total no cadastro, então null é "sem teto
+    // configurado ainda", não "zerado por esquecimento".
+    if (vendedorConta.agencia.limiteVendaMensal === null || vendedorConta.agencia.limiteVendaTotal === null) {
+      pularValidacaoLimiteVenda = true
+    } else {
+      limiteVendaMensalVendedor = Number(vendedorConta.agencia.limiteVendaMensal)
+      limiteVendaTotalVendedor = Number(vendedorConta.agencia.limiteVendaTotal)
+    }
+  }
+
+  if (!pularValidacaoLimiteVenda) {
+    await validarLimiteVenda({
+      contaId: vendedorConta.id,
+      valorNovaOperacao: valorTotal,
+      limiteVendaMensal: limiteVendaMensalVendedor,
+      limiteVendaTotal: limiteVendaTotalVendedor,
+    })
   }
 
   const valorParcela = valorTotal / input.parcelas
@@ -184,30 +190,16 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
   }
 
   let percentualComissao = 0
-  let limiteVendaMensal = 0
-  let limiteVendaTotal = 0
-  // Mesma regra de permuta(): Matriz nunca tem teto de volume; Agência fica de fora
-  // quando limiteVendaMensal/limiteVendaTotal ainda não foram configurados (null) —
-  // agency.service.ts não exige esses campos no cadastro, então null é "sem teto
-  // configurado ainda", não "zerado por esquecimento".
-  let pularValidacaoLimiteVenda = compradorConta.entityType === 'matriz'
   if (compradorConta.entityType === 'associado') {
     if (!compradorConta.associado) throw Errors.notFound('Associado')
     if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
     percentualComissao = Number(compradorConta.associado.plano.percentualComissao)
-    limiteVendaMensal = Number(compradorConta.associado.limiteVendaMensal ?? 0)
-    limiteVendaTotal = Number(compradorConta.associado.limiteVendaTotal ?? 0)
   } else if (compradorConta.entityType === 'agencia') {
     if (!compradorConta.agencia) throw Errors.notFound('Agência')
     if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
     percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
-    if (compradorConta.agencia.limiteVendaMensal === null || compradorConta.agencia.limiteVendaTotal === null) {
-      pularValidacaoLimiteVenda = true
-    } else {
-      limiteVendaMensal = Number(compradorConta.agencia.limiteVendaMensal)
-      limiteVendaTotal = Number(compradorConta.agencia.limiteVendaTotal)
-    }
   }
+  // Matriz: sem status pra checar, sem comissão (percentualComissao fica 0).
 
   const vendedorAssociado = await prisma.associado.findUnique({
     where: { id: input.vendedorId },
@@ -222,14 +214,14 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
     throw Errors.insufficientBalance()
   }
 
-  if (!pularValidacaoLimiteVenda) {
-    await validarLimiteVenda({
-      contaId: compradorConta.id,
-      valorNovaOperacao: valorTotal,
-      limiteVendaMensal,
-      limiteVendaTotal,
-    })
-  }
+  // Limite de venda é do lado de quem VENDE (recebe RT) — vendedor aqui é
+  // sempre Associado (negociada() não generaliza o lado vendedor).
+  await validarLimiteVenda({
+    contaId: vendedorAssociado.conta.id,
+    valorNovaOperacao: valorTotal,
+    limiteVendaMensal: Number(vendedorAssociado.limiteVendaMensal ?? 0),
+    limiteVendaTotal: Number(vendedorAssociado.limiteVendaTotal ?? 0),
+  })
 
   const vendedorConta = vendedorAssociado.conta
   const valorParcela = valorTotal / input.parcelas
