@@ -11,6 +11,28 @@ const LOGIN_ATTEMPTS_KEY = (email: string) => `login_attempts:${email}`
 const MAX_ATTEMPTS = 5
 const LOCK_SECONDS = 15 * 60
 
+// Resolve o id da Conta (RT) do usuário — usado tanto em login() quanto em refresh()
+// pra popular contaId no JWT. Sem isso no refresh, o access token reemitido após o
+// primeiro expirar (8h) perde contaId e todo guard que depende dele (permutaController,
+// transferenciaController etc.) passa a bloquear a requisição.
+async function resolverContaId(usuario: {
+  entityType: string
+  associadoId: string | null
+  agenciaId: string | null
+}): Promise<string | undefined> {
+  if (usuario.entityType === 'associado' && usuario.associadoId) {
+    const conta = await prisma.conta.findUnique({ where: { associadoId: usuario.associadoId } })
+    return conta?.id
+  } else if (usuario.entityType === 'agencia' && usuario.agenciaId) {
+    const conta = await prisma.conta.findUnique({ where: { agenciaId: usuario.agenciaId } })
+    return conta?.id
+  } else if (usuario.entityType === 'matriz') {
+    const conta = await prisma.conta.findFirst({ where: { entityType: 'matriz' } })
+    return conta?.id
+  }
+  return undefined
+}
+
 export async function login(input: LoginInput) {
   const redis = getRedis()
   const attemptsKey = LOGIN_ATTEMPTS_KEY(input.email)
@@ -49,17 +71,7 @@ export async function login(input: LoginInput) {
         ? usuario.agenciaId!
         : 'matriz'
 
-  let contaId: string | undefined
-  if (usuario.entityType === 'associado' && usuario.associadoId) {
-    const conta = await prisma.conta.findUnique({ where: { associadoId: usuario.associadoId } })
-    contaId = conta?.id
-  } else if (usuario.entityType === 'agencia' && usuario.agenciaId) {
-    const conta = await prisma.conta.findUnique({ where: { agenciaId: usuario.agenciaId } })
-    contaId = conta?.id
-  } else if (usuario.entityType === 'matriz') {
-    const conta = await prisma.conta.findFirst({ where: { entityType: 'matriz' } })
-    contaId = conta?.id
-  }
+  const contaId = await resolverContaId(usuario)
 
   const accessToken = jwt.sign(
     { role: usuario.role, entityType: usuario.entityType, entityId, contaId },
@@ -103,8 +115,10 @@ export async function refresh(refreshToken: string) {
         ? usuario.agenciaId!
         : 'matriz'
 
+  const contaId = await resolverContaId(usuario)
+
   const accessToken = jwt.sign(
-    { role: usuario.role, entityType: usuario.entityType, entityId },
+    { role: usuario.role, entityType: usuario.entityType, entityId, contaId },
     env.JWT_SECRET,
     { subject: usuario.id, expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions,
   )

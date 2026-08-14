@@ -32,6 +32,13 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
   let percentualComissao = 0
   let limiteVendaMensal = 0
   let limiteVendaTotal = 0
+  // Matriz nunca tem teto de volume (fica de fora da checagem de validarLimiteVenda
+  // abaixo). Agência também fica de fora QUANDO limiteVendaMensal/limiteVendaTotal
+  // ainda não foram configurados (null) — diferente de Associado, esses campos nunca
+  // foram exigidos no cadastro de Agência (agency.service.ts não os torna
+  // obrigatórios), então null significa "sem teto configurado ainda", não "zerado por
+  // esquecimento" — tratar como bloqueio mataria a compra por Agência no nascedouro.
+  let pularValidacaoLimiteVenda = compradorConta.entityType === 'matriz'
   if (compradorConta.entityType === 'associado') {
     if (!compradorConta.associado) throw Errors.notFound('Associado')
     if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
@@ -42,11 +49,13 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
     if (!compradorConta.agencia) throw Errors.notFound('Agência')
     if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
     percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
-    limiteVendaMensal = Number(compradorConta.agencia.limiteVendaMensal ?? 0)
-    limiteVendaTotal = Number(compradorConta.agencia.limiteVendaTotal ?? 0)
+    if (compradorConta.agencia.limiteVendaMensal === null || compradorConta.agencia.limiteVendaTotal === null) {
+      pularValidacaoLimiteVenda = true
+    } else {
+      limiteVendaMensal = Number(compradorConta.agencia.limiteVendaMensal)
+      limiteVendaTotal = Number(compradorConta.agencia.limiteVendaTotal)
+    }
   }
-  // Matriz: sem status pra checar, sem comissão, sem teto de volume (fica de fora
-  // da checagem de validarLimiteVenda abaixo).
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
   const limiteCredito = Number(compradorConta.limiteCredito ?? 0)
@@ -54,7 +63,7 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
     throw Errors.insufficientBalance()
   }
 
-  if (compradorConta.entityType !== 'matriz') {
+  if (!pularValidacaoLimiteVenda) {
     await validarLimiteVenda({
       contaId: compradorConta.id,
       valorNovaOperacao: valorTotal,
@@ -65,6 +74,10 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
 
   const vendedorConta = oferta.conta
   if (!vendedorConta) throw Errors.notFound('Conta do vendedor')
+
+  if (compradorConta.id === vendedorConta.id) {
+    throw new AppError('VALIDATION_ERROR', 'Não é possível comprar a própria oferta.', 422)
+  }
 
   const valorParcela = valorTotal / input.parcelas
   const compradorContaSaldo = Number(compradorConta.saldo)
