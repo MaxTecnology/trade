@@ -440,3 +440,4 @@
 | 18 — Revisão Final | `[x]` | Seed + docker-compose validados |
 | 19 — Integração Frontend | `[x]` | Créditos, Cobranças, Upload B2 implementados |
 | 20 — Frontend Auth/Store | `[x]` | URL, login, getUserInfo, api.js centralizados |
+| 21 — Compra/venda por Agência/Matriz | `[x]` | API pronta e validada end-to-end (curl + Postgres real); sem tela de front nesta rodada — ver `AJUSTES.md` (2026-08-13) e `docs/tech-debt.md` |

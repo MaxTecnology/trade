@@ -507,3 +507,40 @@ Taxa de Inscrição e Taxa de Manutenção Anual do Plano são valores que a Mat
 
 ### Documentação atualizada
 `CLAUDE.md` (raiz — mapeamento de campos, regra de comissão do gerente), `api/docs/SPEC.md` (§6, §15), `api/docs/SCHEMA.md`, `api/docs/PATTERNS.md`, `api/docs/TASK.md`, `api/docs/http/planos.http`.
+
+---
+
+## Compra e venda de RT por Agência e Matriz (2026-08-13)
+
+### Motivação
+
+Pedido do usuário: Matriz e Agência precisavam poder comprar e vender RT com segurança, não só emitir (Matriz) ou gerenciar Associados (Agência). Até então `Oferta` e as funções `permuta()`/`negociada()` de `transaction.service.ts` assumiam em código (não só por convenção) que todo comprador e todo dono de oferta era um `Associado` — `Oferta.associadoId` era obrigatório, e a resolução de comissão/limite dentro de `permuta()`/`negociada()` buscava sempre `Associado`. A Matriz, além disso, nunca teve uma `Conta` própria — não tinha como comprar nem vender nada dentro do próprio sistema de permuta que ela emite.
+
+### O que mudou
+
+- **Matriz ganhou `Conta` real** (`entityType: 'matriz'`, sem `associadoId`/`agenciaId`) — criada no seed, com `limiteCredito` alto o bastante pra nunca ser um limitador prático (Matriz é a emissora, saldo dela naturalmente fica negativo conforme injeta RT no sistema). O JWT de login já resolve `contaId` real da Matriz (antes não existia).
+- **`Oferta.contaId`** (novo campo, obrigatório) — dono genérico da oferta, resolvido a partir da `Conta` de quem cria (Associado, Agência ou Matriz). `Oferta.associadoId` virou opcional, mantido só para o caso de Associado (compatibilidade com consultas existentes).
+- **`offer.service.ts`, `permuta()` e `negociada()`** (`transaction.service.ts`) generalizados por `entityType` da conta compradora/dona da oferta — comissão da plataforma passou a ser resolvida a partir do plano de quem compra (Associado ou Agência), sem comissão quando o comprador é a Matriz (Matriz não tem plano).
+- **Guards e controllers** (`offer.controller.ts`, `transaction.controller.ts` e rotas correspondentes) abertos para `agency_admin`/`agency_operator`/`superadmin`, além dos roles de Associado já existentes — cada role opera em nome da própria conta, resolvida via `contaId` do JWT.
+- **Workers de comissão** (`bullmq.ts`, job `commission.calculate`) corrigidos para resolver `Associado`/`Agência` a partir da `Conta` genérica (`contaOrigem.entityType`) em vez de assumir sempre Associado — nessa mesma rodada foi encontrada e corrigida uma regressão real (`Cobranca.agenciaId` gravando errado para compra de Associado, ver `task-8-report.md`).
+- **Comissão de gerente** (`comissao_gerente`) confirmada como exclusiva do fluxo de Associado com `gerenteId` vinculado — Agência e Matriz nunca geram comissão de gerente, mesmo comprando/vendendo normalmente.
+
+### Validado (Task 9 — end-to-end via curl contra Postgres/Redis reais)
+
+- Login Matriz → `contaId` real no JWT.
+- Agência criada com plano vinculado (`percentualComissao: 8`) → login `agency_admin` → `contaId` real no JWT.
+- Matriz cria oferta (`POST /ofertas`, 201) → `contaId` = conta da Matriz, `associadoId: null`.
+- Associado (com crédito injetado via `POST /transacoes/credito`) compra a oferta da Matriz (`POST /transacoes/permuta`, 201) → `movimentacao_conta` com débito no Associado e crédito na Matriz confirmados via query direta; `comissaoBRL` calculado normalmente a partir do plano do Associado comprador (5% de 100 RT = R$ 5) — a Matriz vendendo não gera comissão própria, quem paga comissão é sempre o comprador.
+- Agência compra oferta de um Associado (`POST /transacoes/permuta`, 201) → `comissaoBRL` usa o `percentualComissao` do plano da Agência (8% de 200 RT = R$ 16); `comissao_gerente` confirmado com `count = 0` para essa transação.
+- `GET /ofertas` (público) lista a oferta da Matriz normalmente, com `contaId` e `conta` (incluindo `entityType: 'matriz'`) no payload.
+
+Evidência completa (requests/responses e queries SQL) em `.superpowers/sdd/2026-08-13-compra-venda-agencia-matriz/task-9-report.md`.
+
+### O que ficou de fora
+
+- **`negociada()` como vendedor continua exigindo um Associado** (`vendedorId` sempre aponta para `Associado.id`) — Agência/Matriz vendendo por negociação direta (sem oferta publicada) não é suportado nesta rodada.
+- **Sem telas de front** para Agência/Matriz cadastrar oferta ou comprar — a API está pronta e validada, o front é rodada separada.
+- Itens de escopo adicionais encontrados e conscientemente deixados de fora (ruling do controlador do processo durante as revisões das Tasks 1-8) — ver `docs/tech-debt.md`.
+
+### Documentação atualizada
+`api/docs/SPEC.md` (§8, §9), `api/docs/SCHEMA.md` (`Oferta`, `Conta`), `CLAUDE.md` (raiz), `docs/tech-debt.md`.

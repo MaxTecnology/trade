@@ -26,3 +26,28 @@ Só `saldoSuficienteParaDebito` (função pura) tem teste automatizado. `getLimi
 
 ## `TASK.md` desatualizado após a migração de limiteRT do plano pra limiteVendaMensal/Total
 `api/docs/TASK.md` ainda lista como concluído "Validar limite RT do plano antes de criar oferta" e "Validar limite mensal do plano" — ambos descrevem comportamento retirado por essa branch (ver `SPEC.md` §9, já atualizado). `TASK.md` é checklist histórico de construção, baixo risco, mas vale sincronizar numa próxima passada de limpeza de docs.
+
+## `negociada()` só generaliza o lado comprador — Agência/Matriz não conseguem vender por negociação direta
+`negociadaSchema.vendedorId` continua exigindo um `Associado.id` — a compra/venda por Agência e Matriz (Task 9, ver `AJUSTES.md` 2026-08-13) generalizou o **comprador** de `permuta()`/`negociada()` e o dono de `Oferta`, mas não o **vendedor** de `negociada()`. Agência/Matriz só conseguem vender via `Oferta` (marketplace), não por negociação direta sem oferta.
+**Ação futura:** se o negócio precisar, `negociadaSchema.vendedorId` precisa aceitar um `contaId` genérico, com ajuste correspondente no front (hoje o "diretório de associados" só lista Associados).
+
+## Sem tela de front pra Agência/Matriz cadastrar oferta ou comprar
+A API de Ofertas/Transações está pronta e validada end-to-end (curl + Postgres real, ver `task-9-report.md`) para Agência e Matriz como compradoras/donas de oferta — mas não existe nenhuma tela no front que use isso. Front é rodada separada, fora do escopo desta branch.
+
+## `estorno.service.ts`/`report.service.ts` filtram por `compradorId`/`vendedorId`, ignorando compra/venda de Agência e Matriz
+Ambos os módulos filtram transações por `compradorId`/`vendedorId` — campos que são FK só de `Associado` e ficam `null` quando quem compra/vende é Agência ou Matriz (ver Task 9). Resultado: compras/vendas de Agência ou Matriz somem dos relatórios (`report.service.ts`) e do fluxo de solicitação de estorno por `agency_operator` (`estorno.service.ts`). Achado e registrado durante a revisão das Tasks 1-8 (ruling do controlador do processo: fora do escopo desta rodada, não é regressão nova — esses filtros já existiam antes e nunca cobriram compra/venda por conta genérica).
+**Ação futura:** migrar esses filtros pra `contaOrigemId`/`contaDestinoId`, que já cobrem 100% dos casos (Associado, Agência e Matriz).
+
+## Agência sem `planoId` vinculado compra com comissão 0%, silenciosamente
+Quando a Agência compradora não tem `planoId` preenchido, `permuta()`/`negociada()` calculam `comissaoBRL = 0` sem erro nem log. Achado durante a revisão das Tasks 1-8; ruling do controlador do processo: não é uma decisão técnica, é uma decisão de produto pendente (bloquear a compra? logar um aviso? deixar como está?) — precisa de definição do dono do produto antes de mudar o comportamento.
+
+## Lógica de resolução do comprador duplicada entre `permuta()` e `negociada()`
+O branch por `entityType` da conta compradora (resolver Associado/Agência/Matriz, comissão, limites — ~27 linhas) está duplicado entre `permuta()` e `negociada()` em `transaction.service.ts`. Aceito nesta rodada (ruling do controlador do processo durante as revisões das Tasks 1-8) porque as duas funções têm nuances próprias (uma envolve oferta e decremento de estoque, a outra não) e a duplicação ainda é pequena o bastante pra não compensar o risco de uma abstração prematura.
+**Ação futura:** se essa lógica crescer, ou um terceiro ponto de entrada financeiro similar aparecer, extrair um helper compartilhado (ex: `resolverCompradorParaCompra(contaId)`).
+
+## Checagem de saldo em `permuta()`/`negociada()` acontece fora da transação Prisma
+Mesmo padrão pré-existente (não é regressão desta rodada) — a validação de `saldoSuficienteParaDebito` roda antes do `prisma.$transaction`, então duas operações concorrentes da mesma conta podem ambas passar a validação de aplicação; só a `CHECK` constraint do banco barra a segunda, retornando um erro genérico de constraint em vez de `INSUFFICIENT_BALANCE`. Achado e registrado durante a revisão das Tasks 1-8.
+**Ação futura:** mapear esse erro de constraint do banco pra uma resposta HTTP amigável (`INSUFFICIENT_BALANCE`, 422), ou mover a checagem pra dentro da transação com lock explícito.
+
+## `GET /auth/me` continua retornando `conta: null` pra Matriz
+Desde a Task 1 (2026-08-13) o JWT da Matriz já carrega um `contaId` real, mas `/auth/me` (`auth.service.ts`) não foi atualizado para resolver e retornar essa conta — continua tratando Matriz como `conta: null` (mesmo padrão do superadmin sem conta, mas agora incorreto pra Matriz especificamente). Inconsistência entre o que o login/JWT já sabe e o que `/me` expõe, que pode confundir consumidores futuros do endpoint. Achado durante a revisão das Tasks 1-8; `/me` ficou fora do escopo desta rodada.

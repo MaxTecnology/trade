@@ -4,6 +4,8 @@
 
 Sistema SaaS de permuta empresarial (troca com moeda virtual **RT — Real Trade**). Hierarquia: **Matriz → Agência Master → Agência Comum → Associado → Usuários**. A Matriz é a única emissora de RT; a moeda apenas circula internamente entre contas.
 
+Matriz e Agência também compram e vendem RT (permuta/oferta), não só emitem/gerenciam — ver `AJUSTES.md` (2026-08-13).
+
 Monorepo com dois projetos:
 - `api/` — REST API Node.js/Fastify/TypeScript
 - `front/` — React/Vite SPA
