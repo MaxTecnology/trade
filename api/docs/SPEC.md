@@ -431,12 +431,12 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 |---|---|---|---|
 | POST | `/transacoes/permuta` | Realizar permuta (comprar oferta) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 | POST | `/transacoes/negociada` | Negociação direta com outro associado (sem oferta) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
-| PATCH | `/transacoes/:id/avaliar` | Avaliar atendimento do vendedor (1-5 + comentário) | `associate_operator`, `associate_admin` |
+| PATCH | `/transacoes/:id/avaliar` | Avaliar atendimento do vendedor (1-5 + comentário) — só quem iniciou a transação, checado por `usuarioIniciadorId`, não por role | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 | POST | `/transacoes/transferencia` | Transferir RT entre contas | `associate_admin` |
 | POST | `/transacoes/credito` | Injetar RT (Matriz → Agência/Associado) | `superadmin` |
 | POST | `/transacoes/:id/estorno` | Estornar transação diretamente (sem solicitação) | `superadmin`, `agency_admin` |
-| GET | `/transacoes` | Listar transações da entidade | `associate_operator`, `associate_admin` |
-| GET | `/transacoes/:id` | Detalhar transação | `associate_operator`, `associate_admin` |
+| GET | `/transacoes` | Listar transações da conta autenticada (filtra por `contaOrigemId`/`contaDestinoId`) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
+| GET | `/transacoes/:id` | Detalhar transação — 404 se a conta autenticada não participou (`contaOrigemId`/`contaDestinoId`) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 | GET | `/associados/diretorio` | Diretório mínimo de associados ativos (id, nome, cidade, estado, tipoAtendimento — sem dados financeiros) para escolher parceiro de negociação | `associate_operator`, `associate_admin` |
 
 ### Regras de Negócio

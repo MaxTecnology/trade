@@ -13,7 +13,6 @@ import {
 } from './transaction.controller.js'
 
 export async function transactionRoutes(app: FastifyInstance) {
-  const operator = { preHandler: [authGuard, roleGuard('associate_operator', 'associate_admin')] }
   const comprador = {
     preHandler: [
       authGuard,
@@ -27,10 +26,10 @@ export async function transactionRoutes(app: FastifyInstance) {
 
   app.post('/transacoes/permuta', comprador, permutaController)
   app.post('/transacoes/negociada', comprador, negociadaController)
-  app.patch('/transacoes/:id/avaliar', operator, avaliarController)
+  app.patch('/transacoes/:id/avaliar', comprador, avaliarController)
   app.post('/transacoes/transferencia', assocAdmin, transferenciaController)
   app.post('/transacoes/credito', superadmin, creditoController)
   app.post('/transacoes/:id/estorno', adminOrSuper, estornoController)
-  app.get('/transacoes', operator, listController)
-  app.get('/transacoes/:id', operator, getByIdController)
+  app.get('/transacoes', comprador, listController)
+  app.get('/transacoes/:id', comprador, getByIdController)
 }
