@@ -12,7 +12,10 @@ import {
 
 export async function offerRoutes(app: FastifyInstance) {
   const operatorGuard = {
-    preHandler: [authGuard, roleGuard('associate_admin', 'associate_operator')],
+    preHandler: [
+      authGuard,
+      roleGuard('associate_admin', 'associate_operator', 'agency_admin', 'agency_operator', 'superadmin'),
+    ],
   }
 
   app.post('/ofertas', operatorGuard, createController)
