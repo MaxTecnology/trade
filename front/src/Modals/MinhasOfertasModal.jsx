@@ -11,6 +11,12 @@ import CategoriesOptions from '@/components/Options/CategoriesOptions';
 import { toast } from 'sonner';
 import useRevalidate from '@/hooks/ReactQuery/useRevalidate';
 
+const tipoAtendimentoOptions = [
+    { value: "presencial", label: "Presencial" },
+    { value: "online", label: "Online" },
+    { value: "voucher", label: "Voucher" },
+]
+
 const MinhasOfertasModal = ({ isOpen, modalToggle, setState, ofertaInfo }) => {
     const [imagemReference, setImageReference] = useState(null);
     const [reference, setReference] = useState(true)
@@ -59,6 +65,11 @@ const MinhasOfertasModal = ({ isOpen, modalToggle, setState, ofertaInfo }) => {
 
     const formHandler = (event) => {
         event.preventDefault()
+        const formData = new FormData(event.target)
+        if (formData.getAll("tipoAtendimento").length === 0) {
+            toast.error("Selecione ao menos um Tipo de Atendimento")
+            return
+        }
         setReference(false);
         setTimeout(() => {
             toast.promise(editItem(event, urlOferta, setState, "ofertas"), {
@@ -111,11 +122,19 @@ const MinhasOfertasModal = ({ isOpen, modalToggle, setState, ofertaInfo }) => {
                             </div>
                             <div className="form-group f2">
                                 <label className="required">Tipo de Atendimento</label>
-                                <select name="tipoAtendimento" multiple defaultValue={info.tipoAtendimento} required>
-                                    <option value="presencial">Presencial</option>
-                                    <option value="online">Online</option>
-                                    <option value="voucher">Voucher</option>
-                                </select>
+                                <div className="checkboxGroup">
+                                    {tipoAtendimentoOptions.map((opt) => (
+                                        <label key={opt.value} className="checkboxGroupItem">
+                                            <input
+                                                type="checkbox"
+                                                name="tipoAtendimento"
+                                                value={opt.value}
+                                                defaultChecked={info.tipoAtendimento?.includes(opt.value)}
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 

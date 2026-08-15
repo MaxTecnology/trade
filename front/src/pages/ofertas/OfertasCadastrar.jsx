@@ -13,6 +13,12 @@ import { imageReferenceHandler } from "@/utils/functions/formHandler";
 import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 
+const tipoAtendimentoOptions = [
+    { value: "presencial", label: "Presencial" },
+    { value: "online", label: "Online" },
+    { value: "voucher", label: "Voucher" },
+]
+
 const OfertasCadastrar = () => {
     const [loading, setLoading] = useState(false)
     const [reference, setReference] = useState(true)
@@ -31,6 +37,11 @@ const OfertasCadastrar = () => {
 
     const formHandler = (event) => {
         event.preventDefault()
+        const formData = new FormData(event.target)
+        if (formData.getAll("tipoAtendimento").length === 0) {
+            toast.error("Selecione ao menos um Tipo de Atendimento")
+            return
+        }
         setReference(false);
         setLoading(true)
         setTimeout(() => {
@@ -77,11 +88,14 @@ const OfertasCadastrar = () => {
                             </div>
                             <div className="form-group f2">
                                 <label className="required-field-label">Tipo de Atendimento</label>
-                                <select name="tipoAtendimento" multiple required>
-                                    <option value="presencial">Presencial</option>
-                                    <option value="online">Online</option>
-                                    <option value="voucher">Voucher</option>
-                                </select>
+                                <div className="checkboxGroup">
+                                    {tipoAtendimentoOptions.map((opt) => (
+                                        <label key={opt.value} className="checkboxGroupItem">
+                                            <input type="checkbox" name="tipoAtendimento" value={opt.value} />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
