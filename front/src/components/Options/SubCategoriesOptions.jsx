@@ -2,34 +2,22 @@ import { useQueryCategorias } from '@/hooks/ReactQuery/useQueryCategorias';
 const SubCategoriesOptions = ({ filter }) => {
     const { data } = useQueryCategorias();
     function filterSub(data) {
-        if (data && data.categorias) {
-            if (filter) {
-                const filteredCategories = data.categorias.filter(category => category.idCategoria == filter);
-                // Obtém apenas os valores das subcategorias
-                const subcategoryValues = filteredCategories.flatMap(category => category.subcategorias);
-                return subcategoryValues;
-            }
-            // // Filtra as categorias que têm subcategorias
-            // const filteredCategories = data.categorias.filter(category => category.subcategorias.length > 0);
-            // // Obtém apenas os valores das subcategorias
-            // const subcategoryValues = filteredCategories.flatMap(category => category.subcategorias);
-            // return subcategoryValues;
-        }
-
-        return []
+        if (!Array.isArray(data) || !filter) return []
+        const categoria = data.find((category) => category.id === filter)
+        return categoria?.categoriasFilhas ?? []
     }
     return (
         <>
             {filter ? data ?
                 <>
                     <option value="null">Nenhuma</option>
-                    {filterSub(data).map((item, index) => (
+                    {filterSub(data).map((item) => (
                         <option
-                            value={item.idSubcategoria || null}
-                            id={item.idSubcategoria}
-                            key={item.idSubcategoria + index}
+                            value={item.id}
+                            id={item.id}
+                            key={item.id}
                         >
-                            {item.nomeSubcategoria}
+                            {item.nome}
                         </option>
                     ))}
                 </>
