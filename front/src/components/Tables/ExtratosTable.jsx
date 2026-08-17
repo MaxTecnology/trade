@@ -104,13 +104,15 @@ const ExtratosTable = ({
                                 </td>
                             ))}
                             <td className="flex justify-end gap-2">
-                                {myTable && type !== "Matriz" && row.original.status === "Concluída" ?
+                                {myTable && type !== "Matriz" &&
+                                    ['permuta', 'negociada'].includes(row.original.transacao?.tipo) &&
+                                    row.original.transacao?.status === 'concluida' ?
                                     <Buttons
                                         type="Undo"
-                                        url={row.original.id}
-                                        confirm={"Deseja solicitar o extorno?"}
-                                        titulo={"Extorno"}
-                                        resultDelete={"Extorno solicitado com sucesso"}
+                                        url={row.original.transacaoId}
+                                        confirm={"Deseja solicitar o estorno?"}
+                                        titulo={"Estorno"}
+                                        resultDelete={"Estorno solicitado com sucesso"}
                                         revalidate={() => revalidate("login")}
                                     />
                                     : null

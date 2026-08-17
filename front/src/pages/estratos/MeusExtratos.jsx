@@ -1,17 +1,14 @@
 import { useState } from "react";
-import EditarAgenciaModal from '@/Modals/EditarAgenciaModal';
 import Footer from '@/components/Footer';
-import { useSnapshot } from "valtio";
-import state from "@/store";
 import useModal from "@/hooks/useModal";
-import { columns } from "./constantsExtratos";
+import { columns } from "./constantsMeuExtrato";
 import ExtratosSearch from "@/components/Search/ExtratosSearch";
 import ExtratosTable from "@/components/Tables/ExtratosTable";
 import TransaçõesModal from "@/Modals/TransaçõesModal";
+import { useQueryExtrato } from "@/hooks/ReactQuery/useQueryExtrato";
 
 const MeusExtratos = () => {
-    const snap = useSnapshot(state);
-    const data = snap.user.transacoesComprador.concat(snap.user.transacoesVendedor)
+    const { data } = useQueryExtrato()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState({})
     const [id, setId] = useState()
@@ -30,7 +27,7 @@ const MeusExtratos = () => {
             <div className="containerList">
                 <ExtratosTable
                     columns={columns}
-                    data={data ? data : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
