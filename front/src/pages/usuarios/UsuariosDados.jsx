@@ -1,322 +1,271 @@
-import { useEffect, useState } from "react";
-import { updateUser } from "@/hooks/ListasHook";
-import { ColorRing } from 'react-loader-spinner'
+import { useEffect } from "react";
 import defaultImage from "@/assets/images/default_img.png"
 import Footer from "@/components/Footer";
-import RealInput from "@/components/Inputs/CampoMoeda";
-import { BiSolidImageAdd } from "react-icons/bi";
 import { activePage } from "@/utils/functions/setActivePage";
 import InputMask from 'react-input-mask';
-import SubCategoriesOptions from "@/components/Options/SubCategoriesOptions";
-import CategoriesOptions from "@/components/Options/CategoriesOptions";
-import { toast } from "sonner";
 import { useSnapshot } from "valtio";
 import state from "@/store";
-import { imageReferenceHandler } from "@/utils/functions/formHandler";
-import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
-import PlanosFields from "@/components/Form/PlanosFields";
-import { getType, isMatriz } from "@/hooks/getId";
-import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
+import { isMatriz, isAgencia, isAssociado } from "@/hooks/getId";
+import { useQueryMinhaAgencia } from "@/hooks/ReactQuery/useQueryMinhaAgencia";
+import { useQueryMeuAssociado } from "@/hooks/ReactQuery/useQueryMeuAssociado";
 
+const STATUS_LABEL = { ativo: "Ativo", inativo: "Inativo", suspenso: "Suspenso" }
+const TIPO_AGENCIA_LABEL = { master: "Master", comum: "Comum" }
+const TIPO_OPERACAO_LABEL = { compra: "Compra", venda: "Venda", compra_venda: "Compra/Venda" }
+
+const formatMoney = (value) => {
+    if (value === null || value === undefined || value === '') return ''
+    return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const isURL = (str) => {
+    try {
+        new URL(str);
+        return true;
+    } catch (_) {
+        return false;
+    }
+};
+
+// Somente leitura — Matriz não tem entidade própria no banco (só a Conta),
+// então mostra apenas identidade + conta. Agência/Associado buscam a
+// entidade real via /agencias/me ou /associados/me (fixa os campos que
+// antes vinham sempre em branco, presos ao snapshot enxuto do /auth/me).
 const UsuariosDados = () => {
     const userInfo = useSnapshot(state.user)
-    const [imagemReference, setImageReference] = useState(null);
-    const [reference, setReference] = useState(true)
-    const [loading, setLoading] = useState(false)
     useEffect(() => {
         activePage("usuarios")
     }, []);
 
-    const revalidate = useRevalidate()
+    const matriz = isMatriz()
+    const agencia = isAgencia()
+    const associado = isAssociado()
 
-    const isURL = (str) => {
-        try {
-            new URL(str);
-            return true;
-        } catch (_) {
-            return false;
-        }
-    };
+    const { data: agenciaResp } = useQueryMinhaAgencia(agencia)
+    const { data: associadoResp } = useQueryMeuAssociado(associado)
 
-    const imageUrl = isURL(userInfo.imagem) ? userInfo.imagem : defaultImage;
+    const entidade = agencia ? agenciaResp?.data : associado ? associadoResp?.data : null
+    const contato = entidade?.contatos?.[0]
 
-    const formHandler = (event) => {
-        event.preventDefault()
-        setTimeout(() => {
-            toast.promise(updateUser(event), {
-                loading: 'Atualizando dados...',
-                success: () => {
-                    setLoading(false)
-                    revalidate("login")
-                    return "Dados atualizados com sucesso!"
-                },
-                error: (error) => {
-                    setLoading(false)
-                    return `Erro: ${error.message}`
-                },
-            })
-            setReference(true)
-        }, 100);  // Aguarde 100 milissegundos (ou o tempo específico)
-    }
+    const imageUrl = isURL(entidade?.imagemUrl) ? entidade.imagemUrl : defaultImage;
+
+    const tipoOperacaoLabel = TIPO_OPERACAO_LABEL[entidade?.tipoOperacao] ?? ""
+    const tipoLabel = associado ? tipoOperacaoLabel : (TIPO_AGENCIA_LABEL[entidade?.tipo] ?? "")
+
     return (
         <div className="container">
             <div className="containerHeader">Meus Dados</div>
-            <form onSubmit={(event) => formHandler(event)}
-                className="containerForm">
-                <div className="form-group">
-                    <label className="required">Razão Social</label>
-                    <input type="text" className="readOnly" id="razaoSocial" required defaultValue={userInfo.razaoSocial} readOnly />
-                </div>
-                <div className="form-group">
-                    <label className="required">Nome Fantasia</label>
-                    <input type="text" className="readOnly" id="nomeFantasia" required defaultValue={userInfo.nomeFantasia} readOnly />
-                </div>
-                <div className="form-group">
-                    <label className="required">Descrição</label>
-                    <textarea className="readOnly" cols="30" rows="1" required defaultValue={userInfo.descricao} readOnly ></textarea>
-                </div>
-                <div className="form-group">
-                    <label className="required">Status</label>
-                    <select className="readOnly" required defaultValue={userInfo.status} disabled >
-                        <option value="" disabled>Selecionar</option>
-                        <option value={true}>Atendendo</option>
-                        <option value={false}>Não Atendendo</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>CNPJ</label>
-                    <InputMask mask="99.999.999/9999-99" maskChar={null} value={userInfo.cnpj || ""} readOnly>
-                        {(inputProps) => <input {...inputProps} type="text" required className="readOnly" />}
-                    </InputMask>
-                </div>
-                <div className="form-group">
-                    <label>Insc. Estadual</label>
-                    <input type="text" className="readOnly" defaultValue={userInfo.inscEstadual} readOnly />
-                </div>
-                <div className="form-group">
-                    <label>Insc. Municipal</label>
-                    <input type="text" className="readOnly" defaultValue={userInfo.inscMunicipal} readOnly />
-                </div>
-                <div className="form-group">
-                    <label className="required">Restrições</label>
-                    <textarea className="readOnly" defaultValue={userInfo.restricoes ? userInfo.restricoes : "Sem restrições"} cols="30" rows="1" required readOnly></textarea>
-                </div>
-                <div className="form-group">
-                    <label>Categoria</label>
-                    <select defaultValue={userInfo.categoria} className="readOnly" id="categoria" disabled>
-                        <option value="" disabled>Selecionar</option>
-                        <CategoriesOptions />
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Subcategoria</label>
-                    <select defaultValue={userInfo.subcategoria ? userInfo.subcategoria : ""} className="readOnly" disabled>
-                        <option value="" disabled>Nenhuma</option>
-                        <SubCategoriesOptions />
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label className="required">Mostrar no site</label>
-                    <select className="readOnly" required defaultValue={userInfo.mostrarSite} disabled>
-                        <option value="" disabled>Selecionar</option>
-                        <option value={true}>Sim</option>
-                        <option value={false}>Não</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label className="required">Tipo</label>
-                    <select className="readOnly" id="tipo" required defaultValue={userInfo.tipo} disabled>
-                        <option value="" disabled>Indefinido</option>
-                        <option value={userInfo.tipo ? userInfo.tipo : "Indefinido"}>{userInfo.tipo ? userInfo.tipo : "Indefinido"}</option>
-                    </select>
-                </div>
-                <div className="formDivider">
-                    <p>Contato</p>
-                </div>
-                {/* CONTATO */}
-                <div className="form-group f2">
-                    <label className="required">Nome</label>
-                    <input type="text" className="readOnly" required defaultValue={userInfo.nomeContato} />
-                </div>
-                <div className="form-group f2">
-                    <label>Telefone</label>
-                    <InputMask mask="(99)9999-9999" maskChar={null} readOnly value={userInfo.telefone}>
-                        {(inputProps) => <input {...inputProps} type="text" className="readOnly" id="telefone" required />}
-                    </InputMask>
-                </div>
-                <div className="form-group f2">
-                    <label className="required">Celular</label>
-                    <InputMask mask="(99)99999-9999" maskChar={null} value={userInfo.celular} readOnly>
-                        {(inputProps) => <input {...inputProps} type="text" className="readOnly" required />}
-                    </InputMask>
-
-                </div>
-                <div className="form-group f2">
-                    <label className="required">E-mail</label>
-                    <input type="email" className="readOnly" disabled defaultValue={userInfo.email} required />
-                </div>
-                <div className="form-group f2">
-                    <label>E-mail secundário</label>
-                    <input type="email" className="readOnly" disabled defaultValue={userInfo.emailSecundario} />
-                </div>
-                <div className="form-group f2">
-                    <label>Site</label>
-                    <input type="text" className="readOnly" disabled defaultValue={userInfo.site} />
-                </div>
-                <div className="formDivider">
-                    <p>Endereço</p>
-                </div>
-                {/* ENDEREÇO */}
-                <div className="form-group">
-                    <label className="required">Logradouro</label>
-                    <input type="text" className="readOnly" disabled defaultValue={userInfo.logradouro} required />
-                </div>
-                <div className="form-group">
-                    <label className="required">Número</label>
-                    <input type="number" className="readOnly" disabled defaultValue={userInfo.numero} required />
-                </div>
-                <div className="form-group">
-                    <label className="required">CEP</label>
-                    <InputMask mask="99999-999" maskChar={null} value={userInfo.cep} readOnly>
-                        {(inputProps) => <input {...inputProps} type="text" id="cep" className="readOnly" />}
-                    </InputMask>
-                </div>
-                <div className="form-group">
-                    <label>Complemento</label>
-                    <input type="text" className="readOnly" disabled defaultValue={userInfo.complemento} />
-                </div>
-                <div className="form-group">
-                    <label className="required">Bairro</label>
-                    <input type="text" className="readOnly" disabled defaultValue={userInfo.bairro} required />
-                </div>
-                <div className="form-group f2">
-                    <label className="required">Cidade</label>
-                    <input type="text" className="readOnly" disabled defaultValue={userInfo.cidade} required />
-                </div>
-                <div className="form-group f1">
-                    <label className="required">Estado</label>
-                    <input type="text" className="readOnly" disabled defaultValue={userInfo.estado} required />
-                </div>
-                <div className="form-group">
-                    <label>Região</label>
-                    <input type="text" className="readOnly" disabled defaultValue={userInfo.regiao} />
-                </div>
-                {
-                    isMatriz() ? null :
-                        <>
-                            <div className="formDivider">
-                                <p>Agência</p>
-                            </div>
-                            <PlanosFields type={getType()} defaultValue={userInfo} />
+            <div className="containerForm">
+                {matriz ? (
+                    <>
+                        <div className="form-group">
+                            <label>Nome Fantasia</label>
+                            <input type="text" className="readOnly" defaultValue={userInfo.nomeFantasia} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Limite de Crédito</label>
+                            <input type="text" className="readOnly" defaultValue={formatMoney(userInfo.conta?.limiteCredito)} readOnly />
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="form-group">
+                            <label>Razão Social</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.nome} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Nome Fantasia</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.nomeFantasia} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Descrição</label>
+                            <textarea className="readOnly" cols="30" rows="1" defaultValue={entidade?.descricao} readOnly></textarea>
+                        </div>
+                        <div className="form-group">
+                            <label>Status</label>
+                            <input type="text" className="readOnly" defaultValue={STATUS_LABEL[entidade?.status] ?? ""} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>CNPJ</label>
+                            <InputMask mask="99.999.999/9999-99" maskChar={null} value={entidade?.cnpj || ""} readOnly>
+                                {(inputProps) => <input {...inputProps} type="text" className="readOnly" />}
+                            </InputMask>
+                        </div>
+                        <div className="form-group">
+                            <label>Insc. Estadual</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.inscEstadual} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Insc. Municipal</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.inscMunicipal} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Restrições</label>
+                            <textarea className="readOnly" cols="30" rows="1" readOnly defaultValue={
+                                associado ? (entidade?.restricao || "Sem restrições") : entidade?.restricao
+                            }></textarea>
+                        </div>
+                        <div className="form-group">
+                            <label>Categoria</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.categoria?.nome} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Mostrar no site</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.mostrarNoSite === undefined ? "" : (entidade.mostrarNoSite ? "Sim" : "Não")} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Tipo</label>
+                            <input type="text" className="readOnly" defaultValue={tipoLabel} readOnly />
+                        </div>
+                        <div className="formDivider">
+                            <p>Contato</p>
+                        </div>
+                        <div className="form-group f2">
+                            <label>Nome</label>
+                            <input type="text" className="readOnly" defaultValue={contato?.nomeContato} readOnly />
+                        </div>
+                        <div className="form-group f2">
+                            <label>Telefone</label>
+                            <InputMask mask="(99)9999-9999" maskChar={null} value={entidade?.telefone || ""} readOnly>
+                                {(inputProps) => <input {...inputProps} type="text" className="readOnly" />}
+                            </InputMask>
+                        </div>
+                        <div className="form-group f2">
+                            <label>Celular</label>
+                            <InputMask mask="(99)99999-9999" maskChar={null} value={contato?.celular || ""} readOnly>
+                                {(inputProps) => <input {...inputProps} type="text" className="readOnly" />}
+                            </InputMask>
+                        </div>
+                        <div className="form-group f2">
+                            <label>E-mail</label>
+                            <input type="email" className="readOnly" defaultValue={contato?.emailContato ?? entidade?.email} readOnly />
+                        </div>
+                        <div className="form-group f2">
+                            <label>E-mail secundário</label>
+                            <input type="email" className="readOnly" defaultValue={contato?.emailSecundario} readOnly />
+                        </div>
+                        <div className="form-group f2">
+                            <label>Site</label>
+                            <input type="text" className="readOnly" defaultValue={contato?.site} readOnly />
+                        </div>
+                        <div className="formDivider">
+                            <p>Endereço</p>
+                        </div>
+                        <div className="form-group">
+                            <label>Logradouro</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.logradouro} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Número</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.numero} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>CEP</label>
+                            <InputMask mask="99999-999" maskChar={null} value={entidade?.cep || ""} readOnly>
+                                {(inputProps) => <input {...inputProps} type="text" className="readOnly" />}
+                            </InputMask>
+                        </div>
+                        <div className="form-group">
+                            <label>Complemento</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.complemento} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Bairro</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.bairro} readOnly />
+                        </div>
+                        <div className="form-group f2">
+                            <label>Cidade</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.cidade} readOnly />
+                        </div>
+                        <div className="form-group f1">
+                            <label>Estado</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.estado} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Região</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.regiao} readOnly />
+                        </div>
+                        <div className="formDivider">
+                            <p>Plano</p>
+                        </div>
+                        <div className="form-group">
+                            <label>Plano de Inscrição</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.plano?.nome} readOnly />
+                        </div>
+                        {associado &&
                             <div className="form-group">
-                                <label className="required">Data Vencimento Fatura</label>
-                                <select required
-                                    className="readOnly" readOnly defaultValue={userInfo.conta.dataVencimentoFatura} disabled>
-                                    <option value="" disabled>Selecionar</option>
-                                    <option>10</option>
-                                    <option>20</option>
-                                    <option>30</option>
-                                </select>
+                                <label>Valor do Plano (R$)</label>
+                                <input type="text" className="readOnly" defaultValue={formatMoney(entidade?.plano?.taxaInscricao)} readOnly />
                             </div>
-                        </>
-
-                }
-                <div className="formDivider">
-                    <p>Operações</p>
-                </div>
-                {/* ===============================================================
-                //======================= Operações
-                =============================================================== */}
-                <div className="form-group">
-                    <label>Gerente de Conta</label>
-                    <select defaultValue={userInfo.conta.gerenteContaId ? userInfo.conta.gerenteContaId : "Indefinido"} className="readOnly" required disabled>
-                        <option value={userInfo.conta.gerenteContaId ? userInfo.conta.gerenteContaId : "Indefinido"}>
-                            {userInfo.conta.gerenteContaId ? userInfo.conta.gerenteContaId : "Indefinido"}
-                        </option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label className="required">Taxa Gerente Conta em %</label>
-                    <input type="number" className="readOnly" readOnly required />
-                </div>
-                <div className="form-group">
-                    <label className="required">Tipo de Operação</label>
-                    <select className="readOnly" defaultValue={userInfo.tipoOperacao} disabled >
-                        <option value="" disabled>Selecionar</option>
-                        <option value={1}>Compra</option>
-                        <option value={2}>Venda</option>
-                        <option value={3}>Compra/Venda</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label className="required">Limite Crédito</label>
-                    <RealInput defaultValue={userInfo.conta.limiteCredito} placeholder="Insira o limite" reference={reference} required readOnly className="readOnly" />
-                </div>
-                <div className="form-group">
-                    <label className="required">Limite de Venda Mensal</label>
-                    <RealInput defaultValue={userInfo.conta.limiteVendaMensal} placeholder="Insira o limite" reference={reference} required readOnly className="readOnly" />
-                </div>
-                <div className="form-group">
-                    <label className="required">Limite de Venda Total</label>
-                    <RealInput defaultValue={userInfo.conta.limiteVendaTotal} placeholder="Insira o limite" reference={reference} required readOnly className="readOnly" />
-                </div>
-                <div className="form-group">
-                    <label>Aceita Orçamento</label>
-                    <select className="readOnly" defaultValue={userInfo.aceitaOrcamento} disabled >
-                        <option value="" disabled>Selecionar</option>
-                        <option value={true}>Sim</option>
-                        <option value={false}>Não</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Aceita Voucher</label>
-                    <select className="readOnly" defaultValue={userInfo.aceitaVoucher} disabled >
-                        <option value="" disabled>Selecionar</option>
-                        <option value={true}>Sim</option>
-                        <option value={false}>Não</option>
-                    </select>
-                </div>
+                        }
+                        <div className="form-group">
+                            <label>Percentual de Comissão %</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.plano?.percentualComissao ?? ""} readOnly />
+                        </div>
+                        {associado &&
+                            <div className="form-group">
+                                <label>Taxa de Manutenção Anual (R$)</label>
+                                <input type="text" className="readOnly" defaultValue={formatMoney(entidade?.plano?.taxaManutencaoAnual)} readOnly />
+                            </div>
+                        }
+                        <div className="form-group">
+                            <label>Data Vencimento Fatura</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.diaVencimentoFatura} readOnly />
+                        </div>
+                        <div className="formDivider">
+                            <p>Operações</p>
+                        </div>
+                        <div className="form-group">
+                            <label>Gerente de Conta</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.gerente?.nome || "Indefinido"} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Tipo de Operação</label>
+                            <input type="text" className="readOnly" defaultValue={tipoOperacaoLabel} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Limite Crédito</label>
+                            <input type="text" className="readOnly" defaultValue={formatMoney(entidade?.limiteCredito)} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Limite de Venda Mensal</label>
+                            <input type="text" className="readOnly" defaultValue={formatMoney(entidade?.limiteVendaMensal)} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Limite de Venda Total</label>
+                            <input type="text" className="readOnly" defaultValue={formatMoney(entidade?.limiteVendaTotal)} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Aceita Orçamento</label>
+                            <input type="text" className="readOnly" defaultValue={entidade?.aceitaOrcamento === undefined ? "" : (entidade.aceitaOrcamento ? "Sim" : "Não")} readOnly />
+                        </div>
+                        <div className="form-group">
+                            <label>Aceita Voucher</label>
+                            <input type="text" className="readOnly" defaultValue="" readOnly />
+                        </div>
+                    </>
+                )}
                 <div className="formDivider">
                     <p>Dados do usuário</p>
                 </div>
                 <div className="formImage">
-                    <img src={imagemReference ? imagemReference : imageUrl} className="rounded float-left img-fluid" alt="..." id="imagem-selecionada" />
+                    <img src={imageUrl} className="rounded float-left img-fluid" alt="..." id="imagem-selecionada" />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="img_path" className="inputLabel">
-                        <BiSolidImageAdd /> Selecione uma imagem
-                        <input type="file" id="img_path" name="imagem" accept="image/*" className="custom-file-input" onChange={(e) => imageReferenceHandler(e, setImageReference)} />
-                    </label>
+                    <label>Nome</label>
+                    <input type="text" className="readOnly" defaultValue={userInfo.nome} readOnly />
                 </div>
                 <div className="form-group">
-                    <label className="required">Nome</label>
-                    <input type="text" name="nome" required defaultValue={userInfo.nome} />
-                </div>
-                <div className="form-group">
-                    <label className="required">Cpf</label>
-                    <InputMask mask="999.999.999-99" maskChar={null} defaultValue={userInfo.cpf || ""}>
-                        {(inputProps) => <input  {...inputProps} type="text" name="cpf" required />}
+                    <label>Cpf</label>
+                    <InputMask mask="999.999.999-99" maskChar={null} value={userInfo.cpf || ""} readOnly>
+                        {(inputProps) => <input {...inputProps} type="text" className="readOnly" />}
                     </InputMask>
-
                 </div>
                 <div className="form-group">
-                    <label className="required ">E-mail</label>
-                    <input type="email" name="email" required defaultValue={userInfo.email} />
+                    <label>E-mail</label>
+                    <input type="email" className="readOnly" defaultValue={userInfo.email} readOnly />
                 </div>
-                <div className="buttonContainer">
-                    {loading
-                        ? <ColorRing
-                            visible={loading}
-                            height="33"
-                            width="80"
-                            ariaLabel="blocks-loading"
-                            wrapperStyle={{}}
-                            wrapperClass="blocks-wrapper"
-                            colors={['#2d6cdf', '#2d6cdf', '#2d6cdf', '#2d6cdf', '#2d6cdf']}
-                        />
-                        : <ButtonMotion className="purpleBtn" type="submit">Atualizar</ButtonMotion>}
-                </div>
-            </form>
+            </div>
             <Footer />
         </div>)
 };

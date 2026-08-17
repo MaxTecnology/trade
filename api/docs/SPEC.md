@@ -78,6 +78,7 @@ Agências existem em dois tipos: `master` e `comum`. Ambas são gerenciadas pelo
 |---|---|---|---|
 | POST | `/agencias` | Criar agência | `superadmin` (master) / `agency_admin` (comum) |
 | GET | `/agencias` | Listar agências | `superadmin` |
+| GET | `/agencias/me` | Dados completos da própria agência logada (somente leitura, pra "Meus Dados") — entidade resolvida via `request.user.entityId`, não pelo `:id` | `agency_admin`, `agency_operator` |
 | GET | `/agencias/:id` | Detalhar agência | `superadmin`, `agency_admin` (própria) |
 | PUT | `/agencias/:id` | Atualizar agência | `superadmin`, `agency_admin` (própria) |
 | PATCH | `/agencias/:id/status` | Ativar/suspender agência | `superadmin` |
@@ -126,6 +127,7 @@ Associados são as empresas que efetivamente realizam permutas. São vinculados 
 |---|---|---|---|
 | POST | `/associados` | Criar associado | `agency_admin` |
 | GET | `/associados` | Listar associados | `agency_admin` |
+| GET | `/associados/me` | Dados completos do próprio associado logado (somente leitura, pra "Meus Dados") — entidade resolvida via `request.user.entityId`, não pelo `:id` | `associate_admin`, `associate_operator`, `gerente` |
 | GET | `/associados/:id` | Detalhar associado | `agency_admin`, `associate_admin` (próprio) |
 | PUT | `/associados/:id` | Atualizar associado | `associate_admin` |
 | PATCH | `/associados/:id/status` | Ativar/suspender | `agency_admin` |
@@ -296,7 +298,7 @@ Planos definem as regras financeiras de uma entidade (Associado, Agência ou Ger
 | Método | Rota | Descrição | Role mínimo |
 |---|---|---|---|
 | POST | `/planos` | Criar plano | `superadmin` |
-| GET | `/planos` | Listar planos | `superadmin`, `agency_admin` |
+| GET | `/planos` | Listar planos | `superadmin`, `agency_admin`, `agency_operator`, `associate_admin`, `associate_operator`, `gerente` |
 | GET | `/planos/:id` | Detalhar plano | `superadmin`, `agency_admin` |
 | PUT | `/planos/:id` | Atualizar plano | `superadmin` |
 | PATCH | `/planos/:id/status` | Ativar/desativar plano | `superadmin` |

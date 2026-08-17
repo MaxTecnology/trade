@@ -5,6 +5,7 @@ import {
   createController,
   listController,
   diretorioController,
+  meController,
   getByIdController,
   updateController,
   setStatusController,
@@ -39,12 +40,17 @@ export async function associateRoutes(app: FastifyInstance) {
   const contaRoles = {
     preHandler: [authGuard, roleGuard('superadmin', 'agency_admin', 'associate_admin')],
   }
+  // "Meus Dados" (somente leitura) do próprio Associado logado — qualquer role da entidade.
+  const meRoles = {
+    preHandler: [authGuard, roleGuard('associate_admin', 'associate_operator', 'gerente')],
+  }
 
   app.post('/associados', adminOrSuper, createController)
   app.get('/associados', adminOrSuper, listController)
   // Diretório mínimo (sem dados financeiros) para negociação direta entre associados —
   // precisa vir antes de /associados/:id para não ser capturada como um :id.
   app.get('/associados/diretorio', diretorioRoles, diretorioController)
+  app.get('/associados/me', meRoles, meController)
   app.get('/associados/:id', viewAssociate, getByIdController)
   app.put('/associados/:id', viewAssociate, updateController)
   app.patch('/associados/:id/status', adminOrSuper, setStatusController)

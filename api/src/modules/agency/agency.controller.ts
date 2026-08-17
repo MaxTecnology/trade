@@ -21,6 +21,11 @@ export async function listController(request: FastifyRequest, reply: FastifyRepl
   return reply.send(success(agencias))
 }
 
+export async function meController(request: FastifyRequest, reply: FastifyReply) {
+  const agencia = await agencyService.getById(request.user.entityId)
+  return reply.send(success(agencia))
+}
+
 export async function getByIdController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
   const agencia = await agencyService.getById(id)

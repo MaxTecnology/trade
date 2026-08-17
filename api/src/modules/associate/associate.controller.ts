@@ -37,6 +37,11 @@ export async function diretorioController(request: FastifyRequest, reply: Fastif
   return reply.send(success(associados))
 }
 
+export async function meController(request: FastifyRequest, reply: FastifyReply) {
+  const associado = await associateService.getById(request.user.entityId)
+  return reply.send(success(associado))
+}
+
 export async function getByIdController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as Params
   const associado = await associateService.getById(id)

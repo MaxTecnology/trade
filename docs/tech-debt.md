@@ -1,5 +1,24 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-17] "Meus Dados" (`UsuariosDados.jsx`) sempre em branco e editável sem necessidade
+
+Reportado via screenshot em produção: usuário Matriz abria "Meus Dados" e quase todos os campos vinham vazios (Razão Social, CNPJ, Contato, Endereço etc.), e a seção final ("Nome"/"Cpf"/"E-mail") era editável de verdade, com botão "Atualizar" fazendo `PUT`, quando a página deveria ser só visualização.
+
+**Causa raiz (dados em branco):** a página lia tudo de `state.user`, populado só pelo snapshot enxuto de `GET /auth/me` (`{id,nome,email,role,entityType,entityId,entityName,conta}`) — nunca teve razão social, CNPJ, endereço etc. Além disso o formulário foi originalmente montado no shape do model `Associado` (`descricao`, `restricao`, `mostrarNoSite`, `tipoOperacao`, `categoriaId` — tudo exclusivo de Associado), então mesmo corrigindo a fonte de dados, Agência nunca teria esses campos (não existem no model `Agencia`), e **Matriz não é uma entidade no banco** — é só `entityType: 'matriz'` numa `Conta`, sem linha própria, então campos institucionais nunca terão dado ali.
+
+**O que mudou:**
+- Página virou 100% somente-leitura: removido o `<form>`/`onSubmit`/`updateUser`, o upload de imagem e o botão "Atualizar". Todo input é `readOnly`/sem `name`.
+- Novos endpoints self-scoped (`request.user.entityId`, mesmo padrão do `/extrato`): `GET /associados/me` (roles `associate_admin`/`associate_operator`/`gerente`) e `GET /agencias/me` (`agency_admin`/`agency_operator`) — reaproveitam os `getById` já existentes.
+- Matriz: sem entidade própria, mostra só o que existe de fato (Nome Fantasia + Limite de Crédito, via `/auth/me`).
+- Agência: mostra os campos reais do model `Agencia`; os que não existem no model (`descricao`, `restricao`, `mostrarNoSite`, `tipoOperacao`, `aceitaOrcamento`/`aceitaVoucher`, `categoriaId`) ficam sempre em branco por decisão explícita — não são inventados nem escondidos, só não têm onde buscar dado (decisão do usuário: manter os campos no form, mesmo sempre vazios pra Agência).
+- Associado tinha o mesmo bug de dados em branco (mesma causa raiz do `/auth/me` enxuto) — corrigido do mesmo jeito, agora busca via `/associados/me`.
+- `GET /auth/me` ganhou `cpf` no `select` (usado na seção "Dados do usuário").
+- Dois bugs de guard pré-existentes achados no processo (mesmo padrão dos já registrados nesta sessão — rota liberada só pra admin, nunca pra quem só visualiza): `GET /planos` (`plan.routes.ts`) não incluía `associate_admin`/`associate_operator`/`gerente`/`agency_operator`, então o "Plano de Inscrição" nunca resolvia pra Associado; corrigido com um guard `readRoles` dedicado (mantendo `POST`/`PUT`/`PATCH` restritos a `superadmin`).
+
+**Achado, não corrigido (fora de escopo — afeta outras telas):** `PlanosOptions.jsx` renderiza `<option value={JSON.stringify(plano)}>`, não `value={plano.id}` — qualquer `<select>` que tente pré-selecionar um plano via `defaultValue={planoId}` (como o próprio `PlanosFields.jsx`, usado em `CadastrarAgencia`, `EditarAgenciaModal`, `EditarAssociadoModal`, `GerentesCadastrar`) nunca bate o `value` do `<option>` e sempre cai em "Selecione", mesmo com o plano certo já cadastrado. Nesta página o problema foi contornado lendo o plano direto de `entidade.plano` (já vem incluído no `GET /associados/me`/`GET /agencias/me`) em vez de reusar `PlanosFields`; os outros 4 call sites continuam com o bug.
+
+Validado com Postgres real via Docker + Playwright, 3 papéis (Matriz/Agência/Associado): campos com dado real no banco aparecem corretos (incluindo Plano de Inscrição e Percentual de Comissão, antes sempre vazios); campos sem correspondência no model ficam em branco como esperado; nenhum papel mostra mais o botão "Atualizar".
+
 ## [RESOLVIDO 2026-08-17] `ExtratosSearch.jsx` — filtros de Associado/Agência/Comprador/Vendedor não filtravam nada em Extratos
 ~~Filtros de texto/seleção escreviam em `filters.table`, mas nenhuma coluna casava com essas chaves; campo Associado nem tinha `onChange` nem opções.~~ Corrigido: `constantsTransacoes.js` ganhou `id`/`filterFn` explícitos pra Comprador/Vendedor (substring case-insensitive) e duas colunas ocultas — `agencia`/`associado` — cujo `accessorFn` produz a lista de ids relevantes da linha (agência que gerencia comprador/vendedor, ou a própria agência quando ela é parte direta via `contaOrigem`/`contaDestino`; id de comprador/vendedor). Filtro client-side, sobre a página já carregada (mesmo padrão do filtro de Período).
 

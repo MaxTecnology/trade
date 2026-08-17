@@ -216,7 +216,9 @@ export async function getById(id: string) {
       contatos: true,
       conta: { select: { id: true, numero: true, saldo: true } },
       agencia: { select: { id: true, nome: true } },
-      plano: { select: { id: true, nome: true } },
+      plano: {
+        select: { id: true, nome: true, percentualComissao: true, taxaInscricao: true, taxaManutencaoAnual: true },
+      },
       gerente: { select: { id: true, nome: true } },
       categoria: { select: { id: true, nome: true } },
     },
