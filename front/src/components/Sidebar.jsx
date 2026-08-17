@@ -153,7 +153,7 @@ const Sidebar = () => {
         </li>
         <li
           className={state.activePage === "extratos" ? "active" : ""}
-          onClick={() => modalHandler("Estratos")}
+          onClick={() => modalHandler("Extratos")}
         >
           <FaFileInvoiceDollar className="sideContentIcon" />
           <p>EXTRATOS</p>
