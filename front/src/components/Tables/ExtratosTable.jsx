@@ -115,24 +115,24 @@ const ExtratosTable = ({
                                     />
                                     : null
                                 }
-                                {type === "Agência" ?
+                                {type === "Agência" && row.original.status === "em_analise" ?
                                     <Buttons
                                         type="Send"
                                         url={row.original.id}
-                                        confirm={"Deseja solicitar o extorno?"}
-                                        titulo={"Extorno"}
-                                        resultDelete={"Extorno solicitado com sucesso"}
+                                        confirm={"Deseja encaminhar o estorno pra Matriz?"}
+                                        titulo={"Estorno"}
+                                        resultDelete={"Estorno encaminhado com sucesso"}
                                         revalidate={() => revalidate("login")}
                                     />
                                     : null
                                 }
-                                {type === "Matriz" ?
+                                {type === "Matriz" && (row.original.status === "em_analise" || row.original.status === "encaminhado") ?
                                     <Buttons
                                         type="Aprove"
                                         url={row.original.id}
-                                        confirm={"Deseja aprovar o extorno?"}
-                                        titulo={"Extorno"}
-                                        resultDelete={"Extorno aprovado com sucesso"}
+                                        confirm={"Deseja aprovar o estorno?"}
+                                        titulo={"Estorno"}
+                                        resultDelete={"Estorno aprovado com sucesso"}
                                         revalidate={() => revalidate("login")}
                                     />
                                     : null
