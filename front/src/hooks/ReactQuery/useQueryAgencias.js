@@ -6,7 +6,7 @@ export const useQueryAgencias = () => {
         queryKey: ['agencias'],
         queryFn: async () => {
             const res = await api.get('agencias?page=1&limit=100');
-            return res.data;
+            return res.data.data;
         },
     });
 };

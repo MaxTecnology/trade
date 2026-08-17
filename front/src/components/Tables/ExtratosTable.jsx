@@ -61,7 +61,7 @@ const ExtratosTable = ({
         getPaginationRowModel: getPaginationRowModel(),
     })
 
-    const invisibleFields = ["Agência", "dataTermino", "dataInicio"]
+    const invisibleFields = ["Agência", "dataTermino", "dataInicio", "agencia-filtro", "associado-filtro"]
 
     useEffect(() => {
         const filters = Object.entries(snap).map(([key, value]) => {

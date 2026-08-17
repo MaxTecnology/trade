@@ -93,8 +93,13 @@ export async function relatorioPermutas(
       take: limit,
       orderBy: { criadoEm: 'desc' },
       include: {
-        comprador: { select: { nome: true } },
-        vendedor: { select: { nome: true } },
+        // agenciaId aqui: qual agência GERENCIA o associado comprador/vendedor
+        // (Associado.agenciaId). contaOrigem/contaDestino.agenciaId cobrem o
+        // caso da própria Agência ser a parte direta (sem Associado no meio).
+        comprador: { select: { id: true, nome: true, agenciaId: true } },
+        vendedor: { select: { id: true, nome: true, agenciaId: true } },
+        contaOrigem: { select: { agenciaId: true } },
+        contaDestino: { select: { agenciaId: true } },
       },
     }),
     prisma.transacao.count({ where }),
