@@ -61,7 +61,12 @@ export async function relatorioPermutas(
   const limit = Math.min(filters.limit ?? 20, 100)
   const skip = (page - 1) * limit
 
-  let where: Record<string, unknown> = { tipo: 'permuta', ...dateRange(filters.dataInicio, filters.dataFim) }
+  // Sem filters.tipo, mostra todos os tipos de transação (visão geral de
+  // extrato) — passar tipo explicitamente (ex: 'permuta') filtra só esse tipo.
+  let where: Record<string, unknown> = {
+    ...(filters.tipo ? { tipo: filters.tipo } : {}),
+    ...dateRange(filters.dataInicio, filters.dataFim),
+  }
   if (role === 'associate_admin') {
     where = { ...where, compradorId: entityId }
   } else if (role === 'agency_admin') {
@@ -82,7 +87,16 @@ export async function relatorioPermutas(
   }
 
   const [items, total] = await prisma.$transaction([
-    prisma.transacao.findMany({ where, skip, take: limit, orderBy: { criadoEm: 'desc' } }),
+    prisma.transacao.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { criadoEm: 'desc' },
+      include: {
+        comprador: { select: { nome: true } },
+        vendedor: { select: { nome: true } },
+      },
+    }),
     prisma.transacao.count({ where }),
   ])
   return { items, total, page, limit }

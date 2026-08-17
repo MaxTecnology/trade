@@ -564,9 +564,9 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
 
 | Método | Rota | Descrição | Role mínimo |
 |---|---|---|---|
-| GET | `/extrato` | Extrato de movimentações da conta | `associate_operator` |
-| GET | `/extrato/saldo` | Saldo atual da conta | `associate_operator` |
-| GET | `/relatorios/permutas` | Relatório de permutas | `associate_admin`, `agency_admin` |
+| GET | `/extrato` | Extrato de movimentações da conta autenticada (`contaId` do JWT) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
+| GET | `/extrato/saldo` | Saldo atual da conta autenticada | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
+| GET | `/relatorios/permutas` | Transações — todos os tipos por padrão, ou só um tipo via `?tipo=permuta`. `associate_admin` vê as próprias; `agency_admin` vê a agência + associados geridos; `superadmin` vê tudo, sem filtro | `associate_admin`, `agency_admin`, `superadmin` |
 | GET | `/relatorios/comissoes` | Relatório de comissões da plataforma (BRL) | `agency_admin`, `superadmin` |
 | GET | `/relatorios/comissoes-gerentes` | Relatório de comissões de todos os gerentes | `agency_admin`, `superadmin` |
 | GET | `/relatorios/uso-plano` | Quanto o associado já **vendeu** este mês vs. `limiteVendaMensal` (substituiu `plano.limiteRT`) | `associate_admin` |

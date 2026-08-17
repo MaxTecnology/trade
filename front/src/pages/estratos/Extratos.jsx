@@ -2,13 +2,13 @@ import { useState } from "react";
 import Footer from '@/components/Footer';
 import ExtratosSearch from "@/components/Search/ExtratosSearch";
 import useModal from "@/hooks/useModal";
-import { useQueryTransacoes } from "@/hooks/ReactQuery/useQueryTransacoes";
-import { columns } from "./constantsExtratos";
+import { useQueryRelatorioTransacoes } from "@/hooks/ReactQuery/useQueryRelatorioTransacoes";
+import { columns } from "./constantsTransacoes";
 import ExtratosTable from "@/components/Tables/ExtratosTable";
 import TransaçõesModal from "@/Modals/TransaçõesModal";
 
 const Extratos = () => {
-    const { data } = useQueryTransacoes()
+    const { data } = useQueryRelatorioTransacoes()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState({})
     const [id, setId] = useState()
@@ -26,7 +26,7 @@ const Extratos = () => {
             <div className="containerList">
                 <ExtratosTable
                     columns={columns}
-                    data={data && data.transacoes ? data.transacoes : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}

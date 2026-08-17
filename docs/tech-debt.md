@@ -1,5 +1,9 @@
 # Débito técnico — Rede Trade
 
+## `ExtratosSearch.jsx` — filtros de Associado/Agência/Comprador/Vendedor não filtram nada nas telas de Extratos/Estornos
+Achado em 2026-08-17 ao consertar as telas de Extratos (`Extratos.jsx`, `ExtratosEstorno.jsx`, `MeusExtratos.jsx`) — que antes nem carregavam dado real, então os filtros nunca tinham chance de importar. Agora que carregam, os filtros de texto (`agencia`, `comprador`, `vendedor`) escrevem em `filters.table` (via `ExtratosSearch.jsx`), mas nenhuma coluna das 3 novas colunas (`constantsTransacoes.js`, `constantsEstorno.js`, `constantsMeuExtrato.js`) declara `id`/`filterFn` casando com essas chaves — só o filtro de **Período** foi ligado (`dataInicio`/`dataTermino`, reaproveitando `filterStart`/`filterEnd` que já existiam). O campo "Associado" nem tem `onChange` nem opções carregadas (`<AssociadosOptions />` não existe, diferente do `<AgenciasOptions />` que o campo Agência já usa) — sempre foi morto.
+**Ação futura:** decidir se a busca por Comprador/Vendedor/Agência deve ser client-side (TanStack `filterFn` com correspondência parcial no nome já carregado) ou server-side (a API precisaria aceitar esses parâmetros — hoje `relatorioPermutas`/`listarFilhas`/`extrato` não têm filtro nenhum por nome de comprador/vendedor/agência). Corrigir o campo "Associado" (sem opções, sem handler) junto.
+
 ## Constraints de domínio aplicadas via seed.ts, não via migration formal
 `saldo_nao_negativo`, `valor_rt_positivo` e demais `CHECK` constraints são aplicadas via `$executeRaw` idempotente dentro de `api/prisma/seed.ts`, não pela migration do Prisma. Um ambiente que rode só `prisma migrate deploy` sem executar o seed (ex.: pipeline futuro que separe seed de migration) sobe sem essas constraints de integridade — risco real dado que são regras invioláveis do domínio (ver `CLAUDE.md`).
 **Ação futura:** mover para uma migration Prisma formal (`prisma migrate dev --create-only` + editar SQL).
