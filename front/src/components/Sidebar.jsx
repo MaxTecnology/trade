@@ -19,7 +19,7 @@ import {
 import { BsBookmarkFill, BsCashCoin } from "react-icons/bs";
 import ModalContent from "../Modals/ModalContent";
 import state from "../store";
-import { getType } from "../hooks/getId";
+import { isMatriz, isAssociado } from "../hooks/getId";
 import { useSnapshot } from "valtio";
 import ModalMotion from "./FramerMotion/ModalMotion";
 import {
@@ -59,14 +59,10 @@ const Sidebar = () => {
   };
 
   function getName() {
-    const userType = getType();
-    if (userType === "Associado") {
-      return state.user?.conta?.nomeFranquia;
-    }
+    // nomeFantasia já vem certo pros 3 entityTypes (mapeado de entityName em
+    // authFunction.js) — não precisa de branch por role.
     return state.user?.nomeFantasia;
   }
-
-  const userType = getType();
 
   return (
     <div className={`sidebar ${sidebarClosed ? "sidebarClosed" : ""}`}>
@@ -118,7 +114,7 @@ const Sidebar = () => {
           <FaUsers className="sideContentIcon" />
           <p>ASSOCIADOS</p>
         </li>
-        {userType !== "Associado" ? (
+        {!isAssociado() ? (
           <li
             className={state.activePage === "agencias" ? "active" : ""}
             onClick={() => modalHandler("Agencias")}
@@ -170,7 +166,7 @@ const Sidebar = () => {
           <FaHandHoldingUsd className="sideContentIcon" />
           <p>CONTAS</p>
         </li>
-        {userType == "Matriz" ? (
+        {isMatriz() ? (
           <li
             className={
               state.activePage === "planos" ? "active planos" : "planos"
@@ -182,7 +178,7 @@ const Sidebar = () => {
           </li>
         ) : null}
 
-        {userType == "Matriz" ? (
+        {isMatriz() ? (
           <li
             className={state.activePage === "categorias" ? "active" : ""}
             onClick={() => modalHandler("Categorias")}
@@ -191,7 +187,7 @@ const Sidebar = () => {
             <p>CATEGORIAS</p>
           </li>
         ) : null}
-        {userType !== "Associado" ? (
+        {!isAssociado() ? (
           <li
             className={state.activePage === "gerentes" ? "active" : ""}
             onClick={() => modalHandler("Gerentes")}

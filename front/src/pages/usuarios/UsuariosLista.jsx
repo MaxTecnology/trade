@@ -8,11 +8,10 @@ import EditarUsuariosModal from "@/Modals/EditarUsuariosModal";
 import useModal from "@/hooks/useModal";
 import { useQueryUsuarios } from "@/hooks/ReactQuery/useQueryUsuarios";
 import { useQueryMeusUsuarios } from "@/hooks/ReactQuery/usuario/useQueryMeusUsuarios";
-import { getType } from "@/hooks/getId";
+import { isMatriz } from "@/hooks/getId";
 
 const UsuariosLista = () => {
     const { data } = useQueryUsuarios()
-    const type = getType()
     const { data: myUsers } = useQueryMeusUsuarios()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [userInfo, setUserInfo] = useState()
@@ -21,9 +20,7 @@ const UsuariosLista = () => {
     useEffect(() => {
         activePage("usuarios")
     }, []);
-    console.log(type)
-    console.log(myUsers)
-    const tableData = type === "Matriz" ? data?.data : myUsers
+    const tableData = isMatriz() ? data?.data : myUsers
     return (
         <div className="container">
             {modalIsOpen ?

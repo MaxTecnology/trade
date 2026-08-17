@@ -5,7 +5,7 @@ import { closeModal } from '../hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
 import { useEffect } from 'react';
 import { formateValue } from '../hooks/Mascaras';
-import { getId, getType } from '../hooks/getId';
+import { getId, isMatriz } from '../hooks/getId';
 
 // Defina o elemento principal da sua aplicação (geralmente '#root' para um aplicativo React)
 const appElement = document.getElementById('root');
@@ -19,8 +19,6 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
     const submitHandler = (event) => {
         atualizarCreditos(event)
     }
-    const type = getType()
-
     useEffect(() => {
         formateValue()
     }, []);
@@ -41,7 +39,7 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                 <div className="modalTransacoesContainer">
                     <div className="modalTransacoesSubContainer">
                         <div className="modalTransacoesItem">
-                            <span onClick={console.log(type)}>Nome</span>
+                            <span>Nome</span>
                             <p>{data.usuarioSolicitante.nome}</p>
                         </div>
                         <div className="modalTransacoesItem">
@@ -91,7 +89,7 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                 {data.status !== 'Aprovado' && data.status !== "Negado"
                     ?
                     <div className="buttonContainer">
-                        {type === 'Matriz' ? (
+                        {isMatriz() ? (
                             <>
                                 <button
                                     className='modalAprove'
@@ -132,7 +130,7 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                             </button>
                         }
                         {
-                            type !== 'Matriz' && data.idSolicitacaoCredito !== getId() ?
+                            !isMatriz() && data.idSolicitacaoCredito !== getId() ?
                                 <button type='button' onClick={() => forwardCreditos(data.idSolicitacaoCredito, modalToggle, setState)}>Encaminhar</button> : null
                         }
                         <button className='modalButtonClose' type='button' onClick={() => closeModal(modalToggle, setSucess, setError)} >Fechar</button>

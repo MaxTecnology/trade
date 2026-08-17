@@ -15,7 +15,7 @@ import state from "@/store";
 import { imageReferenceHandler } from "@/utils/functions/formHandler";
 import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
 import PlanosFields from "@/components/Form/PlanosFields";
-import { getType } from "@/hooks/getId";
+import { getType, isMatriz } from "@/hooks/getId";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 
 const UsuariosDados = () => {
@@ -202,7 +202,7 @@ const UsuariosDados = () => {
                     <input type="text" className="readOnly" disabled defaultValue={userInfo.regiao} />
                 </div>
                 {
-                    getType() === "Matriz" ? null :
+                    isMatriz() ? null :
                         <>
                             <div className="formDivider">
                                 <p>Agência</p>

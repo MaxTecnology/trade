@@ -3,7 +3,7 @@ import { FaFileLines } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import { BsFillPersonVcardFill, BsFillPersonPlusFill, BsBuildings, BsBuildingAdd, BsCoin, BsCheck2All, BsTags, BsMegaphone, BsTrash3, BsJournalPlus, BsTicketPerforated, BsTicketPerforatedFill, BsTicketDetailed, BsFillClipboard2DataFill, BsGraphUp, BsPieChartFill } from "react-icons/bs";
 import { VscChromeClose } from "react-icons/vsc";
-import { getType } from '../hooks/getId';
+import { isAssociado, isMatriz } from '../hooks/getId';
 import { useSnapshot } from 'valtio';
 import state from '../store';
 
@@ -11,7 +11,6 @@ import state from '../store';
 const ModalContent = ({ modalItem, modalFunction }) => {
     useSnapshot(state)
     const navigate = useNavigate();
-    const userType = getType()
     const handleNavigation = (route) => {
         navigate(route);  // Navega para a rota especificada
         modalFunction()
@@ -24,7 +23,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             component = [
                 { name: 'Associados', icon: <FaUsers />, route: "/associados" }
             ];
-            if (userType !== 'Associado') {
+            if (!isAssociado()) {
                 component.push(
                     { name: 'Lista de Associados', icon: <BsFillPersonVcardFill />, route: "/associadosLista" },
                     { name: 'Novo Associado', icon: <BsFillPersonPlusFill />, route: "/associadosCadastrar" }
@@ -36,7 +35,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             component = [
                 { name: 'Agências', icon: <BsBuildings />, route: "/agencias" },
             ];
-            if (userType === 'Matriz' || userType === 'Filial' || userType === 'Master') {
+            if (isMatriz()) {
                 component.push(
                     { name: 'Novas Agências', icon: <BsBuildingAdd />, route: "/agenciasCadastrar" }
                 );
@@ -44,7 +43,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             break;
         // Adicione casos para outras categorias aqui
         case 'Transações':
-            if (userType === 'Associado') {
+            if (isAssociado()) {
                 component = [
                     { name: 'Minhas Transações', icon: <BsCoin />, route: "/transacoesMinhas" },
                     { name: 'Nova Transação', icon: <BsCheck2All />, route: "/transacoesCadastrar" },
@@ -64,7 +63,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
                 { name: 'Minhas Ofertas', icon: <BsMegaphone />, route: "/ofertasMinhas" },
             ];
 
-            if (userType !== 'Associado') {
+            if (!isAssociado()) {
                 component.push(
                     { name: 'Excluir Ofertas', icon: <BsTrash3 />, route: "/ofertasExcluir" }
                 );
@@ -77,7 +76,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
         // Adicione casos para outras categorias aqui
         case 'Voucher':
             component = []
-            if (userType !== "Associado") {
+            if (!isAssociado()) {
                 component.push(
                     { name: 'Vouchers', icon: <BsTicketPerforated />, route: "/voucher" },
                 );
@@ -96,17 +95,17 @@ const ModalContent = ({ modalItem, modalFunction }) => {
                 { name: 'Meus Créditos', icon: <BsFillClipboard2DataFill />, route: "/creditosMeus" },
                 { name: 'Solicitar Crédito', icon: <BsGraphUp />, route: "/creditosSolicitar" },
             ];
-            if (userType !== 'Associado') {
+            if (!isAssociado()) {
                 component.push(
                     { name: 'Créditos', icon: <BsFillClipboard2DataFill />, route: "/creditos" },
                 );
             }
-            if (userType !== 'Matriz' && userType !== 'Associado') {
+            if (!isMatriz() && !isAssociado()) {
                 component.push(
                     { name: 'Analisar Créditos', icon: <BsPieChartFill />, route: "/creditosAnalise" },
                 );
             }
-            if (userType === 'Matriz') {
+            if (isMatriz()) {
                 component.push(
                     { name: 'Aprovar Créditos', icon: <BsPieChartFill />, route: "/cretidosAprovar" },
                 );
@@ -116,7 +115,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             component = [
             ];
 
-            if (userType !== 'Associado') {
+            if (!isAssociado()) {
                 component.push(
                     { name: 'Extratos', icon: <FaFileInvoiceDollar />, route: "/estratos" },
                     { name: 'Meus Extratos', icon: <FaFileLines />, route: "/estratosMeus" },
@@ -132,7 +131,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             component = [
             ];
 
-            if (userType !== 'Associado') {
+            if (!isAssociado()) {
                 component.push(
                     { name: 'Contas a Receber', icon: <FaMoneyBillAlt />, route: "/contasReceber" },
                     { name: 'Contas a Pagar', icon: <FaMoneyCheckAlt />, route: "/contasPagar" }

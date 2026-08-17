@@ -5,21 +5,21 @@ import useModal from "@/hooks/useModal";
 import { columns } from "./constantsExtratos";
 import ExtratosTable from "@/components/Tables/ExtratosTable";
 import TransaçõesModal from "@/Modals/TransaçõesModal";
-import { getType } from "@/hooks/getId";
+import { isMatriz, isAgencia } from "@/hooks/getId";
 import { useQueryEncaminhadasExtorno } from "@/hooks/ReactQuery/estornos/useQueryEncaminhadasExtorno";
 import { useQueryExtornoMatriz } from "@/hooks/ReactQuery/estornos/useQueryExtornoMatriz";
 
 const ExtratosEstorno = () => {
     const { data: agencia } = useQueryEncaminhadasExtorno()
     const { data: matriz } = useQueryExtornoMatriz()
-    console.log(agencia)
-    console.log(matriz)
     const [modalIsOpen, modalToggle] = useModal();
-    const type = getType()
+    // ExtratosTable espera "Matriz"/"Agência" literal — mantém o contrato de
+    // prop que o componente já usa, só resolve o valor certo pra passar.
+    const tipoConta = isMatriz() ? "Matriz" : isAgencia() ? "Agência" : "Associado"
     const [info, setInfo] = useState({})
     const [id, setId] = useState()
     const data = matriz && agencia && agencia["Solicitações de estorno"] ? [...agencia["Solicitações de estorno"], ...matriz.transacoes] : ["AAA"]
-    const dataToDisplay = type === "Matriz" ? data : (agencia && agencia["Solicitações de estorno"]) || [];
+    const dataToDisplay = isMatriz() ? data : (agencia && agencia["Solicitações de estorno"]) || [];
 
     return (
         <div className="container">
@@ -39,7 +39,7 @@ const ExtratosEstorno = () => {
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
-                    type={getType()}
+                    type={tipoConta}
                 />
             </div>
             <Footer />

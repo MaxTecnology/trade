@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { getId, getType } from '../getId';
+import { getId, isGerente } from '../getId';
 import { getApiData } from '../ListasHook';
 export const useQueryMeusAssociados = () => {
-    const tipo = getType()
-    const url = tipo === 'Gerente'
+    const url = isGerente()
         ? `gerentes/${getId()}/associados`
         : `agencias/${getId()}/associados`
     return useQuery({

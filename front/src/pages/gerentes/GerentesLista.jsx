@@ -7,7 +7,6 @@ import { columns } from "./constants";
 import useModal from "@/hooks/useModal";
 import { useQueryGerentes } from "@/hooks/ReactQuery/useQueryGerentes";
 import GerenteSearch from "@/components/Search/GerenteSearch";
-import { getType } from "@/hooks/getId";
 
 const GerentesLista = () => {
     const { data } = useQueryGerentes()
@@ -38,7 +37,6 @@ const GerentesLista = () => {
                     setId={setUserId}
                     setInfo={setUserInfo}
                     modaltoggle={modalToggle}
-                    type={getType()}
                 />
             </div>
             <Footer />

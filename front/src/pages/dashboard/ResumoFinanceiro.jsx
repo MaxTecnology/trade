@@ -3,7 +3,7 @@ import StarRating from "@/components/Stars/StarRating";
 import { useSnapshot } from "valtio";
 import { useQueryReceberAgencia } from "@/hooks/ReactQuery/useQueryReceberAgencia";
 import { useQueryReceberAssociado } from "@/hooks/ReactQuery/useQueryReceberAssociado";
-import { getType } from "@/hooks/getId";
+import { getType, isAssociado, isMatriz } from "@/hooks/getId";
 import { useQueryPlanos } from "@/hooks/ReactQuery/useQueryPlanos";
 import { useQueryPagarGerentes } from "@/hooks/ReactQuery/dashboard/useQueryPagarGerentes";
 import { useQueryProximaFatura } from "@/hooks/ReactQuery/dashboard/useQueryProximaFatura";
@@ -32,7 +32,7 @@ const ResumoFinanceiro = () => {
     <div className="homeBodyRightItem">
       <h5>Resumo Adiministrativo</h5>
       <div>
-        {type === "Associado" ? (
+        {isAssociado() ? (
           <div>
             Score de Atendimento: <StarRating rating={snap.reputacao} />
           </div>
@@ -42,7 +42,7 @@ const ResumoFinanceiro = () => {
             Taxa de manutenção anual: <span>R$ {taxa}</span>
           </div>
         ) : null}
-        {type !== "Associado" ? (
+        {!isAssociado() ? (
           <div>
             A Receber Associados:
             <span>
@@ -74,7 +74,7 @@ const ResumoFinanceiro = () => {
           </div>
         ) : null}
 
-        {type !== "Associado" && (
+        {!isAssociado() && (
           <div>
             A Pagar Gerentes:
             <span>
@@ -109,7 +109,7 @@ const ResumoFinanceiro = () => {
           </div>
         ) : null}
 
-        {type === "Matriz" ? (
+        {isMatriz() ? (
           <div>
             A Receber Agência:
             <span>
@@ -127,7 +127,7 @@ const ResumoFinanceiro = () => {
             </span>
           </div>
         ) : null}
-        {type !== "Matriz" ? (
+        {!isMatriz() ? (
           <div>
             Próxima fatura:{" "}
             <span>
@@ -137,7 +137,7 @@ const ResumoFinanceiro = () => {
             </span>
           </div>
         ) : null}
-        {type === "Associado" && (
+        {isAssociado() && (
           <div>
             Data para Pagamento:
             <span>Não há cobranças</span>
