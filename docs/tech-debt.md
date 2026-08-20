@@ -1,5 +1,19 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-20] Login quebrava em produção depois de todo deploy (nginx com IP da API em cache)
+
+Reportado: depois de um deploy, `POST /api/v1/auth/login` retornava `502 Bad Gateway` em produção, mesmo a API tendo subido normal (logs confirmam migrations/seed/"Starting API..." ok). Log do nginx: `connect() failed (113: Host is unreachable) while connecting to upstream ... upstream: "http://10.0.1.59:3000/..."`.
+
+**Causa raiz:** `front/nginx.conf` tinha `proxy_pass http://api:3000/api/;` — um `proxy_pass` com string literal faz o nginx resolver o hostname `api` **uma única vez**, no startup do worker, e cachear o IP resolvido pra sempre (comportamento documentado do nginx, não é bug do nginx). Quando o container da API é recriado no deploy (Docker atribui um IP novo na rede interna), o container do frontend não é necessariamente recriado junto — ele continua rodando com o IP antigo em cache, e todo request pra `/api/*` cai num IP que não existe mais.
+
+**O que mudou:** `resolver 127.0.0.11 valid=10s;` (DNS embutido do Docker) + `proxy_pass` usando variável (`set $api_upstream api:3000; proxy_pass http://$api_upstream;`) — isso força o nginx a re-resolver `api` a cada 10s em vez de cachear pra sempre, então ele acompanha o IP novo automaticamente sem precisar reiniciar o frontend a cada deploy da API.
+
+**Cuidado ao mexer aqui de novo:** `proxy_pass` com variável **desativa a reescrita automática de prefixo de URI** do nginx — colocar uma URI depois da variável (`proxy_pass $var/api/;`) faz o path virar sempre literalmente `/api/`, quebrando toda rota (foi tentado e corrigido nesta mesma sessão, confirmado via teste local: request pra `/api/v1/auth/me` chegava na API como `/api/` puro, 404). A forma correta é `proxy_pass http://$var;` **sem URI**, deixando o nginx repassar o path original intacto.
+
+**Mitigação imediata em produção** (antes do deploy do fix chegar): `docker restart <container-do-frontend>` — força o nginx a resolver `api` de novo com o IP atual, sem precisar mexer na API.
+
+**Validado**: local via Docker — path forwarding correto (`/api/v1/auth/me` chega intacto na API) e a API foi recriada (`--force-recreate`) sem o frontend precisar reiniciar, continuando a rotear certo.
+
 ## [RESOLVIDO 2026-08-20] Estorno de associado sem Agência ficava invisível pra Matriz pra sempre
 
 Reportado via screenshot: Matriz logada, tela "Estornos" vazia, mesmo com uma solicitação existindo. Investigado: `GET /estornos/matriz` só mostrava status `encaminhado`/`aprovado`/`negado` — uma solicitação em `em_analise` nunca aparecia, mesmo o backend (`finalizar()`) já aceitando aprovar direto de `em_analise`, e o front (`ExtratosTable.jsx`) já tendo os botões Aprovar/Negar prontos pra esse status. Perguntei ao usuário se a solicitação específica já tinha sido encaminhada pela Agência — resposta: não, porque **o associado foi cadastrado direto pela Matriz, sem Agência no meio** — confirmado que quando existe Agência, o fluxo tem que passar por ela normalmente, mas quando não existe, não tem quem encaminhar e a solicitação ficava travada em `em_analise` pra sempre, invisível pra todo mundo.
