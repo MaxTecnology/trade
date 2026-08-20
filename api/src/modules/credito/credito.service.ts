@@ -113,8 +113,11 @@ export async function deletarCredito(id: string, associadoId: string) {
   await prisma.solicitacaoCredito.delete({ where: { id } })
 }
 
-export async function encaminharCredito(id: string) {
-  const credito = await prisma.solicitacaoCredito.findUnique({ where: { id } })
+export async function encaminharCredito(id: string, requester: { role: string; entityId: string }) {
+  const credito = await prisma.solicitacaoCredito.findUnique({
+    where: { id },
+    include: { associado: { select: { agenciaId: true } } },
+  })
   if (!credito) throw Errors.notFound('Solicitação de crédito')
   if (credito.status !== 'em_analise')
     throw new (await import('../../shared/errors/AppError.js')).AppError(
@@ -122,6 +125,13 @@ export async function encaminharCredito(id: string) {
       'Apenas solicitações em análise podem ser encaminhadas.',
       422,
     )
+
+  // agency_admin só encaminha solicitações dos próprios associados — 404 em vez
+  // de 403 pra não confirmar a existência do id pra quem não tem acesso.
+  if (requester.role !== 'superadmin' && credito.associado.agenciaId !== requester.entityId) {
+    throw Errors.notFound('Solicitação de crédito')
+  }
+
   return prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'encaminhado' } })
 }
 

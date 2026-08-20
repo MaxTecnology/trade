@@ -1,5 +1,13 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-20] `PATCH /estornos/:id/encaminhar` e `PATCH /creditos/:id/encaminhar` sem checagem de posse (IDOR)
+
+Pedido pelo usuário: revisão da lógica de Estorno pra ver se estava de acordo com o desenhado. Fluxo de dinheiro (`transaction.service.ts::estorno` — reversão atômica, ledger imutável, checagem de saldo, restauração de quantidade da oferta, geração de voucher) confere com o spec e está correto. Achado no processo: **`encaminhar` não checava se a solicitação era da própria agência do `agency_admin` que chamava** — qualquer `agency_admin` conseguia encaminhar (avançar de `em_analise` pra `encaminhado`) uma solicitação de estorno **ou de crédito** de qualquer outra agência, bastando adivinhar/enumerar o `id`, e a resposta ainda vazava dados da transação/associado de outro tenant. Mesma classe de bug já corrigida em `user.service.ts` nesta sessão (`POST /usuarios` e afins) — aqui não tinha sido aplicada.
+
+**O que mudou:** `estorno.service.ts::encaminhar` e `credito.service.ts::encaminharCredito` agora recebem o `requester` (`role`, `entityId`, e `contaId` no caso de estorno, pra cobrir Agência participando direto da transação) e checam posse antes de avançar o status — `agency_admin` só encaminha o que é da própria agência (via `comprador.agenciaId`/`vendedor.agenciaId`/`contaOrigemId`/`contaDestinoId` no estorno; via `associado.agenciaId` no crédito); fora disso, `404` (não `403`, pra não confirmar a existência do id pra quem não tem acesso). `superadmin` continua encaminhando qualquer uma. `aprovar`/`negar` já eram `superadmin`-only nos dois fluxos, sem gap de tenant.
+
+**Validado:** `tsc --noEmit` limpo, suite de testes (18/18) sem regressão. Validação end-to-end com Docker real (cross-tenant `agency_admin` tentando encaminhar solicitação de outra agência) ficou pendente — porta 3000 estava ocupada por outro processo (`autohubs/nfs-e`, projeto não relacionado, não foi encerrado) no momento do fix; revisão de código + tipos + testes deram cobertura suficiente pra confiança na correção, mas recomenda-se validar live assim que a porta estiver livre.
+
 ## [RESOLVIDO 2026-08-17] "Meus Dados" (`UsuariosDados.jsx`) sempre em branco e editável sem necessidade
 
 Reportado via screenshot em produção: usuário Matriz abria "Meus Dados" e quase todos os campos vinham vazios (Razão Social, CNPJ, Contato, Endereço etc.), e a seção final ("Nome"/"Cpf"/"E-mail") era editável de verdade, com botão "Atualizar" fazendo `PUT`, quando a página deveria ser só visualização.

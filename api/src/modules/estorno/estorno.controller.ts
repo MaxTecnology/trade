@@ -40,7 +40,7 @@ export async function listarTodasController(request: FastifyRequest, reply: Fast
 }
 
 export async function encaminharController(request: FastifyRequest, reply: FastifyReply) {
-  const solicitacao = await estornoService.encaminhar((request.params as Params).id)
+  const solicitacao = await estornoService.encaminhar((request.params as Params).id, request.user)
   return reply.send(success(solicitacao))
 }
 

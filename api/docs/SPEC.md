@@ -654,6 +654,7 @@ em_analise → encaminhado → aprovado | negado
 - Aprovação injeta RT atomicamente via `prisma.$transaction` (movimentacao_conta + saldo).
 - Não é possível editar ou excluir solicitações com status `aprovado` ou `negado`.
 - O campo `valorSolicitado` é em RT.
+- `agency_admin` só encaminha (`PATCH /creditos/:id/encaminhar`) solicitações dos próprios associados — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 
 ---
 
@@ -750,6 +751,7 @@ Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `n
 - Só pode solicitar quem é comprador/vendedor da transação, ou `agency_admin`/`superadmin`.
 - Apenas transações `permuta` ou `negociada`, ainda não `estornada`, dentro do prazo de 30 dias.
 - Não permite duas solicitações simultâneas em andamento (`em_analise`/`encaminhado`) para a mesma transação.
+- `agency_admin` só encaminha (`PATCH /estornos/:id/encaminhar`) solicitações da própria agência — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 - Ao aprovar, executa a mesma lógica de estorno direto (§9) — valida saldo suficiente na conta a ser debitada, reverte movimentações, restaura quantidade da oferta (se aplicável), gera voucher de estorno.
 - Ao negar, a transação original permanece `concluida` — nenhuma reversão ocorre.
 

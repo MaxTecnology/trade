@@ -74,7 +74,7 @@ export async function deletarController(req: FastifyRequest, reply: FastifyReply
 
 export async function encaminharController(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string }
-  const data = await encaminharCredito(id)
+  const data = await encaminharCredito(id, req.user)
   return reply.send(success(data))
 }
 

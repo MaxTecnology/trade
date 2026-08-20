@@ -131,12 +131,41 @@ export async function listarTodas(query: ListEstornoQueryType) {
   return { items, total, page, limit }
 }
 
-export async function encaminhar(id: string) {
-  const solicitacao = await prisma.solicitacaoEstorno.findUnique({ where: { id } })
+export async function encaminhar(
+  id: string,
+  requester: { role: string; entityId: string; contaId?: string },
+) {
+  const solicitacao = await prisma.solicitacaoEstorno.findUnique({
+    where: { id },
+    include: {
+      transacao: {
+        select: {
+          comprador: { select: { agenciaId: true } },
+          vendedor: { select: { agenciaId: true } },
+          contaOrigemId: true,
+          contaDestinoId: true,
+        },
+      },
+    },
+  })
   if (!solicitacao) throw Errors.notFound('Solicitação de estorno')
   if (solicitacao.status !== 'em_analise') {
     throw new AppError('VALIDATION_ERROR', 'Apenas solicitações em análise podem ser encaminhadas.', 422)
   }
+
+  // agency_admin só encaminha solicitações da própria agência (associados, ou a
+  // própria agência participando direto da transação) — 404 em vez de 403 pra
+  // não confirmar a existência do id pra quem não tem acesso.
+  if (requester.role !== 'superadmin') {
+    const { transacao } = solicitacao
+    const daAgencia =
+      transacao.comprador?.agenciaId === requester.entityId ||
+      transacao.vendedor?.agenciaId === requester.entityId ||
+      (!!requester.contaId &&
+        (transacao.contaOrigemId === requester.contaId || transacao.contaDestinoId === requester.contaId))
+    if (!daAgencia) throw Errors.notFound('Solicitação de estorno')
+  }
+
   return prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'encaminhado' }, include })
 }
 
