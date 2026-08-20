@@ -8,8 +8,8 @@ import { columns } from "./constantCreditos";
 import useModal from "@/hooks/useModal";
 import { useQueryCreditosAnalisar } from "@/hooks/ReactQuery/useQueryCreditosAnalisar";
 
-const CreditoAprovar = () => {
-    const { data } = useQueryCreditosAnalisar()
+const CreditoAnalise = () => {
+    const { data, refetch } = useQueryCreditosAnalisar()
     const [id, setId] = useState("");
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState()
@@ -25,7 +25,7 @@ const CreditoAprovar = () => {
                     isOpen={true}
                     modalToggle={modalToggle}
                     info={info}
-                    admin={true}
+                    setState={refetch}
                 />
                 : null}
             <div className="containerHeader">Creditos a Aprovar</div>
@@ -33,7 +33,7 @@ const CreditoAprovar = () => {
             <div className="containerList">
                 <CreditosTable
                     columns={columns}
-                    data={data && data.solicitacoesDosFilhos ? data.solicitacoesDosFilhos : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
@@ -43,4 +43,4 @@ const CreditoAprovar = () => {
         </div>)
 };
 
-export default CreditoAprovar;
+export default CreditoAnalise;

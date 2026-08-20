@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { formateValue } from "@/hooks/Mascaras";
 import Footer from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
-import { getId, getName } from "@/hooks/getId";
+import { getName } from "@/hooks/getId";
 import RealInput from "@/components/Inputs/CampoMoeda";
 import { activePage } from "@/utils/functions/setActivePage";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ const CreditoSolicitar = () => {
         navigate("/creditos")
     }
     const solicitar = (event) => {
-        toast.promise(requestCredit(event, "creditos/solicitar"), {
+        toast.promise(requestCredit(event, "creditos"), {
             loading: 'Solicitando crédito...',
             success: () => {
                 event.target.reset()
@@ -52,7 +52,6 @@ const CreditoSolicitar = () => {
                     <div className="form-group">
                         <label className="required-field-label">Associado</label>
                         <input readOnly defaultValue={getName()} type="text" className="readOnly" required />
-                        <input readOnly style={{ display: "none" }} defaultValue={getId()} type="text" className="readOnly" name="usuarioId" required />
                     </div>
                     <div className="form-group">
                         <label className="required-field-label">Valor R$</label>
@@ -65,7 +64,7 @@ const CreditoSolicitar = () => {
                 <div className="transacoesDesc">
                     <div className="form-group desc">
                         <label>Descrição</label>
-                        <textarea name="descricaoSolicitante" rows={9} />
+                        <textarea name="descricao" rows={9} />
                     </div>
                 </div>
                 <div className="buttonContainer">

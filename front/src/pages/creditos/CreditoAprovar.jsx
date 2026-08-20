@@ -8,10 +8,13 @@ import { columns } from "./constantCreditos";
 import useModal from "@/hooks/useModal";
 import { useQueryCreditosAnalisar } from "@/hooks/ReactQuery/useQueryCreditosAnalisar";
 import { useQueryCreditosAprovar } from "@/hooks/ReactQuery/useQueryCreditosAprovar";
+import { isAgencia, isMatriz } from "@/hooks/getId";
 
 const CreditoAprovar = () => {
-    const { data: creditosAnalise } = useQueryCreditosAnalisar()
-    const { data: creditosAprovar } = useQueryCreditosAprovar()
+    // Só busca a lista que corresponde a quem está logado — GET /creditos/filhos
+    // é agency_admin/operator-only, GET /creditos/matriz é superadmin-only.
+    const { data: creditosFilhos, refetch: refetchFilhos } = useQueryCreditosAnalisar(isAgencia())
+    const { data: creditosMatriz, refetch: refetchMatriz } = useQueryCreditosAprovar(isMatriz())
     const [id, setId] = useState("");
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState()
@@ -20,7 +23,9 @@ const CreditoAprovar = () => {
         activePage("creditos")
     }, []);
 
-    const data = creditosAnalise && creditosAprovar && creditosAnalise.solicitacoesEmAnalise && creditosAprovar.solicitacoesEmAnalise ? creditosAnalise.solicitacoesEmAnalise.concat(creditosAprovar.solicitacoesEmAnalise) : []
+    const data = isMatriz() ? creditosMatriz?.data ?? [] : creditosFilhos?.data ?? []
+    const refetch = () => { refetchFilhos(); refetchMatriz() }
+
     return (
         <div className="container">
             {modalIsOpen ?
@@ -28,7 +33,7 @@ const CreditoAprovar = () => {
                     isOpen={true}
                     modalToggle={modalToggle}
                     info={info}
-                    admin={true}
+                    setState={refetch}
                 />
                 : null}
             <div className="containerHeader">Creditos a Aprovar</div>
@@ -36,7 +41,7 @@ const CreditoAprovar = () => {
             <div className="containerList">
                 <CreditosTable
                     columns={columns}
-                    data={data ? data : []}
+                    data={data}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}

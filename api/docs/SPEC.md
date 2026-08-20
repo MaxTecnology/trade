@@ -656,7 +656,7 @@ em_analise → encaminhado → aprovado | negado
 - O campo `valorSolicitado` é em RT.
 - `agency_admin` só encaminha (`PATCH /creditos/:id/encaminhar`) solicitações dos próprios associados — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 - `GET /creditos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando o associado não tem `agenciaId` (cadastrado direto pela Matriz) — sem Agência no meio não tem quem encaminhar.
-- `PATCH /creditos/:id/aprovar` e `/negar` exigem `respostaMatriz` (mínimo 10 caracteres) no body — mesma regra do Estorno (§17). **Front ainda não atualizado** — `CreditosModal.jsx` tem bug pré-existente de nomes de campo (não bate com a API atual) e não manda esse campo; ver `docs/tech-debt.md`.
+- `PATCH /creditos/:id/aprovar` e `/negar` exigem `respostaMatriz` (mínimo 10 caracteres) no body — mesma regra do Estorno (§17).
 
 ---
 

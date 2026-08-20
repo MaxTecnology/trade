@@ -8,9 +8,25 @@ Reportado pelo usuário depois de aprovar um estorno de verdade em produção: "
 
 2. **Aprovar/negar não pedia justificativa nenhuma** — `SolicitacaoEstorno` só guardava o motivo de quem pediu, nunca a resposta da Matriz. Adicionado campo `respostaMatriz` (migration `20260820232020_add_resposta_matriz_estorno_credito`, nullable no banco — solicitações antigas já resolvidas não têm esse dado — obrigatório na aplicação via Zod, mínimo 10 caracteres). Novo modal `DecisaoEstornoModal.jsx` pede o motivo tanto pra aprovar quanto pra negar, substituindo o popup de confirmar/cancelar simples nos botões Aprovar/Negar (mesmo padrão do `SolicitarEstornoModal.jsx` já usado ao pedir o estorno).
 
-**Aplicado também em Crédito** (`SolicitacaoCredito`, mesmo padrão em_analise→encaminhado→aprovado/negado) por pedido explícito do usuário, pra manter os dois fluxos consistentes — `PATCH /creditos/:id/aprovar`/`/negar` agora também exigem `respostaMatriz`. **Mas o front de Crédito não foi atualizado**: `CreditosModal.jsx` (usado por `CreditoAprovar.jsx`/`CreditoAnalise.jsx`/`CreditoMeus.jsx`/`Credito.jsx`) é legado quebrado — usa nomes de campo que nunca bateram com a API atual (`data.idSolicitacaoCredito`, `data.usuarioSolicitante.nome`, `data.usuarioCriador.nome`, `data.descricaoSolicitante` — a API real usa `id`, `associado.nome`, `descricao`, sem `usuarioCriador`/`usuarioSolicitante`). Esse bug é anterior a esta sessão, não foi causado por ela — mas agora que o backend exige `respostaMatriz`, aprovar/negar crédito pela UI vai falhar com 422 até esse modal ser reescrito do zero (o mesmo tipo de trabalho já feito pra "Meus Dados" — buscar dado real, campos certos, sem reinventar o que já existe). Registrado aqui como próximo passo, não implementado nesta sessão por já ser um escopo à parte (rewrite de tela inteira, não só o campo novo).
+**Aplicado também em Crédito** (`SolicitacaoCredito`, mesmo padrão em_analise→encaminhado→aprovado/negado) por pedido explícito do usuário, pra manter os dois fluxos consistentes — `PATCH /creditos/:id/aprovar`/`/negar` agora também exigem `respostaMatriz`.
 
 **Validado**: via curl (422 com a mensagem certa quando falta `respostaMatriz`, tanto em estorno quanto em crédito) e Docker + Playwright real (modal de decisão bloqueia submit vazio, aprovação com motivo grava certinho no banco).
+
+## [RESOLVIDO 2026-08-20] Front de Crédito inteiro quebrado (nomes de campo legados, endpoints inexistentes)
+
+Achado ao aplicar `respostaMatriz` em Crédito (item acima): `CreditosModal.jsx` (usado por `CreditoAprovar.jsx`/`CreditoAnalise.jsx`/`CreditoMeus.jsx`/`Credito.jsx`) nunca funcionou — usava nomes de campo que não existem na API atual (`data.idSolicitacaoCredito`, `data.usuarioSolicitante.nome`, `data.usuarioCriador.nome`, `data.descricaoSolicitante`; real é `id`, `associado.nome`, `associado.agencia.nome`, `descricao`), e a checagem de "é meu próprio pedido" comparava o id da solicitação com o id do usuário logado (`data.idSolicitacaoCredito === getId()`) — nunca batia com nada. Além disso, cada página que alimenta a tabela também tinha bug próprio:
+
+- `CreditoAprovar.jsx` buscava `creditosAnalise.solicitacoesEmAnalise`/`creditosAprovar.solicitacoesEmAnalise` (campos inexistentes — a resposta paginada é `{data: [...], meta}`) e chamava as duas queries (Agência + Matriz) sem checar o role de quem estava logado, tomando 403 numa delas sempre.
+- `CreditoAnalise.jsx` buscava `data.solicitacoesDosFilhos` (idem).
+- `Credito.jsx` buscava `data.todasSolicitacoes` (idem).
+- `CreditoMeus.jsx` chamava `GET /creditos/listar/:id`, rota que **nunca existiu** — sempre 404. A rota real é `GET /creditos/meus`.
+- `CreditoSolicitar.jsx` dava `POST /creditos/solicitar` (rota inexistente — real é `POST /creditos`) e mandava o campo `descricaoSolicitante` (schema espera `descricao`).
+
+**O que mudou:** reescrito o fluxo inteiro (mesmo padrão já usado pra "Meus Dados" e pro fluxo de Estorno nesta sessão) — `CreditosModal.jsx` com os campos certos, checagem de posse via `associadoId` vs `entityId` do usuário logado, botão "Encaminhar" restrito a `isAgencia()` (antes era `!isMatriz()`, que incluía Associado incorretamente), textarea de `respostaMatriz` obrigatória pra Aprovar/Negar (botões desabilitados até preencher). Novos hooks `useQueryCreditosMeus`/`useQueryCreditosTodos`; `useQueryCreditosAnalisar`/`useQueryCreditosAprovar` ganharam `enabled` pra não disparar a query errada pro role errado. `CreditoSolicitar.jsx` corrigido pra rota/campo certos.
+
+**Validado**: fluxo completo via Docker + Playwright real — Associado solicita → aparece em "Meus Créditos" → Agência encaminha → aparece na fila da Matriz → Matriz aprova com motivo (botão bloqueado sem motivo) → `movimentacao_conta` gerada e saldo incrementado corretamente, `respostaMatriz` gravado.
+
+**Fora de escopo, ainda pendente**: `SearchfieldCredito.jsx` é puramente decorativo — nenhum campo é conectado a filtro real (`CreditosTable.jsx` não lê `filters.table` como `ExtratosTable.jsx` faz), e o select de Status tem `value`s completamente trocados (`"Serviço"`/`"Produto"` em vez dos status reais). Não bloqueia a listagem/aprovação (que já funciona), mas pesquisar/filtrar créditos não faz nada.
 
 ## [RESOLVIDO 2026-08-20] Login quebrava em produção depois de todo deploy (nginx com IP da API em cache)
 

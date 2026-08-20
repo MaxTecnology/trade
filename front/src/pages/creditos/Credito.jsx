@@ -5,22 +5,18 @@ import SearchfieldCredito from "@/components/Search/SearchfieldCredito";
 import { activePage } from "@/utils/functions/setActivePage";
 import CreditosTable from "@/components/Tables/CreditosTable";
 import { columns } from "./constantCreditos";
-import { getApiData } from "@/hooks/ListasHook";
 import useModal from "@/hooks/useModal";
+import { useQueryCreditosTodos } from "@/hooks/ReactQuery/useQueryCreditosTodos";
 
 const Credito = () => {
-    const [data, setData] = useState([]);
+    const { data, refetch } = useQueryCreditosTodos()
     const [id, setId] = useState("");
     const [modalIsOpen, modalToggle] = useModal(false);
-    const [reload, setReload] = useState(false)
     const [info, setInfo] = useState()
+
     useEffect(() => {
         activePage("creditos")
     }, []);
-
-    useEffect(() => {
-        getApiData("creditos?page=1&limit=100", setData)
-    }, [reload]);
 
     return (
         <div className="container">
@@ -29,8 +25,7 @@ const Credito = () => {
                     isOpen={true}
                     modalToggle={modalToggle}
                     info={info}
-                    setState={setReload}
-                    admin={true}
+                    setState={refetch}
                 />
                 : null}
             <div className="containerHeader">Creditos</div>
@@ -38,11 +33,10 @@ const Credito = () => {
             <div className="containerList">
                 <CreditosTable
                     columns={columns}
-                    data={data && data.todasSolicitacoes ? data.todasSolicitacoes : []}
+                    data={data?.data ?? []}
                     setId={setId}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
-                    setState={setReload}
                 />
             </div>
             <Footer />

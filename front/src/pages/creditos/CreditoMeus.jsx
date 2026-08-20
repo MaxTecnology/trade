@@ -5,26 +5,18 @@ import SearchfieldCredito from "@/components/Search/SearchfieldCredito";
 import { activePage } from "@/utils/functions/setActivePage";
 import CreditosTable from "@/components/Tables/CreditosTable";
 import { columns } from "./constantCreditos";
-import { getApiData } from "@/hooks/ListasHook";
-import { getId } from "@/hooks/getId";
+import useModal from "@/hooks/useModal";
+import { useQueryCreditosMeus } from "@/hooks/ReactQuery/useQueryCreditosMeus";
 
 const CreditoMeus = () => {
-    const [data, setData] = useState([]);
+    const { data, refetch } = useQueryCreditosMeus()
     const [id, setId] = useState("");
-    const [modalIsOpen, setModalIsOpen] = useState(false);
-    const [reload, setReload] = useState(false)
+    const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState()
 
     useEffect(() => {
         activePage("creditos")
     }, []);
-    const modalToggle = () => {
-        setModalIsOpen(!modalIsOpen);
-    };
-
-    useEffect(() => {
-        getApiData("creditos/listar/" + getId(), setData)
-    }, [reload]);
 
     return (
         <div className="container">
@@ -32,33 +24,20 @@ const CreditoMeus = () => {
                 <CreditosModal
                     isOpen={true}
                     modalToggle={modalToggle}
-                    info={info} // Substitua associadoData pelo seu objeto associado
-                    setState={setReload}
-                    admin={true}
+                    info={info}
+                    setState={refetch}
                 />
                 : null}
             <div className="containerHeader">Meus Créditos</div>
             <SearchfieldCredito />
             <div className="containerList">
-                {data && data.solicitacoesCredito ?
-                    <CreditosTable
-                        columns={columns}
-                        data={data.solicitacoesCredito}
-                        setId={setId}
-                        setInfo={setInfo}
-                        modaltoggle={modalToggle}
-                        setState={setReload}
-                    />
-                    :
-                    <CreditosTable
-                        columns={columns}
-                        data={data}
-                        setId={setId}
-                        setInfo={setInfo}
-                        modaltoggle={modalToggle}
-                        setState={setReload}
-                    />
-                }
+                <CreditosTable
+                    columns={columns}
+                    data={data?.data ?? []}
+                    setId={setId}
+                    setInfo={setInfo}
+                    modaltoggle={modalToggle}
+                />
             </div>
             <Footer />
         </div>)

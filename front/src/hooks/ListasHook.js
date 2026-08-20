@@ -103,18 +103,18 @@ export const requestCredit = async (event, url) => {
 }
 
 // CRÉDITOS HANDLER
-export const aproveCreditos = async (id, modalHandler, setState) => {
-    toast.promise(api.patch(`creditos/${id}/aprovar`), {
+export const aproveCreditos = async (id, respostaMatriz, modalHandler, setState) => {
+    toast.promise(api.patch(`creditos/${id}/aprovar`, { respostaMatriz }), {
         loading: 'Aprovando crédito...',
         success: () => { modalHandler(); setState(true); return "Crédito aprovado com sucesso!" },
-        error: () => "Erro ao aprovar Crédito",
+        error: (error) => error?.response?.data?.error?.message ?? "Erro ao aprovar Crédito",
     })
 }
-export const negateCreditos = async (id, modalHandler, setState) => {
-    toast.promise(api.patch(`creditos/${id}/negar`), {
+export const negateCreditos = async (id, respostaMatriz, modalHandler, setState) => {
+    toast.promise(api.patch(`creditos/${id}/negar`, { respostaMatriz }), {
         loading: 'Negando crédito...',
         success: () => { modalHandler(); setState(true); return "Crédito negado com sucesso!" },
-        error: () => "Erro ao negar Crédito",
+        error: (error) => error?.response?.data?.error?.message ?? "Erro ao negar Crédito",
     })
 }
 export const forwardCreditos = async (id, modalHandler, setState) => {

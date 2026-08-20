@@ -5,46 +5,61 @@ import { closeModal } from '../hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
 import { useEffect } from 'react';
 import { formateValue } from '../hooks/Mascaras';
-import { getId, isMatriz } from '../hooks/getId';
+import { isAgencia, isAssociado, isMatriz } from '../hooks/getId';
+import state from '../store';
 
-// Defina o elemento principal da sua aplicação (geralmente '#root' para um aplicativo React)
 const appElement = document.getElementById('root');
-
-// Configure o elemento principal para o react-modal
 Modal.setAppElement(appElement);
+
+const STATUS_LABEL = {
+    em_analise: 'Em análise',
+    encaminhado: 'Encaminhado',
+    aprovado: 'Aprovado',
+    negado: 'Negado',
+}
+
 const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
     const [error, setError] = useState(false)
     const [sucess, setSucess] = useState(false)
+    const [respostaMatriz, setRespostaMatriz] = useState('')
     const data = info
+
+    const close = () => closeModal(modalToggle, setSucess, setError)
     const submitHandler = (event) => {
-        atualizarCreditos(event)
+        atualizarCreditos(event, data.id, modalToggle, setState)
     }
     useEffect(() => {
         formateValue()
     }, []);
+
+    const pendente = data.status === 'em_analise' || data.status === 'encaminhado'
+    // associadoId identifica DE QUEM é o pedido — comparar com o id do usuário
+    // logado (idUsuario) sempre daria falso, já que são entidades diferentes.
+    const souDono = isAssociado() && data.associadoId === state.user?.entityId
+
     return (
         <Modal
             isOpen={isOpen}
-            onRequestClose={() => closeModal(modalToggle, setSucess, setError)}
+            onRequestClose={close}
             contentLabel="Detalhes da Transação"
             className={"modalEditPanel modalAnimationEdit"}
             overlayClassName={"modalOverlay modalAnimationOverlay"}
         >
             <div className='modalEditHeader'>
                 <p>Detalhes do pedido de Crédito</p>
-                <GrFormClose onClick={() => closeModal(modalToggle, setSucess, setError)} />
+                <GrFormClose onClick={close} />
             </div>
             <div className='modalDivider'></div>
             <form className="containerForm" onSubmit={(event) => submitHandler(event)}>
                 <div className="modalTransacoesContainer">
                     <div className="modalTransacoesSubContainer">
                         <div className="modalTransacoesItem">
-                            <span>Nome</span>
-                            <p>{data.usuarioSolicitante.nome}</p>
+                            <span>Associado</span>
+                            <p>{data.associado?.nome}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Agência</span>
-                            <p>{data.usuarioCriador.nome}</p>
+                            <p>{data.associado?.agencia?.nome ?? 'Sem agência'}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Valor</span>
@@ -55,38 +70,65 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                     <div className="modalTransacoesSubContainer">
                         <div className="modalTransacoesItem">
                             <span>Data de Solicitação</span>
-                            <p>{formatDate(data.createdAt)}</p>
-
+                            <p>{formatDate(data.criadoEm)}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Status</span>
-                            <p>{data.status}</p>
+                            <p>{STATUS_LABEL[data.status] ?? data.status}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Descrição</span>
-                            <p>{data.descricaoSolicitante ? data.descricaoSolicitante : 'Sem descrição'}</p>
+                            <p>{data.descricao ? data.descricao : 'Sem descrição'}</p>
                         </div>
                     </div>
+                    {!pendente &&
+                        <>
+                            <div className="modalTransacoesDivider"></div>
+                            <div className="modalTransacoesSubContainer">
+                                <div className="modalTransacoesItem">
+                                    <span>Resposta da Matriz</span>
+                                    <p>{data.respostaMatriz ?? 'Sem resposta registrada'}</p>
+                                </div>
+                            </div>
+                        </>
+                    }
                     <div className="modalTransacoesDivider"></div>
-                    {data.idSolicitacaoCredito === getId() && data.status !== 'Aprovado' && data.status !== "Negado" ?
+                    {souDono && data.status === 'em_analise' ?
                         <div className='rowForm'>
                             <span>Editar Pedido de Crédito</span>
                             <div className="form-group">
-                                <label htmlFor="data">Valor:</label>
-                                <input required type="text" name="valorSolicitado" id="valor" defaultValue={data.valorSolicitado} />
+                                <label htmlFor="valorSolicitado">Valor:</label>
+                                <input required type="text" name="valorSolicitado" id="valorSolicitado" defaultValue={data.valorSolicitado} />
                             </div>
                             <div className="transacoesDesc">
                                 <div className="form-group desc">
                                     <label>Descrição</label>
-                                    <textarea required defaultValue={data.descricao} name="descricaoSolicitante
-" rows={3} />
+                                    <textarea defaultValue={data.descricao} name="descricao" rows={3} />
                                 </div>
                             </div>
                         </div>
                         : null}
+                    {isMatriz() && pendente &&
+                        <div className='rowForm'>
+                            <span>Decisão da Matriz</span>
+                            <div className="transacoesDesc">
+                                <div className="form-group desc">
+                                    <label className="required">Motivo da decisão</label>
+                                    <textarea
+                                        required
+                                        minLength={10}
+                                        rows={3}
+                                        placeholder="Descreva por que o crédito foi aprovado ou negado"
+                                        value={respostaMatriz}
+                                        onChange={(e) => setRespostaMatriz(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
                 <div className='modalDivierForm'></div>
-                {data.status !== 'Aprovado' && data.status !== "Negado"
+                {pendente
                     ?
                     <div className="buttonContainer">
                         {isMatriz() ? (
@@ -94,49 +136,48 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                                 <button
                                     className='modalAprove'
                                     type='button'
-                                    onClick={
-                                        () => {
-                                            aproveCreditos(data.idSolicitacaoCredito, modalToggle, setState)
-                                        }
-                                    }
+                                    disabled={respostaMatriz.trim().length < 10}
+                                    onClick={() => aproveCreditos(data.id, respostaMatriz, modalToggle, setState)}
                                 >
                                     Aprovar
+                                </button>
+                                <button
+                                    className='modalDelete'
+                                    type='button'
+                                    disabled={respostaMatriz.trim().length < 10}
+                                    onClick={() => negateCreditos(data.id, respostaMatriz, modalToggle, setState)}
+                                >
+                                    Negar
                                 </button>
                             </>
                         ) : null
                         }
-                        {data.idSolicitacaoCredito === getId()
+                        {souDono
                             ?
                             <>
-                                <button
-                                    className='modalDelete'
-                                    type='button'
-                                    onClick={() => deleteCreditos(data.idSolicitacaoCredito, modalToggle, setState)}
-                                >
-                                    Deletar
-                                </button>
-                                <button className='modalButtonSave' type="submit">Editar pedido</button>
-                            </>
-                            :
-                            <button
-                                className='modalDelete'
-                                type='button'
-                                onClick={
-                                    () =>
-                                        negateCreditos(data.idSolicitacaoCredito, modalToggle, setState)
+                                {data.status === 'em_analise' &&
+                                    <button
+                                        className='modalDelete'
+                                        type='button'
+                                        onClick={() => deleteCreditos(data.id, modalToggle, setState)}
+                                    >
+                                        Deletar
+                                    </button>
                                 }
-                            >
-                                Recusar
-                            </button>
+                                {data.status === 'em_analise' &&
+                                    <button className='modalButtonSave' type="submit">Editar pedido</button>
+                                }
+                            </>
+                            : null
                         }
-                        {
-                            !isMatriz() && data.idSolicitacaoCredito !== getId() ?
-                                <button type='button' onClick={() => forwardCreditos(data.idSolicitacaoCredito, modalToggle, setState)}>Encaminhar</button> : null
+                        {isAgencia() && data.status === 'em_analise' ?
+                            <button type='button' onClick={() => forwardCreditos(data.id, modalToggle, setState)}>Encaminhar</button>
+                            : null
                         }
-                        <button className='modalButtonClose' type='button' onClick={() => closeModal(modalToggle, setSucess, setError)} >Fechar</button>
+                        <button className='modalButtonClose' type='button' onClick={close}>Fechar</button>
                     </div>
                     : <div className="buttonContainer">
-                        <button className='modalButtonClose' type='button' onClick={() => closeModal(modalToggle, setSucess, setError)} >Fechar</button>
+                        <button className='modalButtonClose' type='button' onClick={close}>Fechar</button>
                     </div>}
             </form>
         </Modal>
@@ -144,6 +185,3 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
 };
 
 export default CreditosModal;
-
-
-
