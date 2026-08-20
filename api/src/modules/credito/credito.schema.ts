@@ -10,6 +10,12 @@ export const AtualizarCreditoSchema = z.object({
   descricao: z.string().optional(),
 })
 
+// Justificativa da Matriz ao aprovar/negar — obrigatória, pra quem pediu
+// entender a decisão.
+export const FinalizarCreditoSchema = z.object({
+  respostaMatriz: z.string().trim().min(10, 'Descreva o motivo da decisão (mínimo 10 caracteres).'),
+})
+
 export const ListCreditoQuery = z.object({
   status: z.enum(['em_analise', 'encaminhado', 'aprovado', 'negado']).optional(),
   page: z.coerce.number().int().positive().default(1),
@@ -18,4 +24,5 @@ export const ListCreditoQuery = z.object({
 
 export type SolicitarCreditoInput = z.infer<typeof SolicitarCreditoSchema>
 export type AtualizarCreditoInput = z.infer<typeof AtualizarCreditoSchema>
+export type FinalizarCreditoInput = z.infer<typeof FinalizarCreditoSchema>
 export type ListCreditoQueryType = z.infer<typeof ListCreditoQuery>

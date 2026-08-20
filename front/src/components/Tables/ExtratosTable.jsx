@@ -129,14 +129,24 @@ const ExtratosTable = ({
                                     : null
                                 }
                                 {type === "Matriz" && (row.original.status === "em_analise" || row.original.status === "encaminhado") ?
-                                    <Buttons
-                                        type="Aprove"
-                                        url={row.original.id}
-                                        confirm={"Deseja aprovar o estorno?"}
-                                        titulo={"Estorno"}
-                                        resultDelete={"Estorno aprovado com sucesso"}
-                                        revalidate={() => revalidate("login")}
-                                    />
+                                    <>
+                                        <Buttons
+                                            type="Aprove"
+                                            url={row.original.id}
+                                            confirm={"Deseja aprovar o estorno?"}
+                                            titulo={"Estorno"}
+                                            resultDelete={"Estorno aprovado com sucesso"}
+                                            revalidate={() => revalidate("login")}
+                                        />
+                                        <Buttons
+                                            type="Reject"
+                                            url={row.original.id}
+                                            confirm={"Deseja negar o estorno?"}
+                                            titulo={"Estorno"}
+                                            resultDelete={"Estorno negado"}
+                                            revalidate={() => revalidate("login")}
+                                        />
+                                    </>
                                     : null
                                 }
                                 <Buttons

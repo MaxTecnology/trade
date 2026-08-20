@@ -142,7 +142,11 @@ export async function encaminharCredito(id: string, requester: { role: string; e
   return prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'encaminhado' } })
 }
 
-export async function finalizarCredito(id: string, status: 'aprovado' | 'negado') {
+export async function finalizarCredito(
+  id: string,
+  status: 'aprovado' | 'negado',
+  respostaMatriz: string,
+) {
   const credito = await prisma.solicitacaoCredito.findUnique({
     where: { id },
     include: { associado: { include: { conta: true } } },
@@ -160,7 +164,7 @@ export async function finalizarCredito(id: string, status: 'aprovado' | 'negado'
     if (!conta) throw Errors.notFound('Conta do associado')
 
     await prisma.$transaction([
-      prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'aprovado' } }),
+      prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'aprovado', respostaMatriz } }),
       prisma.movimentacaoConta.create({
         data: {
           contaId: conta.id,
@@ -176,7 +180,7 @@ export async function finalizarCredito(id: string, status: 'aprovado' | 'negado'
       }),
     ])
   } else {
-    await prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'negado' } })
+    await prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'negado', respostaMatriz } })
   }
 
   return prisma.solicitacaoCredito.findUnique({ where: { id } })

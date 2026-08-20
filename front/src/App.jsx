@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Resultado from './Modals/Resultado';
 import SolicitarEstornoModal from './Modals/SolicitarEstornoModal';
+import DecisaoEstornoModal from './Modals/DecisaoEstornoModal';
 import { useSnapshot } from 'valtio';
 import state from './store';
 import { useQueryLogin } from './hooks/ReactQuery/useQueryLogin';
@@ -27,6 +28,7 @@ function App() {
     <div className="app-container">
       <Resultado />
       <SolicitarEstornoModal />
+      <DecisaoEstornoModal />
       <Sidebar />
       <div className="main-container">
         <Header />

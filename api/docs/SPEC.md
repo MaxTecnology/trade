@@ -656,6 +656,7 @@ em_analise → encaminhado → aprovado | negado
 - O campo `valorSolicitado` é em RT.
 - `agency_admin` só encaminha (`PATCH /creditos/:id/encaminhar`) solicitações dos próprios associados — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 - `GET /creditos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando o associado não tem `agenciaId` (cadastrado direto pela Matriz) — sem Agência no meio não tem quem encaminhar.
+- `PATCH /creditos/:id/aprovar` e `/negar` exigem `respostaMatriz` (mínimo 10 caracteres) no body — mesma regra do Estorno (§17). **Front ainda não atualizado** — `CreditosModal.jsx` tem bug pré-existente de nomes de campo (não bate com a API atual) e não manda esse campo; ver `docs/tech-debt.md`.
 
 ---
 
@@ -756,6 +757,7 @@ Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `n
 - Ao aprovar, executa a mesma lógica de estorno direto (§9) — valida saldo suficiente na conta a ser debitada, reverte movimentações, restaura quantidade da oferta (se aplicável), gera voucher de estorno.
 - Ao negar, a transação original permanece `concluida` — nenhuma reversão ocorre.
 - `motivo` é **obrigatório** (mínimo 10 caracteres) — é o que a Matriz usa pra analisar e decidir aprovar ou negar.
+- `PATCH /estornos/:id/aprovar` e `/negar` exigem `respostaMatriz` (mínimo 10 caracteres) no body — justificativa da Matriz, pra quem pediu entender a decisão.
 - `GET /estornos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando nenhuma das partes (comprador/vendedor Associado ou a própria Agência via contaOrigem/contaDestino) pertence a uma Agência — sem Agência no meio não tem quem encaminhar, então a Matriz precisa ver e aprovar direto. Quando existe Agência, `em_analise` só aparece pra Matriz depois de encaminhado.
 
 ### Payload de Solicitação

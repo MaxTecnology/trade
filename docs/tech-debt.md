@@ -1,5 +1,17 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-20] Faltava botão "Negar" pra Matriz em Estornos, e aprovar/negar não registrava motivo
+
+Reportado pelo usuário depois de aprovar um estorno de verdade em produção: "não vi a opção de negar e informar o por que foi negado". Dois problemas achados:
+
+1. **`ExtratosTable.jsx` não tinha o botão "Negar" pra Matriz** — só "Aprovar". `TransacoesTable.jsx` e `VoucherTable.jsx` (as outras duas tabelas que usam o mesmo componente `Buttons` pro fluxo de estorno) já tinham os dois botões — `ExtratosTable.jsx` ficou pra trás. `Buttons.jsx` já tinha toda a lógica de `type="Reject"` pronta (ícone, handler, chamada de `negarRefound`), só não era renderizada nessa tabela. Corrigido: adicionado o mesmo bloco de botão que as outras duas tabelas já tinham.
+
+2. **Aprovar/negar não pedia justificativa nenhuma** — `SolicitacaoEstorno` só guardava o motivo de quem pediu, nunca a resposta da Matriz. Adicionado campo `respostaMatriz` (migration `20260820232020_add_resposta_matriz_estorno_credito`, nullable no banco — solicitações antigas já resolvidas não têm esse dado — obrigatório na aplicação via Zod, mínimo 10 caracteres). Novo modal `DecisaoEstornoModal.jsx` pede o motivo tanto pra aprovar quanto pra negar, substituindo o popup de confirmar/cancelar simples nos botões Aprovar/Negar (mesmo padrão do `SolicitarEstornoModal.jsx` já usado ao pedir o estorno).
+
+**Aplicado também em Crédito** (`SolicitacaoCredito`, mesmo padrão em_analise→encaminhado→aprovado/negado) por pedido explícito do usuário, pra manter os dois fluxos consistentes — `PATCH /creditos/:id/aprovar`/`/negar` agora também exigem `respostaMatriz`. **Mas o front de Crédito não foi atualizado**: `CreditosModal.jsx` (usado por `CreditoAprovar.jsx`/`CreditoAnalise.jsx`/`CreditoMeus.jsx`/`Credito.jsx`) é legado quebrado — usa nomes de campo que nunca bateram com a API atual (`data.idSolicitacaoCredito`, `data.usuarioSolicitante.nome`, `data.usuarioCriador.nome`, `data.descricaoSolicitante` — a API real usa `id`, `associado.nome`, `descricao`, sem `usuarioCriador`/`usuarioSolicitante`). Esse bug é anterior a esta sessão, não foi causado por ela — mas agora que o backend exige `respostaMatriz`, aprovar/negar crédito pela UI vai falhar com 422 até esse modal ser reescrito do zero (o mesmo tipo de trabalho já feito pra "Meus Dados" — buscar dado real, campos certos, sem reinventar o que já existe). Registrado aqui como próximo passo, não implementado nesta sessão por já ser um escopo à parte (rewrite de tela inteira, não só o campo novo).
+
+**Validado**: via curl (422 com a mensagem certa quando falta `respostaMatriz`, tanto em estorno quanto em crédito) e Docker + Playwright real (modal de decisão bloqueia submit vazio, aprovação com motivo grava certinho no banco).
+
 ## [RESOLVIDO 2026-08-20] Login quebrava em produção depois de todo deploy (nginx com IP da API em cache)
 
 Reportado: depois de um deploy, `POST /api/v1/auth/login` retornava `502 Bad Gateway` em produção, mesmo a API tendo subido normal (logs confirmam migrations/seed/"Starting API..." ok). Log do nginx: `connect() failed (113: Host is unreachable) while connecting to upstream ... upstream: "http://10.0.1.59:3000/..."`.

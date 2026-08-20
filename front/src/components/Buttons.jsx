@@ -4,7 +4,7 @@ import { TbEyeSearch } from "react-icons/tb";
 import { useNavigate } from 'react-router-dom';
 import { popup } from "@/hooks/Popup";
 import state from "@/store";
-import { aproveRefound, bloqUser, deleteItem, sendRefound, negarRefound } from "@/hooks/ListasHook";
+import { bloqUser, deleteItem, sendRefound } from "@/hooks/ListasHook";
 import ButtonMotion from "./FramerMotion/ButtonMotion";
 import { FaMoneyCheckAlt } from 'react-icons/fa';
 import { FaShareFromSquare } from "react-icons/fa6";
@@ -62,12 +62,16 @@ const Buttons = ({ type, value, modal, setInfo, info, setId, url, userId, confir
             popup(confirm, titulo)
         }
         else if (type === 'Aprove') {
-            state.action = () => aproveRefound(url, revalidate)
-            popup(confirm, titulo)
+            state.decisaoEstornoId = url
+            state.decisaoEstornoTipo = 'aprovar'
+            state.decisaoEstornoRevalidate = revalidate
+            state.decisaoEstornoModalOpen = true
         }
         else if (type === 'Reject') {
-            state.action = () => negarRefound(url, revalidate)
-            popup(confirm, titulo)
+            state.decisaoEstornoId = url
+            state.decisaoEstornoTipo = 'negar'
+            state.decisaoEstornoRevalidate = revalidate
+            state.decisaoEstornoModalOpen = true
         }
         else if (type === 'Quitar') {
             state.action = () => updateCharge(info, revalidate)

@@ -512,6 +512,10 @@ model SolicitacaoEstorno {
   transacaoId   String
   solicitanteId String
   motivo        String?
+  // Justificativa da Matriz ao aprovar/negar — obrigatória na aplicação
+  // (Zod), nullable aqui porque solicitações resolvidas antes desse campo
+  // existir não têm esse dado.
+  respostaMatriz String?
   status        StatusEstorno @default(em_analise)
   criadoEm      DateTime      @default(now())
   atualizadoEm  DateTime      @updatedAt
@@ -549,6 +553,10 @@ model SolicitacaoCredito {
   associadoId     String
   valorSolicitado Decimal       @db.Decimal(15, 2)
   descricao       String?
+  // Justificativa da Matriz ao aprovar/negar — obrigatória na aplicação
+  // (Zod), nullable aqui porque solicitações resolvidas antes desse campo
+  // existir não têm esse dado.
+  respostaMatriz String?
   status          StatusCredito @default(em_analise)
   criadoEm       DateTime      @default(now())
   atualizadoEm   DateTime      @updatedAt

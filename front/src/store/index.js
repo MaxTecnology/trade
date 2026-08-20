@@ -11,6 +11,10 @@ const state = proxy({
     estornoModalOpen: false,
     estornoTransacaoId: null,
     estornoRevalidate: null,
+    decisaoEstornoModalOpen: false,
+    decisaoEstornoId: null,
+    decisaoEstornoTipo: null,
+    decisaoEstornoRevalidate: null,
 });
 
 

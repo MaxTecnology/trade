@@ -6,6 +6,12 @@ export const SolicitarEstornoSchema = z.object({
   motivo: z.string().trim().min(10, 'Descreva o motivo do estorno (mínimo 10 caracteres).'),
 })
 
+// Justificativa da Matriz ao aprovar/negar — obrigatória, pra quem pediu
+// entender a decisão.
+export const FinalizarEstornoSchema = z.object({
+  respostaMatriz: z.string().trim().min(10, 'Descreva o motivo da decisão (mínimo 10 caracteres).'),
+})
+
 export const ListEstornoQuery = z.object({
   status: z.enum(['em_analise', 'encaminhado', 'aprovado', 'negado']).optional(),
   page: z.coerce.number().int().positive().default(1),
@@ -13,4 +19,5 @@ export const ListEstornoQuery = z.object({
 })
 
 export type SolicitarEstornoInput = z.infer<typeof SolicitarEstornoSchema>
+export type FinalizarEstornoInput = z.infer<typeof FinalizarEstornoSchema>
 export type ListEstornoQueryType = z.infer<typeof ListEstornoQuery>

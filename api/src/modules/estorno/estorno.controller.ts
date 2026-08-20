@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { SolicitarEstornoSchema, ListEstornoQuery } from './estorno.schema.js'
+import { SolicitarEstornoSchema, FinalizarEstornoSchema, ListEstornoQuery } from './estorno.schema.js'
 import * as estornoService from './estorno.service.js'
 import { success, paginated } from '../../shared/utils/response.js'
 
@@ -45,11 +45,23 @@ export async function encaminharController(request: FastifyRequest, reply: Fasti
 }
 
 export async function aprovarController(request: FastifyRequest, reply: FastifyReply) {
-  const solicitacao = await estornoService.finalizar((request.params as Params).id, 'aprovado', request.user.id)
+  const { respostaMatriz } = FinalizarEstornoSchema.parse(request.body)
+  const solicitacao = await estornoService.finalizar(
+    (request.params as Params).id,
+    'aprovado',
+    request.user.id,
+    respostaMatriz,
+  )
   return reply.send(success(solicitacao))
 }
 
 export async function negarController(request: FastifyRequest, reply: FastifyReply) {
-  const solicitacao = await estornoService.finalizar((request.params as Params).id, 'negado', request.user.id)
+  const { respostaMatriz } = FinalizarEstornoSchema.parse(request.body)
+  const solicitacao = await estornoService.finalizar(
+    (request.params as Params).id,
+    'negado',
+    request.user.id,
+    respostaMatriz,
+  )
   return reply.send(success(solicitacao))
 }

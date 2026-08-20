@@ -188,7 +188,12 @@ export async function encaminhar(
   return prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'encaminhado' }, include })
 }
 
-export async function finalizar(id: string, status: 'aprovado' | 'negado', usuarioId: string) {
+export async function finalizar(
+  id: string,
+  status: 'aprovado' | 'negado',
+  usuarioId: string,
+  respostaMatriz: string,
+) {
   const solicitacao = await prisma.solicitacaoEstorno.findUnique({ where: { id } })
   if (!solicitacao) throw Errors.notFound('Solicitação de estorno')
   if (solicitacao.status !== 'encaminhado' && solicitacao.status !== 'em_analise') {
@@ -197,9 +202,9 @@ export async function finalizar(id: string, status: 'aprovado' | 'negado', usuar
 
   if (status === 'aprovado') {
     await transactionService.estorno(solicitacao.transacaoId, usuarioId)
-    await prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'aprovado' } })
+    await prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'aprovado', respostaMatriz } })
   } else {
-    await prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'negado' } })
+    await prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'negado', respostaMatriz } })
   }
 
   return prisma.solicitacaoEstorno.findUnique({ where: { id }, include })

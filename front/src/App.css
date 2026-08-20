@@ -1104,6 +1104,7 @@ input[type="file"] {
 .buttonUndo,
 .buttonSend,
 .buttonAprove,
+.buttonReject,
 .buttonQuitar,
 .buttonGreen {
   color: white;
@@ -1172,6 +1173,10 @@ input[type="file"] {
 
 .buttonSend {
   background-color: var(--secondColor) !important;
+}
+
+.buttonReject {
+  background-color: #b91c1c !important;
 }
 
 /* --------------- MODAIS ANIMATION --------------- */

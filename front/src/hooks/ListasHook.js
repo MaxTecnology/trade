@@ -327,14 +327,14 @@ export const sendRefound = async (solicitacaoId, revalidate) => {
         .then(() => { revalidate(); toast.success("Estorno encaminhado com sucesso") })
         .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao encaminhar"))
 }
-export const aproveRefound = async (solicitacaoId, revalidate) => {
-    api.patch(`estornos/${solicitacaoId}/aprovar`)
-        .then(() => { revalidate(); toast.success("Estorno aprovado com sucesso") })
+export const aproveRefound = async (solicitacaoId, respostaMatriz, revalidate) => {
+    api.patch(`estornos/${solicitacaoId}/aprovar`, { respostaMatriz })
+        .then(() => { revalidate?.(); toast.success("Estorno aprovado com sucesso") })
         .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao aprovar"))
 }
-export const negarRefound = async (solicitacaoId, revalidate) => {
-    api.patch(`estornos/${solicitacaoId}/negar`)
-        .then(() => { revalidate(); toast.success("Estorno negado") })
+export const negarRefound = async (solicitacaoId, respostaMatriz, revalidate) => {
+    api.patch(`estornos/${solicitacaoId}/negar`, { respostaMatriz })
+        .then(() => { revalidate?.(); toast.success("Estorno negado") })
         .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao negar"))
 }
 

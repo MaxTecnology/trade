@@ -3,6 +3,7 @@ import { ZodError } from 'zod'
 import {
   SolicitarCreditoSchema,
   AtualizarCreditoSchema,
+  FinalizarCreditoSchema,
   ListCreditoQuery,
 } from './credito.schema.js'
 import {
@@ -80,12 +81,14 @@ export async function encaminharController(req: FastifyRequest, reply: FastifyRe
 
 export async function aprovarController(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string }
-  const data = await finalizarCredito(id, 'aprovado')
+  const { respostaMatriz } = FinalizarCreditoSchema.parse(req.body)
+  const data = await finalizarCredito(id, 'aprovado', respostaMatriz)
   return reply.send(success(data))
 }
 
 export async function negarController(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string }
-  const data = await finalizarCredito(id, 'negado')
+  const { respostaMatriz } = FinalizarCreditoSchema.parse(req.body)
+  const data = await finalizarCredito(id, 'negado', respostaMatriz)
   return reply.send(success(data))
 }
