@@ -1,4 +1,5 @@
 import { filterEnd, filterStart } from "@/utils/functions/tables/date";
+import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
 
 export const columns = [
     {
@@ -26,6 +27,7 @@ export const columns = [
     {
         accessorKey: 'status',
         header: 'Status',
+        cell: StatusTransacaoCell,
     },
     {
         id: 'agencia',

@@ -38,7 +38,14 @@ export async function extrato(contaId: string, filters: ReportFilters) {
       skip,
       take: limit,
       orderBy: { criadoEm: 'desc' },
-      include: { transacao: { include: { voucher: true } } },
+      include: {
+        transacao: {
+          include: {
+            voucher: true,
+            solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
+          },
+        },
+      },
     }),
     prisma.movimentacaoConta.count({ where }),
   ])
@@ -100,6 +107,7 @@ export async function relatorioPermutas(
         vendedor: { select: { id: true, nome: true, agenciaId: true } },
         contaOrigem: { select: { agenciaId: true } },
         contaDestino: { select: { agenciaId: true } },
+        solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
       },
     }),
     prisma.transacao.count({ where }),

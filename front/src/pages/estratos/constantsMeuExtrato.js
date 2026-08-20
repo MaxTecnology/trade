@@ -1,5 +1,6 @@
 import { formatDate } from "@/hooks/ListasHook";
 import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
+import { StatusTransacaoRelationCell } from "@/utils/functions/tables/statusTransacao";
 
 // Colunas próprias pro ledger da própria conta (movimentacao_conta, via
 // GET /extrato) — não reaproveita constantsExtratos.js (Transacao/campos
@@ -43,6 +44,6 @@ export const columns = [
     {
         accessorKey: 'transacao.status',
         header: 'Status',
-        cell: (info) => info.getValue() ?? '-',
+        cell: StatusTransacaoRelationCell,
     },
 ];

@@ -532,6 +532,10 @@ export async function list(query: ListTransactionQuery, contaId: string) {
         comprador: { select: { nome: true } },
         vendedor: { select: { nome: true } },
         voucher: true,
+        // Última solicitação de estorno, pra UI mostrar "Estorno em análise" etc.
+        // mesmo com transacao.status ainda concluida (só vira 'estornada' quando
+        // a Matriz de fato aprova).
+        solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
       },
     }),
     prisma.transacao.count({ where }),
@@ -542,7 +546,11 @@ export async function list(query: ListTransactionQuery, contaId: string) {
 export async function getById(id: string, contaId: string) {
   const t = await prisma.transacao.findUnique({
     where: { id },
-    include: { voucher: true, movimentacoes: true },
+    include: {
+      voucher: true,
+      movimentacoes: true,
+      solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
+    },
   })
   if (!t || (t.contaOrigemId !== contaId && t.contaDestinoId !== contaId)) {
     throw Errors.notFound('Transação')

@@ -1128,6 +1128,23 @@ input[type="file"] {
   background-color: var(--mainColor) !important;
 }
 
+.statusTransacaoWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.badgeEstornoPendente {
+  display: inline-block;
+  width: fit-content;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  background-color: #fef3c7;
+  border-radius: 0.2rem;
+  padding: 1px 6px;
+}
+
 .buttonEdit {
   background-color: #6f13b6 !important;
 }

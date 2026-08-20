@@ -1,5 +1,13 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-20] Transação com estorno solicitado continuava mostrando só "concluida", sem nenhum indício
+
+Reportado via screenshot: usuário solicitou estorno de uma transação em "Transações Minhas" e o Status continuou "concluida", sem qualquer sinal de que havia uma solicitação em andamento. Comportamento é por design — `transacao.status` só vira `estornada` quando a Matriz efetivamente aprova (correto: a transação continua válida até a reversão de fato acontecer) — mas a solicitação pendente não aparecia em lugar nenhum da UI, deixando a mudança de status "invisível" pro usuário que acabou de pedir o estorno.
+
+**O que mudou:** `transaction.service.ts` (`list`/`getById`) e `report.service.ts` (`extrato`/`relatorioPermutas`) passam a incluir a última `SolicitacaoEstorno` de cada transação (`solicitacoesEstorno`, `take: 1`, mais recente primeiro). Novo helper `statusTransacao.jsx` (`StatusTransacaoCell`/`StatusTransacaoRelationCell`) renderiza um badge abaixo do status normal quando há solicitação `em_analise`/`encaminhado`/`negado` (não mostra pra `aprovado`, já redundante com `status: 'estornada'`). Aplicado nas 4 tabelas que mostram status de transação: Transações Minhas, Transações (Agência/Matriz), Meu Extrato, Extratos.
+
+**Validado** com Docker + Playwright real: transação com solicitação `em_analise` mostra "Concluída" + badge "Estorno em análise" em Transações Minhas.
+
 ## [RESOLVIDO 2026-08-20] Solicitar estorno não pedia o motivo
 
 Pedido pelo usuário: reconferir a lógica de Estorno. Duas checagens: (1) aprovação sempre pela Matriz mesmo com Agência intermediando — já estava correto (`PATCH /estornos/:id/aprovar` e `/negar` são `superadmin`-only; Agência só encaminha via `/encaminhar`, nunca aprova). (2) motivo obrigatório na solicitação, pra Matriz ter o que analisar — **não estava**: `motivo` era opcional no schema (`z.string().optional()`) e o front nunca coletava nada, sempre mandava `{transacaoId}` sem motivo (botão "Solicitar Estorno" era um popup de confirmar/cancelar simples).

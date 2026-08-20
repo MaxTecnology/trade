@@ -6,6 +6,7 @@ import { activePage } from "@/utils/functions/setActivePage";
 import TransacoesTable from "@/components/Tables/TransacoesTable";
 import useModal from "@/hooks/useModal";
 import { useQueryTransacoes } from "@/hooks/ReactQuery/useQueryTransacoes";
+import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
 
 const columns = [
     {
@@ -33,6 +34,7 @@ const columns = [
     {
         accessorKey: 'status',
         header: 'Status',
+        cell: StatusTransacaoCell,
     },
 ]
 

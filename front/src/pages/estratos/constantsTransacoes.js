@@ -1,6 +1,7 @@
 import { formatDate } from "@/hooks/ListasHook";
 import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 import { filterStart, filterEnd } from "@/utils/functions/tables/date";
+import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
 
 // Filtro de texto — substring, case-insensitive, contra o valor já exibido.
 const filterIncludes = (row, columnId, filterValue) => {
@@ -64,6 +65,7 @@ export const columns = [
     {
         accessorKey: 'status',
         header: 'Status',
+        cell: StatusTransacaoCell,
     },
     // Colunas ocultas (ver invisibleFields em ExtratosTable.jsx) — só existem
     // pra alimentar filtros que não têm coluna visível própria.
