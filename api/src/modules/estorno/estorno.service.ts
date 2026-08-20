@@ -99,9 +99,28 @@ export async function listarFilhas(agenciaId: string, query: ListEstornoQueryTyp
   return { items, total, page, limit }
 }
 
+// Nenhuma das partes (comprador/vendedor Associado, ou a própria Agência via
+// contaOrigem/contaDestino) pertence a uma Agência — não existe quem encaminhar,
+// então a solicitação tem que chegar em_analise mesmo pra fila da Matriz.
+const semAgencia = {
+  AND: [
+    { OR: [{ compradorId: null }, { comprador: { agenciaId: null } }] },
+    { OR: [{ vendedorId: null }, { vendedor: { agenciaId: null } }] },
+    { contaOrigem: { agenciaId: null } },
+    { contaDestino: { agenciaId: null } },
+  ],
+}
+
 export async function listarMatriz(query: ListEstornoQueryType) {
   const { page, limit, status } = query
-  const where = { status: status ?? { in: ['encaminhado', 'aprovado', 'negado'] as ('encaminhado' | 'aprovado' | 'negado')[] } }
+  const where = status
+    ? { status }
+    : {
+        OR: [
+          { status: { in: ['encaminhado', 'aprovado', 'negado'] as ('encaminhado' | 'aprovado' | 'negado')[] } },
+          { status: 'em_analise' as const, transacao: semAgencia },
+        ],
+      }
   const [items, total] = await prisma.$transaction([
     prisma.solicitacaoEstorno.findMany({
       where,

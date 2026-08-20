@@ -655,6 +655,7 @@ em_analise → encaminhado → aprovado | negado
 - Não é possível editar ou excluir solicitações com status `aprovado` ou `negado`.
 - O campo `valorSolicitado` é em RT.
 - `agency_admin` só encaminha (`PATCH /creditos/:id/encaminhar`) solicitações dos próprios associados — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
+- `GET /creditos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando o associado não tem `agenciaId` (cadastrado direto pela Matriz) — sem Agência no meio não tem quem encaminhar.
 
 ---
 
@@ -755,6 +756,7 @@ Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `n
 - Ao aprovar, executa a mesma lógica de estorno direto (§9) — valida saldo suficiente na conta a ser debitada, reverte movimentações, restaura quantidade da oferta (se aplicável), gera voucher de estorno.
 - Ao negar, a transação original permanece `concluida` — nenhuma reversão ocorre.
 - `motivo` é **obrigatório** (mínimo 10 caracteres) — é o que a Matriz usa pra analisar e decidir aprovar ou negar.
+- `GET /estornos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando nenhuma das partes (comprador/vendedor Associado ou a própria Agência via contaOrigem/contaDestino) pertence a uma Agência — sem Agência no meio não tem quem encaminhar, então a Matriz precisa ver e aprovar direto. Quando existe Agência, `em_analise` só aparece pra Matriz depois de encaminhado.
 
 ### Payload de Solicitação
 ```json

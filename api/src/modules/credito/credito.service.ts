@@ -55,9 +55,16 @@ export async function listarCreditosFilhos(agenciaId: string, query: ListCredito
 
 export async function listarCreditosMatriz(query: ListCreditoQueryType) {
   const { page, limit, status } = query
-  const where = {
-    status: status ?? { in: ['encaminhado', 'aprovado', 'negado'] as ('encaminhado' | 'aprovado' | 'negado')[] },
-  }
+  // Associado sem agência (cadastrado direto pela Matriz) não tem quem
+  // encaminhar — a solicitação tem que chegar em_analise mesmo pra fila da Matriz.
+  const where = status
+    ? { status }
+    : {
+        OR: [
+          { status: { in: ['encaminhado', 'aprovado', 'negado'] as ('encaminhado' | 'aprovado' | 'negado')[] } },
+          { status: 'em_analise' as const, associado: { agenciaId: null } },
+        ],
+      }
   const [items, total] = await prisma.$transaction([
     prisma.solicitacaoCredito.findMany({
       where,

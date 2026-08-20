@@ -1,5 +1,13 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-20] Estorno de associado sem Agência ficava invisível pra Matriz pra sempre
+
+Reportado via screenshot: Matriz logada, tela "Estornos" vazia, mesmo com uma solicitação existindo. Investigado: `GET /estornos/matriz` só mostrava status `encaminhado`/`aprovado`/`negado` — uma solicitação em `em_analise` nunca aparecia, mesmo o backend (`finalizar()`) já aceitando aprovar direto de `em_analise`, e o front (`ExtratosTable.jsx`) já tendo os botões Aprovar/Negar prontos pra esse status. Perguntei ao usuário se a solicitação específica já tinha sido encaminhada pela Agência — resposta: não, porque **o associado foi cadastrado direto pela Matriz, sem Agência no meio** — confirmado que quando existe Agência, o fluxo tem que passar por ela normalmente, mas quando não existe, não tem quem encaminhar e a solicitação ficava travada em `em_analise` pra sempre, invisível pra todo mundo.
+
+**O que mudou:** `estorno.service.ts::listarMatriz` e `credito.service.ts::listarCreditosMatriz` (mesmo padrão, mesma classe de bug) passam a incluir `em_analise` na fila da Matriz **só quando não existe Agência envolvida** — no estorno, checa se comprador/vendedor (Associado) e contaOrigem/contaDestino não pertencem a nenhuma Agência; no crédito, checa `associado.agenciaId === null`. Quando existe Agência, `em_analise` continua invisível pra Matriz até alguém encaminhar (comportamento correto, confirmado pelo usuário).
+
+**Validado**: via curl real — solicitação de associado sem Agência (`Visual Test`) apareceu na fila da Matriz e foi aprovada com sucesso (transação virou `estornada`); solicitação de associado COM Agência (`Associado Filtro Teste`) continuou de fora da fila, como esperado.
+
 ## [RESOLVIDO 2026-08-20] Transação com estorno solicitado continuava mostrando só "concluida", sem nenhum indício
 
 Reportado via screenshot: usuário solicitou estorno de uma transação em "Transações Minhas" e o Status continuou "concluida", sem qualquer sinal de que havia uma solicitação em andamento. Comportamento é por design — `transacao.status` só vira `estornada` quando a Matriz efetivamente aprova (correto: a transação continua válida até a reversão de fato acontecer) — mas a solicitação pendente não aparecia em lugar nenhum da UI, deixando a mudança de status "invisível" pro usuário que acabou de pedir o estorno.
