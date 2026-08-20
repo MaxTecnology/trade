@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Resultado from './Modals/Resultado';
+import SolicitarEstornoModal from './Modals/SolicitarEstornoModal';
 import { useSnapshot } from 'valtio';
 import state from './store';
 import { useQueryLogin } from './hooks/ReactQuery/useQueryLogin';
@@ -25,6 +26,7 @@ function App() {
   return (
     <div className="app-container">
       <Resultado />
+      <SolicitarEstornoModal />
       <Sidebar />
       <div className="main-container">
         <Header />

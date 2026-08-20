@@ -2,7 +2,8 @@ import { z } from 'zod'
 
 export const SolicitarEstornoSchema = z.object({
   transacaoId: z.string().uuid(),
-  motivo: z.string().optional(),
+  // Obrigatório — é o que a Matriz usa pra analisar e decidir aprovar/negar.
+  motivo: z.string().trim().min(10, 'Descreva o motivo do estorno (mínimo 10 caracteres).'),
 })
 
 export const ListEstornoQuery = z.object({

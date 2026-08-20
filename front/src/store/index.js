@@ -8,6 +8,9 @@ const state = proxy({
     titulo: "Operação Concluida!",
     arquivo: "",
     // message: "Usuário deletado com sucesso!"
+    estornoModalOpen: false,
+    estornoTransacaoId: null,
+    estornoRevalidate: null,
 });
 
 

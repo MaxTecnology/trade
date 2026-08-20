@@ -4,7 +4,7 @@ import { TbEyeSearch } from "react-icons/tb";
 import { useNavigate } from 'react-router-dom';
 import { popup } from "@/hooks/Popup";
 import state from "@/store";
-import { aproveRefound, bloqUser, deleteItem, refound, sendRefound, negarRefound } from "@/hooks/ListasHook";
+import { aproveRefound, bloqUser, deleteItem, sendRefound, negarRefound } from "@/hooks/ListasHook";
 import ButtonMotion from "./FramerMotion/ButtonMotion";
 import { FaMoneyCheckAlt } from 'react-icons/fa';
 import { FaShareFromSquare } from "react-icons/fa6";
@@ -53,8 +53,9 @@ const Buttons = ({ type, value, modal, setInfo, info, setId, url, userId, confir
             modal()
         }
         else if (type === 'Undo') {
-            state.action = () => refound(url, revalidate)
-            popup(confirm, titulo)
+            state.estornoTransacaoId = url
+            state.estornoRevalidate = revalidate
+            state.estornoModalOpen = true
         }
         else if (type === 'Send') {
             state.action = () => sendRefound(url, revalidate)

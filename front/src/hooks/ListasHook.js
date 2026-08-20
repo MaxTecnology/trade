@@ -317,9 +317,9 @@ export const bloqUser = (userId) => {
 // EXTORNO — fluxo de solicitação/aprovação (mesmo padrão de Créditos RT)
 // refound recebe o id da TRANSAÇÃO; sendRefound/aproveRefound/negarRefound recebem
 // o id da SOLICITAÇÃO de estorno (SolicitacaoEstorno), não da transação original.
-export const refound = async (transacaoId, revalidate) => {
-    api.post('estornos', { transacaoId })
-        .then(() => { revalidate(); toast.success("Estorno solicitado com sucesso") })
+export const refound = async (transacaoId, motivo, revalidate) => {
+    api.post('estornos', { transacaoId, motivo })
+        .then(() => { revalidate?.(); toast.success("Estorno solicitado com sucesso") })
         .catch(error => toast.error(error?.response?.data?.error?.message ?? "Erro ao solicitar estorno"))
 }
 export const sendRefound = async (solicitacaoId, revalidate) => {

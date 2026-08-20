@@ -754,6 +754,7 @@ Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `n
 - `agency_admin` só encaminha (`PATCH /estornos/:id/encaminhar`) solicitações da própria agência — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 - Ao aprovar, executa a mesma lógica de estorno direto (§9) — valida saldo suficiente na conta a ser debitada, reverte movimentações, restaura quantidade da oferta (se aplicável), gera voucher de estorno.
 - Ao negar, a transação original permanece `concluida` — nenhuma reversão ocorre.
+- `motivo` é **obrigatório** (mínimo 10 caracteres) — é o que a Matriz usa pra analisar e decidir aprovar ou negar.
 
 ### Payload de Solicitação
 ```json

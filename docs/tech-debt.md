@@ -1,5 +1,13 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-20] Solicitar estorno não pedia o motivo
+
+Pedido pelo usuário: reconferir a lógica de Estorno. Duas checagens: (1) aprovação sempre pela Matriz mesmo com Agência intermediando — já estava correto (`PATCH /estornos/:id/aprovar` e `/negar` são `superadmin`-only; Agência só encaminha via `/encaminhar`, nunca aprova). (2) motivo obrigatório na solicitação, pra Matriz ter o que analisar — **não estava**: `motivo` era opcional no schema (`z.string().optional()`) e o front nunca coletava nada, sempre mandava `{transacaoId}` sem motivo (botão "Solicitar Estorno" era um popup de confirmar/cancelar simples).
+
+**O que mudou:** `SolicitarEstornoSchema.motivo` virou obrigatório (`min(10)`, mesmo padrão de `offer.schema.ts`). Novo modal `SolicitarEstornoModal.jsx` (textarea obrigatória) substitui o popup de confirmação simples no botão "Solicitar Estorno" (usado em Meu Extrato/Transações/Cancelar Voucher, mesmo componente `Buttons.jsx` tipo `Undo`). Coluna `motivo` no banco continua nullable (linhas antigas já tinham `motivo` nulo — não fazia sentido migração NOT NULL só por causa da validação de entrada, que já é suficiente na borda).
+
+**Validado**: via curl direto (motivo ausente/curto → 422 com a mensagem certa; motivo válido → segue pro 404 esperado de transação inexistente), via Docker + Playwright real (modal abre, bloqueia submit vazio, sucesso grava o motivo real no banco), e reconfirmado que `agency_admin` recebe 403 em `/aprovar`/`/negar`.
+
 ## [RESOLVIDO 2026-08-20] `PATCH /estornos/:id/encaminhar` e `PATCH /creditos/:id/encaminhar` sem checagem de posse (IDOR)
 
 Pedido pelo usuário: revisão da lógica de Estorno pra ver se estava de acordo com o desenhado. Fluxo de dinheiro (`transaction.service.ts::estorno` — reversão atômica, ledger imutável, checagem de saldo, restauração de quantidade da oferta, geração de voucher) confere com o spec e está correto. Achado no processo: **`encaminhar` não checava se a solicitação era da própria agência do `agency_admin` que chamava** — qualquer `agency_admin` conseguia encaminhar (avançar de `em_analise` pra `encaminhado`) uma solicitação de estorno **ou de crédito** de qualquer outra agência, bastando adivinhar/enumerar o `id`, e a resposta ainda vazava dados da transação/associado de outro tenant. Mesma classe de bug já corrigida em `user.service.ts` nesta sessão (`POST /usuarios` e afins) — aqui não tinha sido aplicada.
