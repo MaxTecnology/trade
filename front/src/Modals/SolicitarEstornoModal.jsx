@@ -41,7 +41,7 @@ const SolicitarEstornoModal = () => {
             </div>
             <div className='modalDivider'></div>
             <form className="containerForm" onSubmit={submitHandler}>
-                <div className="form-group">
+                <div className="form-group desc">
                     <label className="required">Motivo do estorno</label>
                     <textarea
                         required

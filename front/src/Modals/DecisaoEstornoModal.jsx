@@ -43,7 +43,7 @@ const DecisaoEstornoModal = () => {
             </div>
             <div className='modalDivider'></div>
             <form className="containerForm" onSubmit={submitHandler}>
-                <div className="form-group">
+                <div className="form-group desc">
                     <label className="required">Motivo da decisão</label>
                     <textarea
                         required
