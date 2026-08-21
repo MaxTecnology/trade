@@ -1,5 +1,13 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] Operador via "Usuários"/"Cadastrar Sub Conta" no menu sem ter acesso
+
+Reportado pelo usuário: a "Navegação Rápida" de Usuários só escondia os itens pra Matriz (`isMatriz()`), mas `GET/POST /usuarios` é `adminGuard` (só `associate_admin`/`agency_admin`) — operador e gerente também tomariam 403 clicando ali, mesmo problema que já tinha sido corrigido pra Matriz antes.
+
+**O que mudou:** novo helper `isAdminEntidade()` em `getId.js` (mesma checagem do `adminGuard` do backend — `role === 'associate_admin' || role === 'agency_admin'`), substitui `!isMatriz()` em `ModalContent.jsx`. "Usuários"/"Cadastrar Sub Conta" só aparecem pra quem realmente tem acesso.
+
+**Validado**: Docker + Playwright real — operador recém-criado loga e vê só "Meus Dados" no popup.
+
 ## [RESOLVIDO 2026-08-21] Formulário de "Permissões" no Cadastrar Sub Conta era 100% decorativo
 
 Pedido do usuário: validar as permissões ao criar uma sub-conta. Achado: o formulário inteiro (Conta/Financeiro/Operacional, Leitura/Escrita/Exclusão por módulo, accordion com "Selecionar Todas") nunca teve efeito nenhum — não existe **nenhum campo de permissão no banco** (`schema.prisma` não tem nada parecido), `createUserSchema` no backend só aceita `nome/email/senha/role`, e `createSubAccount()` no front descartava tudo que não fosse esses 4 campos antes mesmo de montar a requisição. Um admin marcando "operador só pode ler" não tinha efeito algum.

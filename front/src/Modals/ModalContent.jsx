@@ -3,7 +3,7 @@ import { FaFileLines } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import { BsFillPersonVcardFill, BsFillPersonPlusFill, BsBuildings, BsBuildingAdd, BsCoin, BsCheck2All, BsTags, BsMegaphone, BsTrash3, BsJournalPlus, BsTicketPerforated, BsTicketPerforatedFill, BsTicketDetailed, BsFillClipboard2DataFill, BsGraphUp, BsPieChartFill } from "react-icons/bs";
 import { VscChromeClose } from "react-icons/vsc";
-import { isAssociado, isMatriz } from '../hooks/getId';
+import { isAssociado, isMatriz, isAdminEntidade } from '../hooks/getId';
 import { useSnapshot } from 'valtio';
 import state from '../store';
 
@@ -144,13 +144,13 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             break;
         // Adicione casos para outras categorias aqui
         case 'Usuarios':
-            // Matriz não tem sub-contas no modelo atual (Usuario é sempre
-            // vinculado a um Associado ou Agência) — GET/POST /usuarios nem
-            // aceita superadmin, então esses itens nunca funcionariam pra ela.
+            // GET/POST /usuarios só aceita associate_admin/agency_admin
+            // (adminGuard) — Matriz (sem sub-conta no modelo atual), operador e
+            // gerente nunca teriam acesso, então esses itens nunca funcionariam.
             component = [
                 { name: 'Meus Dados', icon: <FaUserCog />, route: "/usuariosDados" },
             ];
-            if (!isMatriz()) {
+            if (isAdminEntidade()) {
                 component.push(
                     { name: 'Usuários', icon: <FaUsers />, route: "/usuariosLista" },
                     { name: 'Cadastrar Sub Conta', icon: <FaUserPlus />, route: "/usuariosCadastrar" },

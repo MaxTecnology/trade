@@ -36,3 +36,9 @@ export function isAssociado() {
 export function isGerente() {
   return state.user?.role === 'gerente'
 }
+
+// Mesma checagem do adminGuard do backend (GET/POST /usuarios) — só
+// associate_admin/agency_admin gerenciam sub-contas. Operador e gerente não.
+export function isAdminEntidade() {
+  return state.user?.role === 'associate_admin' || state.user?.role === 'agency_admin'
+}
