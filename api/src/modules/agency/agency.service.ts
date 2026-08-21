@@ -69,7 +69,7 @@ export async function create(input: CreateAgencyInput, creatorId: string, creato
     }
 
     const numero = await gerarNumeroConta()
-    await tx.conta.create({
+    const conta = await tx.conta.create({
       data: {
         numero,
         entityType: 'agencia',
@@ -102,7 +102,7 @@ export async function create(input: CreateAgencyInput, creatorId: string, creato
       })
     }
 
-    return agencia
+    return { ...agencia, conta }
   })
 }
 

@@ -14,7 +14,7 @@
 - [ ] Timezone do servidor no corte de "mês corrente" (`validarLimiteVenda`)
 - [x] Checagem de saldo fora da transação Prisma → erro amigável (`INSUFFICIENT_BALANCE`)
 - [x] Cobertura de teste em `limites.ts` (`getLimiteCreditoDaConta`/`validarLimiteVenda`)
-- [ ] `Agencia.create()` não retorna a `conta` recém-criada (Associado retorna, Agência não)
+- [x] `Agencia.create()` não retorna a `conta` recém-criada (Associado retorna, Agência não)
 
 ## Fase 2 — infra, precisa mais cuidado na validação
 

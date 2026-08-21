@@ -326,3 +326,10 @@ Consolidação de achados já registrados separadamente. Era: Agência gastava R
 **O que mudou:** relatórios (`relatorioPermutas`/`relatorioComissoes`), estorno (`solicitarEstorno`/`listarFilhas`) e agora também `GET /transacoes`, `GET /transacoes/:id` e `PATCH /transacoes/:id/avaliar` (guard `transaction.routes.ts` trocado de `operator`, Associado-only, pra `comprador`, que já incluía `agency_admin`/`agency_operator`/`superadmin`) mostram/permitem a participação direta da Agência/Matriz. Decisão de baixo risco: `list()`/`getById()` já filtravam por `contaOrigemId`/`contaDestinoId` (fix de segurança desta sessão), e `avaliar()` já checava `usuarioIniciadorId` por usuário, não por role — abrir o guard não exigiu nenhuma mudança de lógica de autorização, só ampliar quem pode chegar até ela.
 
 Validado com Postgres real: Agência vê a própria transação em `GET /transacoes`/`GET /transacoes/:id`, avalia a compra que ela mesma fez; outra Agência (não participante) recebe 404 em `getById` e 403 em `avaliar`; Associado sem regressão.
+
+## [RESOLVIDO 2026-08-21] `Agencia.create()` não retornava a `conta` recém-criada
+Achado durante a auditoria de `docs/implementation-plan.md` (sessão de 2026-07-01, nunca corrigido). `Associado.create()` (`associate.service.ts`) já retorna `{ ...associado, conta }`, mas `Agencia.create()` (`agency.service.ts`) retornava só a `agencia`, obrigando o front a fazer uma chamada extra pra saber o número da conta/saldo inicial logo após o cadastro.
+
+**O que mudou:** `agency.service.ts::create()` — a `conta` criada dentro da mesma `prisma.$transaction` (antes descartada, só `await`) agora é capturada na variável e incluída no retorno: `return { ...agencia, conta }`, mesmo padrão do Associado.
+
+**Validado:** `npx tsc --noEmit` limpo; `npm test` 26/26; contra a API real em Docker — `POST /agencias` com plano `tipo: 'agencia'` real confirmado retornando `data.conta` completo (`id`, `numero`, `saldo`, `limiteCredito`, `entityType: 'agencia'`, `agenciaId`).

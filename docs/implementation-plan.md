@@ -124,7 +124,7 @@ Usuário perguntou se a lógica de negócio geral era coerente. Investigação e
 - Módulo de Cobranças/Contas a Receber não foi auditado com a mesma profundidade que Ofertas/Transações/Vouchers — pode ter problemas estruturais semelhantes.
 - Constraints antigas (`saldo_nao_negativo`, `valor_rt_positivo`, etc.) continuam no `seed.ts` via `$executeRaw`, não numa migration — não movidas nesta rodada por risco de conflito com bancos que já têm essas constraints aplicadas pelo seed.
 - Sem índice único parcial impedindo duas `SolicitacaoEstorno` simultâneas para a mesma transação — checado só na aplicação, Prisma não suporta índice parcial nativo (precisaria de SQL bruto). Baixo risco, registrado como melhoria futura.
-- `Agencia.create()` (service) não retorna a `conta` recém-criada na resposta (diferente de `Associado.create()`, que retorna) — inconsistência pequena, não corrigida.
+- ~~`Agencia.create()` (service) não retorna a `conta` recém-criada na resposta~~ — [RESOLVIDO 2026-08-21], ver `docs/tech-debt.md`.
 
 ---
 
