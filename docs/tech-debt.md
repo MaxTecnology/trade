@@ -1,5 +1,13 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] Meu Extrato com colunas demais — movidas pro modal de Detalhes
+
+Pedido do usuário: tabela de Meu Extrato densa demais. Removidas as colunas Código/Tipo/Operação(Débito-Crédito)/Iniciado por da tabela — ficou só Data/Valor/Saldo Após/Descrição/Status. `TransaçõesModal.jsx` (botão de olho, compartilhado com várias telas) ganhou essas colunas de volta, mais completo: Código/Data/Operação/Saldo Após (só quando a linha é uma MovimentacaoConta — detectado via `saldoApos !== undefined`) e Tipo/Iniciado por (quando há transação real vinculada).
+
+**Bug achado e corrigido no processo**: pra uma MovimentacaoConta sem transação vinculada (ex: crédito puro aprovado pela Matriz, sem `Transacao` associada), o fallback `info?.transacao ?? info` fazia `transacao` virar a própria movimentação — e `transacao.tipo` colidia com o campo `tipo` do lançamento (débito/crédito), mostrando "Tipo: credito" errado (duplicava "Operação: Crédito" com um significado diferente). Corrigido lendo `info?.transacao?.tipo` explicitamente nesse caso, só mostrando "Tipo" quando existe transação de verdade.
+
+**Validado**: Docker + Playwright real — tabela sem as 4 colunas, modal mostra tudo certo pra linha sem transação (sem "Tipo") e pra linha com transação real (Tipo + Iniciado por aparecem).
+
 ## [RESOLVIDO 2026-08-21] Operador via "Usuários"/"Cadastrar Sub Conta" no menu sem ter acesso
 
 Reportado pelo usuário: a "Navegação Rápida" de Usuários só escondia os itens pra Matriz (`isMatriz()`), mas `GET/POST /usuarios` é `adminGuard` (só `associate_admin`/`agency_admin`) — operador e gerente também tomariam 403 clicando ali, mesmo problema que já tinha sido corrigido pra Matriz antes.

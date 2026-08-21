@@ -2,7 +2,6 @@ import { formatDate } from "@/hooks/ListasHook";
 import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 import { StatusTransacaoRelationCell } from "@/utils/functions/tables/statusTransacao";
 import { filterStart, filterEnd } from "@/utils/functions/tables/date";
-import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
 
 // Filtro de texto — substring, case-insensitive, contra o valor já exibido.
 const filterIncludes = (row, columnId, filterValue) => {
@@ -22,26 +21,15 @@ const filterIncludesId = (row, columnId, filterValue) => {
 // Colunas próprias pro ledger da própria conta (movimentacao_conta, via
 // GET /extrato) — não reaproveita constantsExtratos.js (Transacao/campos
 // legados, ainda quebrado).
+//
+// Código/Tipo/Operação/Iniciado por saíram da tabela (ficou densa demais) —
+// continuam disponíveis no modal "Detalhes" (botão de olho), que já recebe
+// a linha inteira independente do que está listado aqui.
 export const columns = [
-    {
-        accessorKey: 'id',
-        header: 'Código',
-        cell: (info) => info.getValue()?.slice(0, 8),
-    },
     {
         accessorKey: 'criadoEm',
         header: 'Data',
         cell: (info) => formatDate(info.getValue()),
-    },
-    {
-        accessorKey: 'transacao.tipo',
-        header: 'Tipo',
-        cell: (info) => info.getValue() ?? '-',
-    },
-    {
-        accessorKey: 'tipo',
-        header: 'Operação',
-        cell: (info) => info.getValue() === 'credito' ? 'Crédito' : 'Débito',
     },
     {
         accessorKey: 'valor',
@@ -57,11 +45,6 @@ export const columns = [
         accessorKey: 'descricao',
         header: 'Descrição',
         cell: (info) => info.getValue() || '-',
-    },
-    {
-        id: 'iniciadoPor',
-        accessorFn: (row) => iniciadoPorLabel(row.transacao),
-        header: 'Iniciado por',
     },
     {
         accessorKey: 'transacao.status',
