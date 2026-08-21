@@ -1,5 +1,17 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] "Quem iniciou a transação" era rastreado mas nunca exposto; código de usuário só existia pra metade dos casos
+
+Pergunta do usuário: dado que o sistema já sabe quem fez cada compra (`Transacao.usuarioIniciadorId`, sempre preenchido com `request.user.id`), vale a pena criar um "número de conta" por usuário? Achado: **já existia** um mecanismo pra isso — `Usuario.codigoOperador` (`{numeroDaConta}-{sequencial}`) — só que pela metade: só gerado pra `associate_operator`, nunca pro `associate_admin` nem pro lado da Agência (`agency_admin`/`agency_operator`), e nunca lido/exibido em lugar nenhum do front.
+
+**O que mudou:**
+- `codigoOperador` agora é gerado pra **todo** usuário novo, nas 3 rotas de criação (`associate.service.ts`/`agency.service.ts` pro admin — sempre `-01`, criado junto com a Conta; `user.service.ts::create()` generalizado pra qualquer role, não só `associate_operator`). Helper compartilhado `proximoCodigoOperador()` em `shared/utils/conta.ts`.
+- Usuários já existentes sem código corrigidos via `api/scripts/backfill-codigo-operador.ts` (idempotente, roda uma vez — **precisa rodar em produção depois do deploy**, `npx tsx scripts/backfill-codigo-operador.ts` com o `DATABASE_URL` do ambiente).
+- `usuarioIniciador: {nome, codigoOperador}` incluído em `transaction.service.ts` (`list`/`getById`) e `report.service.ts` (`extrato`/`relatorioPermutas`) — antes nunca era buscado.
+- Nova coluna "Iniciado por" em Transações Minhas, Transações (Agência/Matriz), Meu Extrato e Extratos — mostra o código (`0000004-01`) ou o nome quando não tem código (Matriz, que fica de fora do mecanismo por não ser Associado/Agência).
+
+**Validado**: backfill rodado no ambiente de dev (3 usuários corrigidos), Docker + Playwright real confirmando a coluna nova em Transações Minhas e Meu Extrato, com código aparecendo certo pra quem tem e nome pra quem não tem (Matriz).
+
 ## [RESOLVIDO 2026-08-21] Sub-conta: busca errada, redefinir senha, e-mail travado
 
 Continuação da revisão de "Sub Contas": (1) `UsuariosLista.jsx` usava `SearchField.jsx` — barra de busca da tela **Associados** (Agência/Categoria/Estado/Cidade, botão "+ Novo Associado"), nenhum campo batendo com `Usuario`; (2) pedido do usuário: permitir ao admin redefinir a senha de um usuário que esqueceu, sem poder editar o e-mail (histórico de movimentações fica ligado ao e-mail).

@@ -2,6 +2,7 @@ import { formatDate } from "@/hooks/ListasHook";
 import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 import { StatusTransacaoRelationCell } from "@/utils/functions/tables/statusTransacao";
 import { filterStart, filterEnd } from "@/utils/functions/tables/date";
+import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
 
 // Filtro de texto — substring, case-insensitive, contra o valor já exibido.
 const filterIncludes = (row, columnId, filterValue) => {
@@ -56,6 +57,11 @@ export const columns = [
         accessorKey: 'descricao',
         header: 'Descrição',
         cell: (info) => info.getValue() || '-',
+    },
+    {
+        id: 'iniciadoPor',
+        accessorFn: (row) => iniciadoPorLabel(row.transacao),
+        header: 'Iniciado por',
     },
     {
         accessorKey: 'transacao.status',

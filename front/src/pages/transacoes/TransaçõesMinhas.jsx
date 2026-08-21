@@ -7,6 +7,7 @@ import TransacoesTable from "@/components/Tables/TransacoesTable";
 import useModal from "@/hooks/useModal";
 import { useQueryTransacoes } from "@/hooks/ReactQuery/useQueryTransacoes";
 import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
+import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
 
 const columns = [
     {
@@ -30,6 +31,11 @@ const columns = [
     {
         accessorKey: 'valorRT',
         header: 'Valor RT$',
+    },
+    {
+        id: 'iniciadoPor',
+        accessorFn: iniciadoPorLabel,
+        header: 'Iniciado por',
     },
     {
         accessorKey: 'status',

@@ -195,7 +195,7 @@ Usuários pertencem a uma entidade (Agência ou Associado). Usuários de Associa
 - Máximo de **4 usuários por Associado** (excluindo o `associate_admin` principal).
 - E-mail deve ser único no sistema.
 - O `associate_admin` principal é criado automaticamente junto com o Associado — não conta no limite dos 4.
-- O identificador de operador (`XXXXXXX-01`) é atribuído sequencialmente e não pode ser reutilizado dentro da mesma conta.
+- `codigoOperador` (`{numeroDaConta}-{sequencial}`) é atribuído sequencialmente pra **todo** usuário novo (admin ou operador, Associado ou Agência) — o admin criado junto com a entidade é sempre `-01`. Não é uma conta nem saldo separado, só identificação de quem fez o quê (`Transacao.usuarioIniciadorId`); não reutilizado dentro da mesma conta. Matriz (`superadmin`) não tem — não é Associado/Agência. Usuários criados antes dessa regra existir foram corrigidos via `scripts/backfill-codigo-operador.ts` (rodar uma vez em cada ambiente que já tinha dado antes dessa mudança).
 - Usuários desativados não conseguem fazer login.
 - Um usuário não pode pertencer a mais de uma entidade.
 

@@ -1,5 +1,6 @@
 import { filterEnd, filterStart } from "@/utils/functions/tables/date";
 import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
+import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
 
 export const columns = [
     {
@@ -23,6 +24,11 @@ export const columns = [
     {
         accessorKey: 'valorRT',
         header: 'Valor RT$',
+    },
+    {
+        id: 'iniciadoPor',
+        accessorFn: iniciadoPorLabel,
+        header: 'Iniciado por',
     },
     {
         accessorKey: 'status',

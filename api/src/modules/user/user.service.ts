@@ -3,6 +3,7 @@ import type { RoleUsuario, EntityType } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import { env } from '../../config/env.js'
+import { proximoCodigoOperador } from '../../shared/utils/conta.js'
 import type { CreateUserInput, UpdateUserInput } from './user.schema.js'
 
 export type Requester = {
@@ -46,21 +47,18 @@ export async function create(input: CreateUserInput, requester: Requester) {
 
   const senhaHash = await bcrypt.hash(input.senha, env.BCRYPT_SALT_ROUNDS)
 
-  let codigoOperador: string | undefined
-  if (input.role === 'associate_operator') {
-    const conta = await prisma.conta.findUnique({ where: { associadoId: entityId } })
-    if (!conta) throw Errors.notFound('Conta do associado')
+  // Todo usuário novo (admin ou operador, Associado ou Agência) ganha um
+  // código sequencial dentro da mesma conta compartilhada — só identificação
+  // (usuarioIniciadorId), não é conta nem saldo separado.
+  const contaWhere = entityType === 'associado' ? { associadoId: entityId } : { agenciaId: entityId }
+  const conta = await prisma.conta.findUnique({ where: contaWhere })
+  if (!conta) throw Errors.notFound('Conta da entidade')
 
-    const lastOperator = await prisma.usuario.findFirst({
-      where: { associadoId: entityId, codigoOperador: { not: null } },
-      orderBy: { codigoOperador: 'desc' },
-    })
-
-    const nextNum = lastOperator?.codigoOperador
-      ? Number(lastOperator.codigoOperador.split('-')[1]) + 1
-      : 1
-    codigoOperador = `${conta.numero}-${String(nextNum).padStart(2, '0')}`
-  }
+  const lastUser = await prisma.usuario.findFirst({
+    where: { ...contaWhere, codigoOperador: { not: null } },
+    orderBy: { codigoOperador: 'desc' },
+  })
+  const codigoOperador = proximoCodigoOperador(conta.numero, lastUser?.codigoOperador)
 
   return prisma.usuario.create({
     data: {
@@ -93,7 +91,7 @@ export async function list(requester: { entityId: string; entityType: string }) 
       : { agenciaId: requester.entityId }
   return prisma.usuario.findMany({
     where,
-    select: { id: true, nome: true, email: true, role: true, ativo: true, criadoEm: true },
+    select: { id: true, nome: true, email: true, role: true, ativo: true, codigoOperador: true, criadoEm: true },
   })
 }
 

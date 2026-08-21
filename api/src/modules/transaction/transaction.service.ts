@@ -536,6 +536,7 @@ export async function list(query: ListTransactionQuery, contaId: string) {
         // mesmo com transacao.status ainda concluida (só vira 'estornada' quando
         // a Matriz de fato aprova).
         solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
+        usuarioIniciador: { select: { nome: true, codigoOperador: true } },
       },
     }),
     prisma.transacao.count({ where }),
@@ -549,6 +550,7 @@ export async function getById(id: string, contaId: string) {
     include: {
       voucher: true,
       movimentacoes: true,
+      usuarioIniciador: { select: { nome: true, codigoOperador: true } },
       solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
     },
   })

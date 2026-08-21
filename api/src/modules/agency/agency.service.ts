@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../config/prisma.js'
 import { env } from '../../config/env.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
-import { gerarNumeroConta } from '../../shared/utils/conta.js'
+import { gerarNumeroConta, proximoCodigoOperador } from '../../shared/utils/conta.js'
 import type { CreateAgencyInput, UpdateAgencyInput } from './agency.schema.js'
 
 const includeContatos = {
@@ -89,14 +89,16 @@ export async function create(input: CreateAgencyInput, creatorId: string, creato
           role: 'agency_admin',
           entityType: 'agencia',
           agenciaId: agencia.id,
+          codigoOperador: proximoCodigoOperador(numero),
         },
       })
     } else if (creatorRole !== 'superadmin') {
       // Reatribui o criador (agency_admin de uma master) como admin da nova agência comum.
       // Nunca reatribuir o superadmin — ele deve permanecer com entityType 'matriz'.
+      // codigoOperador é reatribuído também — o antigo era da conta anterior.
       await tx.usuario.update({
         where: { id: creatorId },
-        data: { agenciaId: agencia.id, entityType: 'agencia' },
+        data: { agenciaId: agencia.id, entityType: 'agencia', codigoOperador: proximoCodigoOperador(numero) },
       })
     }
 

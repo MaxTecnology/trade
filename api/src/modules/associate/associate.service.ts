@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../config/prisma.js'
 import { env } from '../../config/env.js'
 import { Errors } from '../../shared/errors/AppError.js'
-import { gerarNumeroConta } from '../../shared/utils/conta.js'
+import { gerarNumeroConta, proximoCodigoOperador } from '../../shared/utils/conta.js'
 import { calcularVencimento } from '../../shared/utils/data.js'
 import type { CreateAssociateInput, UpdateAssociateInput } from './associate.schema.js'
 
@@ -103,6 +103,7 @@ export async function create(input: CreateAssociateInput) {
         entityType: 'associado',
         agenciaId: input.agenciaId ?? null,
         associadoId: associado.id,
+        codigoOperador: proximoCodigoOperador(numero),
       },
     })
 
