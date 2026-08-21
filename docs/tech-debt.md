@@ -244,9 +244,12 @@ Validado com Postgres real: Comprador/Vendedor (texto), Agência e Associado (se
 
 **O que mudou:** `validarLimiteVenda` (`limites.ts`) agrega `tipo: 'credito'` em vez de `tipo: 'debito'`. `permuta()`/`negociada()` (`transaction.service.ts`) passam a chamar essa validação com a conta do **vendedor** (resolvendo `limiteVendaMensal`/`Total` do vendedor por `entityType`, mesma regra de null pra Agência já estabelecida), não mais do comprador. `relatorioUsoPlanoConta` (`report.service.ts`) também passou a agregar crédito, pra ficar consistente. Validado com Postgres real: comprador com `limiteVendaMensal` baixíssimo consegue comprar normalmente (só saldo/crédito importam); venda que estouraria o limite mensal do vendedor é bloqueada; acumulado entre `permuta` e `negociada` do mesmo vendedor soma corretamente no mesmo mês.
 
-## Cobertura de teste parcial em `limites.ts`
-Só `saldoSuficienteParaDebito` (função pura) tem teste automatizado. `getLimiteCreditoDaConta` e `validarLimiteVenda` (as duas funções que tocam banco) não têm cobertura — `validarLimiteVenda` também é difícil de testar como está porque importa `prisma` diretamente (sem injeção de dependência).
-**Ação futura:** se/quando esse módulo crescer, considerar aceitar um `client: PrismaClient | Prisma.TransactionClient` como parâmetro pra permitir teste com client mockado.
+## [RESOLVIDO 2026-08-21] Cobertura de teste parcial em `limites.ts`
+Só `saldoSuficienteParaDebito` (função pura) tinha teste automatizado. `getLimiteCreditoDaConta` e `validarLimiteVenda` (as duas funções que tocam banco) não tinham cobertura.
+
+**O que mudou:** `limites.test.ts` — em vez de injeção de dependência (mudaria a assinatura das duas funções só pra testar), usou-se `vi.mock('../../config/prisma.js')` com `vi.fn()` nos dois métodos realmente chamados (`conta.findUnique`, `movimentacaoConta.aggregate`), a mesma técnica já usada no arquivo pro mock de `Errors`. Cobre: `getLimiteCreditoDaConta` com limite presente, `null` (vira zero) e conta inexistente (vira zero); `validarLimiteVenda` dentro dos dois limites, estourando só o mensal, estourando só o total (mesmo dentro do mensal), agregados nulos (conta sem movimentação ainda) e o caso de borda exatamente no teto (permite, não bloqueia).
+
+**Validado:** `npx tsc --noEmit` limpo; `npm test` 26/26 (18 → 26, as 8 novas cobrindo os dois branches faltantes).
 
 ## [RESOLVIDO] Corte de "mês corrente" em `validarLimiteVenda` usa timezone do servidor
 Entrada desatualizada — já tinha sido corrigido numa sessão anterior (commit `f7cfee1`, antes desta entrada de tech-debt.md ser escrita) e nunca foi marcado aqui. `inicioMesBrasilia()` calcula o corte via UTC explícito (offset fixo -3h, Brasil não tem horário de verão desde 2019), não depende do timezone do container. 4 testes cobrindo meio do mês, os 3 minutos antes/depois da virada em Brasília, e virada de ano — `limites.test.ts`.
