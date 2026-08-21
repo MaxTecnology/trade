@@ -1,5 +1,13 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-20] Filtros de Estornos (Associado/Agência/Comprador/Vendedor) não filtravam nada
+
+Pedido pelo usuário: reconferir os filtros da tela de Estornos. `ExtratosSearch.jsx` é compartilhado com a tela "Extratos" (já corrigida antes nesta sessão), mas `constantsEstorno.js` não tinha nenhuma coluna com `id` batendo os nomes desses filtros — mesmo padrão de bug já visto antes (filtro no form, sem coluna oculta pra receber o `columnFilters`).
+
+**O que mudou:** `estorno.service.ts`'s `include` ganhou `id` em comprador/vendedor e `contaOrigem`/`contaDestino` (agenciaId) — mesmos dados já usados em `relatorioPermutas`. `constantsEstorno.js` ganhou 4 colunas ocultas (`comprador`, `vendedor`, `agencia`, `associado` — mesmos `filterIncludes`/`filterIncludesId` já usados em `constantsTransacoes.js`), e `ExtratosTable.jsx` escondeu os headers novos.
+
+**Validado**: Docker + Playwright real — Comprador/Vendedor/Agência filtram corretamente a lista.
+
 ## [RESOLVIDO 2026-08-20] Faltava botão "Negar" pra Matriz em Estornos, e aprovar/negar não registrava motivo
 
 Reportado pelo usuário depois de aprovar um estorno de verdade em produção: "não vi a opção de negar e informar o por que foi negado". Dois problemas achados:

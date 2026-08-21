@@ -12,8 +12,10 @@ const include = {
       status: true,
       valorRT: true,
       criadoEm: true,
-      comprador: { select: { nome: true, agenciaId: true } },
-      vendedor: { select: { nome: true, agenciaId: true } },
+      comprador: { select: { id: true, nome: true, agenciaId: true } },
+      vendedor: { select: { id: true, nome: true, agenciaId: true } },
+      contaOrigem: { select: { agenciaId: true } },
+      contaDestino: { select: { agenciaId: true } },
     },
   },
 } as const
