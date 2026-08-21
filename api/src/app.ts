@@ -4,7 +4,7 @@ import multipart from '@fastify/multipart'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import { env } from './config/env.js'
-import { AppError } from './shared/errors/AppError.js'
+import { AppError, Errors } from './shared/errors/AppError.js'
 import { ZodError } from 'zod'
 
 // Módulos existentes
@@ -43,6 +43,31 @@ export async function buildApp() {
       return reply.status(error.statusCode).send({
         success: false,
         error: { code: error.code, message: error.message, details: error.details },
+      })
+    }
+
+    // Violação de CHECK constraint do Postgres (ex.: saldo_acima_limite_credito) não é
+    // modelada pelo Prisma — chega aqui como DriverAdapterError genérico (@prisma/adapter-pg),
+    // não como PrismaClientKnownRequestError. Mapeamos pelo nome da constraint (só aparece
+    // dentro da mensagem, o driver não expõe um campo `constraint` separado) pra devolver um
+    // erro amigável em vez do 500 genérico. Cobre a corrida em que o saldo é checado fora da
+    // transação Prisma e só o CHECK do banco pega a violação real.
+    const pgCause = (error as { cause?: { code?: string; message?: string } })?.cause
+    if (pgCause?.code === '23514' && typeof pgCause.message === 'string') {
+      if (pgCause.message.includes('saldo_acima_limite_credito')) {
+        const balanceError = Errors.insufficientBalance()
+        return reply.status(balanceError.statusCode).send({
+          success: false,
+          error: { code: balanceError.code, message: balanceError.message, details: [] },
+        })
+      }
+      return reply.status(422).send({
+        success: false,
+        error: {
+          code: 'CONSTRAINT_VIOLATION',
+          message: 'Operação violaria uma restrição de integridade do banco.',
+          details: [],
+        },
       })
     }
 

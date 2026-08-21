@@ -12,7 +12,7 @@
 - [x] Seed rodando em todo restart do container → rodar só uma vez
 - [x] Constraints de integridade (`CHECK`) via migration formal em vez de `seed.ts`
 - [ ] Timezone do servidor no corte de "mês corrente" (`validarLimiteVenda`)
-- [ ] Checagem de saldo fora da transação Prisma → erro amigável (`INSUFFICIENT_BALANCE`)
+- [x] Checagem de saldo fora da transação Prisma → erro amigável (`INSUFFICIENT_BALANCE`)
 - [ ] Cobertura de teste em `limites.ts` (`getLimiteCreditoDaConta`/`validarLimiteVenda`)
 - [ ] `Agencia.create()` não retorna a `conta` recém-criada (Associado retorna, Agência não)
 
