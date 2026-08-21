@@ -1,8 +1,11 @@
 import { useQueryAgencias } from '@/hooks/ReactQuery/useQueryAgencias';
+import { isMatriz } from '@/hooks/getId';
 
 // value: id da agência (UUID) — use 'nome' prop para exibir nome como value
 const AgenciasOptions = () => {
-    const { data } = useQueryAgencias();
+    // GET /agencias só aceita superadmin — evita 403 em loop de retry
+    // pra quem não é Matriz (Associado/Agência não listam outras agências).
+    const { data } = useQueryAgencias(isMatriz());
 
     return (
         <>

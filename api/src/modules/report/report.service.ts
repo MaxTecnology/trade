@@ -43,6 +43,10 @@ export async function extrato(contaId: string, filters: ReportFilters) {
           include: {
             voucher: true,
             solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
+            comprador: { select: { id: true, nome: true, agenciaId: true } },
+            vendedor: { select: { id: true, nome: true, agenciaId: true } },
+            contaOrigem: { select: { agenciaId: true } },
+            contaDestino: { select: { agenciaId: true } },
           },
         },
       },

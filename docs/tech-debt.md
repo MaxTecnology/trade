@@ -1,5 +1,19 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] Meu Extrato: filtros sem dado, modal sem comprador/vendedor, 403 em loop
+
+Reportado ao vivo depois do fix do "Gerar PDF": filtros de Comprador/Vendedor não funcionavam, "Detalhes da Transação" mostrava Vendedor/Comprador em branco, e o console tinha chamadas repetidas de `GET /agencias` retornando 403. O usuário corretamente suspeitou que os dois primeiros estavam ligados.
+
+**Causa raiz (comprador/vendedor em branco):** `report.service.ts::extrato()` nunca incluía `comprador`/`vendedor` no `include` aninhado de `transacao` — só `voucher` e `solicitacoesEstorno`. `TransaçõesModal.jsx` já lia os campos certos (`transacao.comprador.nome`), só não recebia o dado.
+
+**Causa raiz (403 em loop):** `AgenciasOptions.jsx` (select de Agência, reaproveitado em várias telas) chamava `GET /agencias` sem checar role — essa rota é `superadmin`-only. Pra Associado/Agência, cada chamada falhava e o retry automático do react-query tentava de novo (3x por padrão), gerando a sequência de 403 no console.
+
+**O que mudou:** `include` de `extrato()` ganhou `comprador`/`vendedor` (id/nome/agenciaId) e `contaOrigem`/`contaDestino` (agenciaId), mesmo padrão já usado em Estornos. `constantsMeuExtrato.js` ganhou as 4 colunas ocultas de filtro (comprador/vendedor/agencia/associado) que faltavam — mesma classe de bug já corrigida em Estornos/Extratos/Créditos nesta sessão. `useQueryAgencias`/`AgenciasOptions.jsx` ganharam `enabled`, chamando a rota só quando `isMatriz()` — silencia o loop de 403 em qualquer tela que reaproveite esse select (Extratos, Estornos, Créditos, Cadastrar Associado etc.), não só Meu Extrato.
+
+**Também observado, não é bug**: a URL da tela é `/estratosMeus` (não `/extratosMeus`) — mas é consistente em **todas** as rotas de extrato (`/estratos`, `/estratosMeus`, `/estratosEstorno`) e na própria pasta `pages/estratos/`. É um "erre" trocado desde antes desta sessão, espalhado por convenção interna (rotas + nome de pasta), não uma inconsistência pontual — não quebra nada, é só estética. Renomear exigiria tocar rotas, pasta e imports em vários arquivos; não fiz por ser puramente cosmético e fora do que foi pedido — perguntar ao usuário se vale a pena antes de fazer.
+
+**Validado**: Docker + Playwright real — filtro de Comprador reduz a lista corretamente, modal mostra Vendedor/Comprador nas linhas que têm transação associada (linhas de crédito puro legitimamente não têm, `transacao: null`), zero chamadas a `GET /agencias` como Associado.
+
 ## [RESOLVIDO 2026-08-21] "Gerar PDF" em Estornos nunca gerava PDF nenhum
 
 Pedido pelo usuário junto com os filtros de Estorno (item acima). Achado: "Gerar PDF" nunca funcionou em lugar nenhum do sistema — não é regressão desta sessão. `ExtratosSearch.jsx` (compartilhado com a tela Extratos) tem `handleclick = () => navigate("/transacoesCadastrar")` — o botão só navega pra "Nova Transação", não gera nada. Mesmo padrão quebrado em `ContasSearch.jsx` e `SearchfieldExtrato.jsx`. O único componente de PDF que existe no projeto, `PDFVoucher.jsx`, também está quebrado (campos de `state.user` que não existem mais, ex: `state.user.usuario.dadosGerais`) e nem chama `html2canvas` de fato — só importa a lib sem usar.

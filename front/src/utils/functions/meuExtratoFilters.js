@@ -1,15 +1,31 @@
-// Replica o filtro de Período de constantsMeuExtrato.js (filterStart/
-// filterEnd), rodando direto sobre o array de movimentações — usado pelo
-// "Gerar PDF", que precisa do conjunto filtrado fora da tabela
-// (ExtratosSearch.jsx não tem acesso ao getFilteredRowModel() de
-// ExtratosTable.jsx). Associado/Agência/Comprador/Vendedor não se aplicam
-// ao próprio extrato (é sempre a mesma conta) — ExtratosSearch.jsx mostra
-// esses campos por ser um componente genérico, mas eles não filtram nada
-// aqui, igual na tabela.
+// Replica os mesmos filtros de constantsMeuExtrato.js (filterIncludes/
+// filterIncludesId/filterStart/filterEnd), mas rodando direto sobre o array
+// de movimentações — usado pelo "Gerar PDF", que precisa do conjunto
+// filtrado fora da tabela (ExtratosSearch.jsx não tem acesso ao
+// getFilteredRowModel() de ExtratosTable.jsx). Se os filtros da tabela
+// mudarem, atualizar aqui também.
 const norm = (v) => String(v ?? '').toLowerCase()
 
 export const applyMeuExtratoFilters = (rows, f = {}) => {
     return rows.filter((r) => {
+        if (f.comprador && !norm(r.transacao?.comprador?.nome).includes(norm(f.comprador))) return false
+        if (f.vendedor && !norm(r.transacao?.vendedor?.nome).includes(norm(f.vendedor))) return false
+
+        if (f.agencia) {
+            const agenciaIds = [
+                r.transacao?.comprador?.agenciaId,
+                r.transacao?.vendedor?.agenciaId,
+                r.transacao?.contaOrigem?.agenciaId,
+                r.transacao?.contaDestino?.agenciaId,
+            ].filter(Boolean)
+            if (!agenciaIds.includes(f.agencia)) return false
+        }
+
+        if (f.associado) {
+            const associadoIds = [r.transacao?.comprador?.id, r.transacao?.vendedor?.id].filter(Boolean)
+            if (!associadoIds.includes(f.associado)) return false
+        }
+
         if (f.dataInicio && new Date(r.criadoEm) < new Date(f.dataInicio)) return false
         if (f.dataTermino && new Date(r.criadoEm) >= new Date(f.dataTermino)) return false
 
