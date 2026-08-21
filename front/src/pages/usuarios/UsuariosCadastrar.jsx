@@ -5,7 +5,6 @@ import { Form } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import Form_Dados from "@/components/Form/Form_Dados";
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormPermissions from "@/components/Form/permissions/FormPermissions";
 import { permissionSchema } from "@/models/schemas/permissionsSchema";
 import { createSubAccount } from "@/utils/functions/api";
 import { toast } from "sonner";
@@ -48,10 +47,6 @@ const UsuariosCadastrar = () => {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(formHandler)} className="containerForm">
                     <Form_Dados form={form} setImagem={setImagem} />
-                    <div className="formDivider">
-                        <p>Permissões</p>
-                    </div>
-                    <FormPermissions form={form} />
                     <div className="buttonContainer">
                         {loading ? <ColorRing
                             visible={loading}

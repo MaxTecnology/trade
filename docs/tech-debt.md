@@ -1,5 +1,17 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] Formulário de "Permissões" no Cadastrar Sub Conta era 100% decorativo
+
+Pedido do usuário: validar as permissões ao criar uma sub-conta. Achado: o formulário inteiro (Conta/Financeiro/Operacional, Leitura/Escrita/Exclusão por módulo, accordion com "Selecionar Todas") nunca teve efeito nenhum — não existe **nenhum campo de permissão no banco** (`schema.prisma` não tem nada parecido), `createUserSchema` no backend só aceita `nome/email/senha/role`, e `createSubAccount()` no front descartava tudo que não fosse esses 4 campos antes mesmo de montar a requisição. Um admin marcando "operador só pode ler" não tinha efeito algum.
+
+O controle real de acesso é só por `role` (admin vs operador), fixo no código de cada rota — não configurável por usuário. Resumo do que `associate_operator` pode/não pode (auditado via `roleGuard` de cada módulo): pode comprar/negociar/avaliar/ver extrato, **não pode** transferir RT, ver/editar dados do Associado, ver o próprio saldo (`/associados/:id/conta` é admin-only), abrir/fechar loja, nem gerenciar outros usuários.
+
+**O que mudou:** removida a seção "Permissões" de `UsuariosCadastrar.jsx` (e o import de `FormPermissions`). Deletados os arquivos que só existiam pra essa UI fake: `components/Form/permissions/` (4 arquivos), `FormCheckBox.jsx`, e `pages/usuarios/UsuariosCadastrar copy.jsx` (cópia morta, nunca roteada, único outro consumidor dos arrays `options`/`vendas`/`voucher`/`leitura`/`extrato` de `constants.js`, também removidos). `permissionsSchema.js` reduzido aos campos reais (nome/email/senha/cpf/imagem) — nome do arquivo mantido pra não quebrar o import.
+
+**Não implementado agora** (fora de escopo, registrado se algum dia quiser): permissões granulares de verdade (tabela no banco + guard por permissão, não só role) seria um projeto à parte, não um ajuste pontual.
+
+**Validado**: Docker + Playwright real — seção "Permissões" não aparece mais na tela, cadastro de sub-conta continua funcionando normalmente sem ela.
+
 ## [RESOLVIDO 2026-08-21] "Quem iniciou a transação" era rastreado mas nunca exposto; código de usuário só existia pra metade dos casos
 
 Pergunta do usuário: dado que o sistema já sabe quem fez cada compra (`Transacao.usuarioIniciadorId`, sempre preenchido com `request.user.id`), vale a pena criar um "número de conta" por usuário? Achado: **já existia** um mecanismo pra isso — `Usuario.codigoOperador` (`{numeroDaConta}-{sequencial}`) — só que pela metade: só gerado pra `associate_operator`, nunca pro `associate_admin` nem pro lado da Agência (`agency_admin`/`agency_operator`), e nunca lido/exibido em lugar nenhum do front.
@@ -9,6 +21,7 @@ Pergunta do usuário: dado que o sistema já sabe quem fez cada compra (`Transac
 - Usuários já existentes sem código corrigidos via `api/scripts/backfill-codigo-operador.ts` (idempotente, roda uma vez — **precisa rodar em produção depois do deploy**, `npx tsx scripts/backfill-codigo-operador.ts` com o `DATABASE_URL` do ambiente).
 - `usuarioIniciador: {nome, codigoOperador}` incluído em `transaction.service.ts` (`list`/`getById`) e `report.service.ts` (`extrato`/`relatorioPermutas`) — antes nunca era buscado.
 - Nova coluna "Iniciado por" em Transações Minhas, Transações (Agência/Matriz), Meu Extrato e Extratos — mostra o código (`0000004-01`) ou o nome quando não tem código (Matriz, que fica de fora do mecanismo por não ser Associado/Agência).
+- Nova coluna "Código" na própria lista de Usuários (`pages/usuarios/constants.js`), pedida em seguida pelo usuário.
 
 **Validado**: backfill rodado no ambiente de dev (3 usuários corrigidos), Docker + Playwright real confirmando a coluna nova em Transações Minhas e Meu Extrato, com código aparecendo certo pra quem tem e nome pra quem não tem (Matriz).
 

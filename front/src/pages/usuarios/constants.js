@@ -22,6 +22,11 @@ const filterEquals = (row, columnId, filterValue) => {
 // tem conta/nomeFantasia/nomeFranquia (isso é de Associado/Agência).
 export const columns = [
     {
+        accessorKey: 'codigoOperador',
+        header: 'Código',
+        cell: (info) => info.getValue() ?? '-',
+    },
+    {
         accessorKey: 'nome',
         header: 'Nome',
         filterFn: filterIncludes,
@@ -43,30 +48,4 @@ export const columns = [
         cell: (info) => info.getValue() ? 'Ativo' : 'Inativo',
         filterFn: filterEquals,
     },
-]
-
-
-export const options = [
-    { value: 'Leitura', label: 'Leitura', color: '#22c55e' },
-    { value: 'Escrita', label: 'Escrita', color: '#0ea5e9' },
-    { value: 'Exclusão', label: 'Exclusão', color: '#ef4444' }
-]
-export const vendas = [
-    { value: 'Leitura', label: 'Leitura', color: '#22c55e' },
-    { value: 'Escrita', label: 'Escrita', color: '#0ea5e9' },
-    { value: 'Cancelamento', label: 'Cancelamento', color: '#ef4444' }
-]
-export const voucher = [
-    { value: 'Leitura', label: 'Leitura', color: '#22c55e' },
-    { value: 'Solicitação', label: 'Solicitação', color: '#facc15' },
-    { value: 'Aprovar', label: 'Aprovar', color: '#0ea5e9' },
-    { value: 'Recusar', label: 'Recusar', color: '#ef4444' },
-]
-export const leitura = [
-    { value: 'Leitura', label: 'Leitura', color: '#22c55e', }
-]
-export const extrato = [
-    { value: 'Leitura', label: 'Leitura', color: '#22c55e' },
-    { value: 'Solicitação de Extorno', label: 'Solicitação de Extorno', color: '#facc15' },
-
 ]
