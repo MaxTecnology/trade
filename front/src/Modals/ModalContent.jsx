@@ -1,4 +1,4 @@
-import { FaUsers, FaFileInvoiceDollar, FaMoneyBillAlt, FaMoneyCheckAlt, FaUserCog, FaUserEdit, FaUserPlus, FaListAlt, FaUndo } from 'react-icons/fa';
+import { FaUsers, FaFileInvoiceDollar, FaMoneyBillAlt, FaMoneyCheckAlt, FaUserCog, FaUserPlus, FaListAlt, FaUndo } from 'react-icons/fa';
 import { FaFileLines } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import { BsFillPersonVcardFill, BsFillPersonPlusFill, BsBuildings, BsBuildingAdd, BsCoin, BsCheck2All, BsTags, BsMegaphone, BsTrash3, BsJournalPlus, BsTicketPerforated, BsTicketPerforatedFill, BsTicketDetailed, BsFillClipboard2DataFill, BsGraphUp, BsPieChartFill } from "react-icons/bs";
@@ -144,13 +144,18 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             break;
         // Adicione casos para outras categorias aqui
         case 'Usuarios':
+            // Matriz não tem sub-contas no modelo atual (Usuario é sempre
+            // vinculado a um Associado ou Agência) — GET/POST /usuarios nem
+            // aceita superadmin, então esses itens nunca funcionariam pra ela.
             component = [
                 { name: 'Meus Dados', icon: <FaUserCog />, route: "/usuariosDados" },
-                { name: 'Usuários', icon: <FaUsers />, route: "/usuariosLista" },
-                { name: 'Editar Sub Contas', icon: <FaUserEdit />, route: "/usuariosEditar" },
-                { name: 'Cadastrar Sub Conta', icon: <FaUserPlus />, route: "/usuariosCadastrar" },
-
             ];
+            if (!isMatriz()) {
+                component.push(
+                    { name: 'Usuários', icon: <FaUsers />, route: "/usuariosLista" },
+                    { name: 'Cadastrar Sub Conta', icon: <FaUserPlus />, route: "/usuariosCadastrar" },
+                );
+            }
             break;
         // Adicione casos para outras categorias aqui
         case 'Planos':

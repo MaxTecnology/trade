@@ -7,12 +7,12 @@ import { columns } from "./constants";
 import EditarUsuariosModal from "@/Modals/EditarUsuariosModal";
 import useModal from "@/hooks/useModal";
 import { useQueryUsuarios } from "@/hooks/ReactQuery/useQueryUsuarios";
-import { useQueryMeusUsuarios } from "@/hooks/ReactQuery/usuario/useQueryMeusUsuarios";
-import { isMatriz } from "@/hooks/getId";
 
+// GET /usuarios já é auto-escopado no backend (Associado vê só os próprios
+// operadores, Agência só os da própria agência) — não existe "ver todo
+// mundo" nem pra Matriz (que nem tem acesso a essa rota).
 const UsuariosLista = () => {
     const { data } = useQueryUsuarios()
-    const { data: myUsers } = useQueryMeusUsuarios()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [userInfo, setUserInfo] = useState()
     const [userId, setUserId] = useState()
@@ -20,7 +20,7 @@ const UsuariosLista = () => {
     useEffect(() => {
         activePage("usuarios")
     }, []);
-    const tableData = isMatriz() ? data?.data : myUsers
+
     return (
         <div className="container">
             {modalIsOpen ?
@@ -36,10 +36,11 @@ const UsuariosLista = () => {
             <div className="containerList">
                 <AssociadosTable
                     columns={columns}
-                    data={tableData ? tableData : []}
+                    data={data?.data ?? []}
                     setId={setUserId}
                     setInfo={setUserInfo}
                     modaltoggle={modalToggle}
+                    usuario
                 />
             </div>
             <Footer />

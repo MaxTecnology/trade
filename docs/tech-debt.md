@@ -1,5 +1,26 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] Área inteira de "Sub Contas" (Usuários) quebrada — análise + reescrita
+
+Pedido pelo usuário: analisar "Usuários"/"Editar Sub Contas"/"Cadastrar Sub Conta" antes de mexer, com suspeita de que "Editar Sub Contas" fosse redundante. Achado bem mais extenso do que isso — cada camada tinha um bug diferente:
+
+1. **"Usuários" e "Editar Sub Contas" eram a mesma coisa**: `useQueryMeusUsuarios`/`useQuerySubContas` chamavam o **mesmo endpoint** (`GET /usuarios`, já auto-escopado no backend — `associate_admin` só vê seus operadores, `agency_admin` só os da própria agência; não existe "ver todo mundo"). "Usuários" passava o envelope inteiro (`{success,data,meta}`) pra tabela em vez de `.data` (quebrado pra Agência/Associado); "Editar Sub Contas" procurava `data.subcontas`, campo que nunca existiu (sempre vazio).
+2. **Matriz nunca teve acesso**: `GET/POST /usuarios` só aceita `associate_admin`/`agency_admin` — superadmin nem está na lista de roles. Não existe conceito de "sub-conta da Matriz" no modelo (Usuario sempre pertence a um Associado ou uma Agência).
+3. **`constants.js`** (colunas da lista) usava campos de Associado (`nomeFantasia`, `conta.numeroConta`, `conta.nomeFranquia`, `status` booleano) — nenhum existe em `Usuario` (`nome`/`email`/`role`/`ativo`). Lista sempre mostrava lixo ("Nenhuma Franquia", "Não Atendendo").
+4. **`EditarUsuariosModal.jsx`** era uma cópia do formulário de editar Associado/Agência inteiro (CNPJ, endereço, limites, plano) — nada disso existe em `Usuario`. E o pior: `updateUser` (função de salvar) era **um no-op literal** (`() => {}`) — "Salvar alterações" mostrava toast de sucesso sem nunca chamar a API.
+5. **`AssociadosTable.jsx`** (reaproveitada pra listar Usuarios) tinha um botão de bloquear/desbloquear hardcoded pra `PATCH /associados/:id/status` com `associado.status` — pra uma linha de Usuario isso é `PATCH` no id errado (usuário, não associado) comparando um campo que não existe (`status` em vez de `ativo`) — sempre falhava.
+6. **`createSubAccount`** (Cadastrar Sub Conta) tinha `role: 'associate_operator'` fixo no código — `agency_admin` cadastrando um operador sempre tomava 403 (`roleCompatível` do backend rejeita `associate_operator` vindo de quem é Agência). Só funcionava pra Associado.
+
+**O que mudou:**
+- `UsuariosMeus.jsx` (+ rota `/usuariosEditar`, hooks `useQueryMeusUsuarios`/`useQuerySubContas`) removidos — "Usuários" é a única tela agora, com `useQueryUsuarios()` direto e `.data` desembrulhado certo.
+- `constants.js` reescrito com campos reais de Usuario (Nome/E-mail/Perfil/Status).
+- `EditarUsuariosModal.jsx` reescrito do zero — Nome, E-mail, Perfil (somente leitura), Status. `updateUser` virou uma função de verdade: `PUT /usuarios/:id` (nome/email) + `PATCH /usuarios/:id/status` (ativo). Sem campo de senha — `PATCH /usuarios/:id/senha` é self-only por design de segurança (exige a senha atual de quem está trocando), um admin não pode resetar a senha de outra pessoa por essa rota.
+- `AssociadosTable.jsx` ganhou prop `usuario` — quando true, o botão de bloquear/desbloquear usa `PATCH /usuarios/:id/status` com `ativo` (boolean), e o botão "Eye" (que abriria a página de Associado) fica escondido, já que não faz sentido pra uma linha de Usuario.
+- `createSubAccount` detecta o role certo (`isAgencia() ? 'agency_operator' : 'associate_operator'`) em vez de fixo; parou de mandar `associadoId`/`imagem` no body (o schema de criação nem aceita esses campos — eram só ruído, e o upload de imagem nunca era referenciado em lugar nenhum depois).
+- `ModalContent.jsx`: Matriz só vê "Meus Dados" na "Navegação Rápida" de Usuários — os outros 3 itens nunca funcionariam pra ela mesmo (confirmado com o usuário).
+
+**Validado**: Docker + Playwright real — Matriz vê só "Meus Dados"; Associado vê a lista certa e edita um usuário de verdade (nome mudou no banco, confirmado via SQL); Agência cadastra um operador com sucesso, `role: agency_operator` e `agenciaId` corretos no banco (antes sempre 403).
+
 ## [RESOLVIDO 2026-08-21] Limpar filtro de Período zerava a tabela; "Selecione" confuso; mês atual como padrão
 
 Reportado pelo usuário: (1) "Selecione" no filtro de Associado/Agência não deixava claro que representa "todos"; (2) limpar as datas do filtro de Período fazia a tabela sumir inteira em vez de voltar a mostrar tudo; (3) sugestão de deixar o mês atual pré-selecionado ao abrir a tela.

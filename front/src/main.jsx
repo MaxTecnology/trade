@@ -14,7 +14,7 @@ import RequireAuth from './auth/RequireAuth.jsx'
 
 
 // PAGES
-import { AgenciasLista, AssociadoInfo, Associados, AssociadosLista, CadastrarAgencia, CadastrarAssociado, CancelarVouchers, Categorias, ContasPagar, ContasReceber, Credito, CreditoAnalise, CreditoAprovar, CreditoMeus, CreditoSolicitar, EstratosEstorno, Extratos, GerentesCadastrar, GerentesLista, Home, Login, MeusExtratos, MeusVouchers, Ofertas, OfertasCadastrar, OfertasExcluir, OfertasInfo, OfertasMinhas, PDFVoucher, PlanoAgencias, PlanoAssociado, PlanoGerente, ResetPassword, SubCategorias, TransaçãoCadastrar, Transações, TransaçõesExtorno, TransaçõesMinhas, UsuariosCadastrar, UsuariosDados, UsuariosLista, UsuariosMeus, VoucherCadastrar, Vouchers, VoucherSolicitarCancelar } from './pages/index.js'
+import { AgenciasLista, AssociadoInfo, Associados, AssociadosLista, CadastrarAgencia, CadastrarAssociado, CancelarVouchers, Categorias, ContasPagar, ContasReceber, Credito, CreditoAnalise, CreditoAprovar, CreditoMeus, CreditoSolicitar, EstratosEstorno, Extratos, GerentesCadastrar, GerentesLista, Home, Login, MeusExtratos, MeusVouchers, Ofertas, OfertasCadastrar, OfertasExcluir, OfertasInfo, OfertasMinhas, PDFVoucher, PlanoAgencias, PlanoAssociado, PlanoGerente, ResetPassword, SubCategorias, TransaçãoCadastrar, Transações, TransaçõesExtorno, TransaçõesMinhas, UsuariosCadastrar, UsuariosDados, UsuariosLista, VoucherCadastrar, Vouchers, VoucherSolicitarCancelar } from './pages/index.js'
 import Loading from './pages/Loading.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -371,14 +371,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               element={
                 <Suspense fallback={<Loading />}>
                   <UsuariosLista />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/usuariosEditar"
-              element={
-                <Suspense fallback={<Loading />}>
-                  <UsuariosMeus />
                 </Suspense>
               }
             />

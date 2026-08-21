@@ -1,6 +1,6 @@
 import api from "@/services/api";
-import state from "@/store";
 import { formHandler, formatForm } from "../formHandler";
+import { isAgencia } from "@/hooks/getId";
 
 const uploadToB2 = async (file) => {
     if (!file || file.size === 0) return null
@@ -40,16 +40,18 @@ export const createUser = async (event, url) => {
 
 export async function createSubAccount(event) {
     const { email, senha, nome } = event
-    const imagemUrl = await uploadToB2(event.imagem)
+    // role tem que bater com o tipo de quem está criando — o backend rejeita
+    // (403) se não bater (agency_admin só pode criar agency_*, associate_admin
+    // só associate_*). entityId/entityType são sempre derivados do JWT no
+    // backend, não do body — não precisa (e não adianta) mandar associadoId aqui.
+    const role = isAgencia() ? 'agency_operator' : 'associate_operator'
     await api.post('usuarios', {
         nome,
         email,
         senha,
-        role: 'associate_operator',
-        associadoId: state.user.entityId,
-        imagem: imagemUrl,
-    }).catch(() => {
-        throw new Error("Erro ao criar usuário")
+        role,
+    }).catch((err) => {
+        throw new Error(err?.response?.data?.error?.message ?? "Erro ao criar usuário")
     })
 }
 

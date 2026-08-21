@@ -15,31 +15,38 @@ import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 
 
+// usuario: true quando as linhas são Usuario (sub-conta), não Associado —
+// muda o endpoint/campo de status usado no botão de bloquear/desbloquear
+// (Usuario tem `ativo` boolean, Associado tem `status` enum).
 const AssociadosTable = ({
     columns,
     data,
     setId,
     setInfo,
-    modaltoggle }) => {
+    modaltoggle,
+    usuario }) => {
 
     const snap = useSnapshot(filters.table);
     const revalidate = useRevalidate();
     const [columnFilters, setColumnFilters] = useState([])
 
-    const handleToggleStatus = (associado) => {
-        const ativo = associado.status === 'ativo'
-        const novoStatus = ativo ? 'suspenso' : 'ativo'
+    const isAtivo = (row) => usuario ? row.ativo : row.status === 'ativo'
+
+    const handleToggleStatus = (row) => {
+        const ativo = isAtivo(row)
         const acao = ativo ? 'bloquear' : 'desbloquear'
+        const label = usuario ? 'usuário' : 'associado'
         state.action = () => toast.promise(
-            api.patch(`associados/${associado.id}/status`, { status: novoStatus })
-                .then(() => revalidate('associados')),
+            usuario
+                ? api.patch(`usuarios/${row.id}/status`, { ativo: !ativo }).then(() => revalidate('usuarios'))
+                : api.patch(`associados/${row.id}/status`, { status: ativo ? 'suspenso' : 'ativo' }).then(() => revalidate('associados')),
             {
-                loading: `${ativo ? 'Bloqueando' : 'Desbloqueando'} associado...`,
-                success: `Associado ${ativo ? 'bloqueado' : 'desbloqueado'} com sucesso!`,
+                loading: `${ativo ? 'Bloqueando' : 'Desbloqueando'} ${label}...`,
+                success: `${usuario ? 'Usuário' : 'Associado'} ${ativo ? 'bloqueado' : 'desbloqueado'} com sucesso!`,
                 error: (e) => `Erro: ${e.message}`,
             }
         )
-        popup(`Deseja ${acao} este associado?`, 'Associados')
+        popup(`Deseja ${acao} este ${label}?`, usuario ? 'Usuários' : 'Associados')
     }
 
     const formattedColumns = formatColumns(columns);
@@ -109,18 +116,20 @@ const AssociadosTable = ({
                                     modal={modaltoggle}
                                 />
                                 <ButtonMotion
-                                    className={row.original.status === 'ativo' ? "buttonBloq" : "buttonDelete"}
+                                    className={isAtivo(row.original) ? "buttonBloq" : "buttonDelete"}
                                     type="button"
                                     onClick={() => handleToggleStatus(row.original)}
-                                    title={row.original.status === 'ativo' ? 'Bloquear acesso' : 'Desbloquear acesso'}
+                                    title={isAtivo(row.original) ? 'Bloquear acesso' : 'Desbloquear acesso'}
                                 >
-                                    {row.original.status === 'ativo' ? <TbLockOff /> : <TbLock />}
+                                    {isAtivo(row.original) ? <TbLockOff /> : <TbLock />}
                                 </ButtonMotion>
-                                <Buttons
-                                    type="Eye"
-                                    associado
-                                    info={row.original}
-                                />
+                                {!usuario &&
+                                    <Buttons
+                                        type="Eye"
+                                        associado
+                                        info={row.original}
+                                    />
+                                }
                             </td>
                         </tr>
                     ))}

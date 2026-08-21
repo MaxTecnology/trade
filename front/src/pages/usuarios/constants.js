@@ -1,23 +1,30 @@
+const ROLE_LABEL = {
+    associate_admin: 'Administrador Associado',
+    associate_operator: 'Operador Associado',
+    agency_admin: 'Administrador de Agência',
+    agency_operator: 'Operador de Agência',
+}
+
+// Colunas de Usuario (sub-conta) — id/nome/email/role/ativo/criadoEm, não
+// tem conta/nomeFantasia/nomeFranquia (isso é de Associado/Agência).
 export const columns = [
     {
-        accessorKey: 'conta.numeroConta',
-        header: 'Conta',
-    },
-    {
-        accessorKey: 'nomeFantasia',
-        header: 'Nome Fantasia',
-    },
-    {
-        accessorKey: 'conta.nomeFranquia',
-        header: 'Unidade',
+        accessorKey: 'nome',
+        header: 'Nome',
     },
     {
         accessorKey: 'email',
         header: 'E-mail',
     },
     {
-        accessorKey: 'status',
+        accessorKey: 'role',
+        header: 'Perfil',
+        cell: (info) => ROLE_LABEL[info.getValue()] ?? info.getValue(),
+    },
+    {
+        accessorKey: 'ativo',
         header: 'Status',
+        cell: (info) => info.getValue() ? 'Ativo' : 'Inativo',
     },
 ]
 
