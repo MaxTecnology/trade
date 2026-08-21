@@ -27,7 +27,9 @@ export const applyEstornoFilters = (rows, f = {}) => {
         }
 
         if (f.dataInicio && new Date(r.criadoEm) < new Date(f.dataInicio)) return false
-        if (f.dataTermino && new Date(r.criadoEm) >= new Date(f.dataTermino)) return false
+        // dataTermino é o dia inteiro (inclusive) — soma 1 dia, senão algo
+        // criado no próprio dia escolhido (ex: "hoje") fica de fora.
+        if (f.dataTermino && new Date(r.criadoEm).getTime() >= new Date(f.dataTermino).getTime() + 86400000) return false
 
         if (f.search) {
             const haystack = norm([r.id, r.solicitante?.nome, r.transacao?.tipo, r.motivo, r.status].join(' '))

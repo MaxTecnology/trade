@@ -1,5 +1,19 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] Limpar filtro de Período zerava a tabela; "Selecione" confuso; mês atual como padrão
+
+Reportado pelo usuário: (1) "Selecione" no filtro de Associado/Agência não deixava claro que representa "todos"; (2) limpar as datas do filtro de Período fazia a tabela sumir inteira em vez de voltar a mostrar tudo; (3) sugestão de deixar o mês atual pré-selecionado ao abrir a tela.
+
+**Causa raiz do (2):** `filterStart`/`filterEnd` (`utils/functions/tables/date.js`) faziam `Date.parse(filterStatuses)` sem checar se o valor estava vazio — campo de data limpo vira `""`, `Date.parse("")` é `NaN`, e qualquer comparação com `NaN` é sempre `false` em JS. `filterStart` sem essa guarda retornava `false` (esconde) pra **toda** linha quando a data de início estava vazia.
+
+**O que mudou:**
+- `filterStart`/`filterEnd` ganham guarda `if (!filterStatuses) return true` — mesmo padrão já usado em `filterIncludes`/`filterIncludesId`.
+- `filterEnd` também passou a tratar `dataTermino` como o dia inteiro (inclusive), somando 1 dia antes de comparar — sem isso, qualquer coisa criada no próprio dia escolhido (ex: "hoje") ficava de fora, porque o `<input type="date">` vira meia-noite UTC daquele dia. Replicado em `estornoFilters.js`/`meuExtratoFilters.js` (mesma lógica duplicada pro "Gerar PDF", ver itens anteriores).
+- `ExtratosSearch.jsx`: opção vazia dos selects de Associado/Agência virou "Todos"/"Todas" (antes "Selecione"/"Selecionar").
+- Novo `currentMonthRange()` em `date.js` — Período abre pré-preenchido com o mês atual (dia 1 até hoje) nas 3 telas que usam esse filtro (Extratos, Estornos, Meu Extrato). Usuário pode trocar ou limpar livremente depois — limpar volta a mostrar tudo (não trava a escolha, decisão confirmada com o usuário).
+
+**Validado**: Docker + Playwright real — datas padrão corretas ao abrir, limpar as duas datas volta a mostrar todas as linhas, movimentação criada no próprio dia aparece com o filtro padrão do mês ativo.
+
 ## [RESOLVIDO 2026-08-21] Meu Extrato: filtros sem dado, modal sem comprador/vendedor, 403 em loop
 
 Reportado ao vivo depois do fix do "Gerar PDF": filtros de Comprador/Vendedor não funcionavam, "Detalhes da Transação" mostrava Vendedor/Comprador em branco, e o console tinha chamadas repetidas de `GET /agencias` retornando 403. O usuário corretamente suspeitou que os dois primeiros estavam ligados.

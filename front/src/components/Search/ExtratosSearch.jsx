@@ -8,6 +8,7 @@ import SearchInput from "@/components/Search/SearchInput";
 import { useEffect } from "react";
 import { activePage } from "@/utils/functions/setActivePage";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
+import { currentMonthRange } from "@/utils/functions/tables/date";
 
 // onGerarPdf: opcional — quando informado, o botão "Gerar PDF" chama essa
 // função em vez de navegar (usado pela tela de Estornos). Sem isso, mantém
@@ -16,6 +17,7 @@ const ExtratosSearch = ({ onGerarPdf }) => {
     const navigate = useNavigate();
     const { data: associadosResp } = useQueryAssociadosDiretorio();
     const associados = associadosResp?.data ?? [];
+    const defaultRange = currentMonthRange();
     const handleclick = () => {
         if (onGerarPdf) {
             onGerarPdf()
@@ -31,8 +33,10 @@ const ExtratosSearch = ({ onGerarPdf }) => {
         activePage("extratos")
     }, []);
 
+    // Período padrão: mês atual (dia 1 até hoje) — usuário pode trocar ou
+    // limpar livremente depois (limpar as datas volta a mostrar tudo).
     useEffect(() => {
-        filters.table = {}
+        filters.table = { ...currentMonthRange() }
     }, []);
 
     return (
@@ -42,7 +46,7 @@ const ExtratosSearch = ({ onGerarPdf }) => {
                 <div className="form-group f2">
                     <label htmlFor="associado">Associado</label>
                     <select id="associado" defaultValue={""} name="associado" onChange={handleSearch}>
-                        <option value="">Selecione</option>
+                        <option value="">Todos</option>
                         {associados.map((item) => (
                             <option value={item.id} key={item.id}>
                                 {item.nomeFantasia || item.nome}
@@ -56,8 +60,8 @@ const ExtratosSearch = ({ onGerarPdf }) => {
                             <label htmlFor="data">Período</label>
                         </div>
                         <div className='flex justify-around'>
-                            <input type="date" name="dataInicio" id="" onChange={handleSearch} />
-                            <input type="date" name="dataTermino" id="" onChange={handleSearch} />
+                            <input type="date" name="dataInicio" id="" defaultValue={defaultRange.dataInicio} onChange={handleSearch} />
+                            <input type="date" name="dataTermino" id="" defaultValue={defaultRange.dataTermino} onChange={handleSearch} />
                         </div>
                     </div>
                 </div>
@@ -66,7 +70,7 @@ const ExtratosSearch = ({ onGerarPdf }) => {
                 <div className="form-group f1">
                     <label htmlFor='agencia'>Agência</label>
                     <select defaultValue={""} className="form-control" id="categoria" name="agencia" onChange={handleSearch} >
-                        <option value="">Selecionar</option>
+                        <option value="">Todas</option>
                         <AgenciasOptions />
                     </select>
                 </div>
