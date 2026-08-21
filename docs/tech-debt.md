@@ -1,5 +1,17 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] "Gerar PDF" em Estornos nunca gerava PDF nenhum
+
+Pedido pelo usuário junto com os filtros de Estorno (item acima). Achado: "Gerar PDF" nunca funcionou em lugar nenhum do sistema — não é regressão desta sessão. `ExtratosSearch.jsx` (compartilhado com a tela Extratos) tem `handleclick = () => navigate("/transacoesCadastrar")` — o botão só navega pra "Nova Transação", não gera nada. Mesmo padrão quebrado em `ContasSearch.jsx` e `SearchfieldExtrato.jsx`. O único componente de PDF que existe no projeto, `PDFVoucher.jsx`, também está quebrado (campos de `state.user` que não existem mais, ex: `state.user.usuario.dadosGerais`) e nem chama `html2canvas` de fato — só importa a lib sem usar.
+
+**O que mudou:** `ExtratosSearch.jsx` ganhou uma prop opcional `onGerarPdf` — quando informada (só em `ExtratosEstorno.jsx`), o botão chama essa função em vez de navegar; sem ela, mantém o comportamento antigo (não quebra as outras telas que reaproveitam o componente). Novo `exportEstornosPdf.js` (usa `jspdf` + `jspdf-autotable`, dependência nova) gera um PDF paisagem com Código/Data/Solicitante/Tipo/Valor/Comprador/Vendedor/Agência/Motivo/Status — pedido explícito do usuário por um "relatório mais completo", não só as colunas visíveis na tela. `estorno.service.ts`'s `include` ganhou `agencia: {nome}` aninhado em comprador/vendedor/contaOrigem/contaDestino pra ter o nome pronto (antes só tinha `agenciaId`).
+
+Como `ExtratosSearch.jsx` não tem acesso ao `getFilteredRowModel()` de `ExtratosTable.jsx` (componentes irmãos, não pai/filho), o PDF respeita os filtros ativos via `estornoFilters.js` — replica os mesmos predicados de `constantsEstorno.js` rodando direto sobre o array de solicitações antes de gerar o PDF. **Se os filtros da tabela mudarem, esse arquivo precisa ser atualizado junto** (comentário no próprio arquivo já avisa).
+
+**Fora de escopo, ainda quebrado**: "Gerar PDF" em `Extratos.jsx` (usa o mesmo `ExtratosSearch.jsx` sem passar `onGerarPdf`), `ContasSearch.jsx`, `SearchfieldExtrato.jsx`, e `PDFVoucher.jsx` continuam com o mesmo bug — não foram tocados por não fazerem parte do pedido (Estornos especificamente).
+
+**Validado**: Docker + Playwright real — download do PDF capturado e conferido campo a campo (via leitura do PDF gerado), 3 linhas com Comprador/Vendedor/Agência/Motivo corretos.
+
 ## [RESOLVIDO 2026-08-20] Filtros de Estornos (Associado/Agência/Comprador/Vendedor) não filtravam nada
 
 Pedido pelo usuário: reconferir os filtros da tela de Estornos. `ExtratosSearch.jsx` é compartilhado com a tela "Extratos" (já corrigida antes nesta sessão), mas `constantsEstorno.js` não tinha nenhuma coluna com `id` batendo os nomes desses filtros — mesmo padrão de bug já visto antes (filtro no form, sem coluna oculta pra receber o `columnFilters`).

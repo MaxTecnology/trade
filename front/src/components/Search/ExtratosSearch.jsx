@@ -9,11 +9,18 @@ import { useEffect } from "react";
 import { activePage } from "@/utils/functions/setActivePage";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 
-const ExtratosSearch = () => {
+// onGerarPdf: opcional — quando informado, o botão "Gerar PDF" chama essa
+// função em vez de navegar (usado pela tela de Estornos). Sem isso, mantém
+// o comportamento antigo pras demais telas que reaproveitam esse componente.
+const ExtratosSearch = ({ onGerarPdf }) => {
     const navigate = useNavigate();
     const { data: associadosResp } = useQueryAssociadosDiretorio();
     const associados = associadosResp?.data ?? [];
     const handleclick = () => {
+        if (onGerarPdf) {
+            onGerarPdf()
+            return
+        }
         navigate("/transacoesCadastrar")
     }
     const handleSearch = (e) => {

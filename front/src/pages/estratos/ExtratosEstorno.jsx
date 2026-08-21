@@ -8,6 +8,9 @@ import TransaçõesModal from "@/Modals/TransaçõesModal";
 import { isMatriz, isAgencia } from "@/hooks/getId";
 import { useQueryEncaminhadasExtorno } from "@/hooks/ReactQuery/estornos/useQueryEncaminhadasExtorno";
 import { useQueryExtornoMatriz } from "@/hooks/ReactQuery/estornos/useQueryExtornoMatriz";
+import filters from "@/store/filters";
+import { applyEstornoFilters } from "@/utils/functions/estornoFilters";
+import { exportEstornosPdf } from "@/utils/functions/exportEstornosPdf";
 
 const ExtratosEstorno = () => {
     // ExtratosTable espera "Matriz"/"Agência" literal — mantém o contrato de
@@ -24,6 +27,10 @@ const ExtratosEstorno = () => {
         ? matrizResp?.data ?? []
         : agenciaResp?.data ?? []
 
+    const handleGerarPdf = () => {
+        exportEstornosPdf(applyEstornoFilters(dataToDisplay, filters.table))
+    }
+
     return (
         <div className="container">
             {modalIsOpen ?
@@ -34,7 +41,7 @@ const ExtratosEstorno = () => {
                 />
                 : null}
             <div className="containerHeader">Estornos</div>
-            <ExtratosSearch />
+            <ExtratosSearch onGerarPdf={handleGerarPdf} />
             <div className="containerList">
                 <ExtratosTable
                     columns={columns}
