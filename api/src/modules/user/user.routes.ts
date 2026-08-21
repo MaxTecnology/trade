@@ -7,6 +7,7 @@ import {
   getByIdController,
   updateController,
   changePasswordController,
+  resetPasswordController,
   setStatusController,
   removeController,
 } from './user.controller.js'
@@ -20,6 +21,9 @@ export async function userRoutes(app: FastifyInstance) {
   app.get('/usuarios/:id', auth, getByIdController)
   app.put('/usuarios/:id', auth, updateController)
   app.patch('/usuarios/:id/senha', auth, changePasswordController)
+  // Reset pelo admin (sem senha atual) — cobre "esqueci a senha", diferente
+  // do self-service acima.
+  app.patch('/usuarios/:id/senha/redefinir', adminGuard, resetPasswordController)
   app.patch('/usuarios/:id/status', adminGuard, setStatusController)
   app.delete('/usuarios/:id', adminGuard, removeController)
 }

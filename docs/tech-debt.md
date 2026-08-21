@@ -1,5 +1,16 @@
 # Débito técnico — Rede Trade
 
+## [RESOLVIDO 2026-08-21] Sub-conta: busca errada, redefinir senha, e-mail travado
+
+Continuação da revisão de "Sub Contas": (1) `UsuariosLista.jsx` usava `SearchField.jsx` — barra de busca da tela **Associados** (Agência/Categoria/Estado/Cidade, botão "+ Novo Associado"), nenhum campo batendo com `Usuario`; (2) pedido do usuário: permitir ao admin redefinir a senha de um usuário que esqueceu, sem poder editar o e-mail (histórico de movimentações fica ligado ao e-mail).
+
+**O que mudou:**
+- Novo `SearchUsuarios.jsx` — Nome/E-mail (busca livre), Perfil e Status (selects reais, com `filterFn` nas colunas de `constants.js`), botão "Cadastrar Sub Conta" (rota certa). Opções de Perfil mudam conforme `isAgencia()` (agency_* vs associate_*).
+- Novo endpoint `PATCH /usuarios/:id/senha/redefinir` (`associate_admin`/`agency_admin`, mesmo tenant via `getById`) — **diferente** de `PATCH /usuarios/:id/senha` (self-only, exige senha atual): esse não exige, é pro caso de esquecimento. `EditarUsuariosModal.jsx` ganhou campo "Nova senha" opcional — só manda a requisição se preenchido.
+- E-mail virou somente leitura no modal — não é mais enviado no `PUT /usuarios/:id`.
+
+**Validado**: Docker + Playwright real — filtro de Perfil reduz a lista corretamente, campo de e-mail confirmado `readOnly`, reset de senha gravou hash novo no banco (confirmado via SQL, senha restaurada depois pra não quebrar outros testes).
+
 ## [RESOLVIDO 2026-08-21] Área inteira de "Sub Contas" (Usuários) quebrada — análise + reescrita
 
 Pedido pelo usuário: analisar "Usuários"/"Editar Sub Contas"/"Cadastrar Sub Conta" antes de mexer, com suspeita de que "Editar Sub Contas" fosse redundante. Achado bem mais extenso do que isso — cada camada tinha um bug diferente:

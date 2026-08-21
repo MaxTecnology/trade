@@ -3,6 +3,7 @@ import {
   createUserSchema,
   updateUserSchema,
   changePasswordSchema,
+  resetPasswordSchema,
   statusSchema,
 } from './user.schema.js'
 import * as userService from './user.service.js'
@@ -39,6 +40,13 @@ export async function changePasswordController(request: FastifyRequest, reply: F
   const { senhaAtual, novaSenha } = changePasswordSchema.parse(request.body)
   await userService.changePassword(id, senhaAtual, novaSenha, request.user)
   return reply.send(success({ message: 'Senha alterada com sucesso.' }))
+}
+
+export async function resetPasswordController(request: FastifyRequest, reply: FastifyReply) {
+  const { id } = request.params as Params
+  const { novaSenha } = resetPasswordSchema.parse(request.body)
+  await userService.resetPassword(id, novaSenha, request.user)
+  return reply.send(success({ message: 'Senha redefinida com sucesso.' }))
 }
 
 export async function setStatusController(request: FastifyRequest, reply: FastifyReply) {

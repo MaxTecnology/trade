@@ -15,6 +15,8 @@ const ROLE_LABEL = {
 
 // Sub-conta = Usuario (nome/email/role/ativo) — não tem CNPJ, endereço,
 // limites etc. (isso é dado de Associado/Agência, entidade diferente).
+// E-mail é só leitura de propósito — trocar quebraria o histórico de
+// movimentações associadas a esse e-mail.
 const EditarUsuariosModal = ({ isOpen, modalToggle, associadoInfo }) => {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(false)
@@ -60,8 +62,8 @@ const EditarUsuariosModal = ({ isOpen, modalToggle, associadoInfo }) => {
                     <input defaultValue={info.nome} type="text" name="nome" required />
                 </div>
                 <div className="form-group">
-                    <label className="required">E-mail</label>
-                    <input defaultValue={info.email} type="email" name="email" required />
+                    <label>E-mail</label>
+                    <input defaultValue={info.email} type="email" className="readOnly" readOnly />
                 </div>
                 <div className="form-group">
                     <label>Perfil</label>
@@ -73,6 +75,10 @@ const EditarUsuariosModal = ({ isOpen, modalToggle, associadoInfo }) => {
                         <option value="true">Ativo</option>
                         <option value="false">Inativo</option>
                     </select>
+                </div>
+                <div className="form-group">
+                    <label>Nova senha</label>
+                    <input type="password" name="novaSenha" minLength={8} placeholder="Deixe em branco pra não alterar" autoComplete="new-password" />
                 </div>
                 <div className="buttonContainer">
                     <button className='modalButtonClose' type='button' onClick={close}>Fechar</button>

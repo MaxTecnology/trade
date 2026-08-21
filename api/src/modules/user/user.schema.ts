@@ -16,5 +16,12 @@ export const changePasswordSchema = z.object({
 
 export const statusSchema = z.object({ ativo: z.boolean() })
 
+// Reset de senha pelo admin (associate_admin/agency_admin) — não exige a
+// senha atual, ao contrário de changePasswordSchema (self-only). Cobre o
+// caso de a pessoa ter esquecido a senha.
+export const resetPasswordSchema = z.object({
+  novaSenha: z.string().min(8),
+})
+
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type UpdateUserInput = z.infer<typeof updateUserSchema>

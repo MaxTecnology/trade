@@ -146,6 +146,15 @@ export async function changePassword(
   await prisma.usuario.update({ where: { id }, data: { senhaHash } })
 }
 
+// Reset de senha pelo admin (associate_admin/agency_admin) — cobre "a
+// pessoa esqueceu a senha". Diferente de changePassword: não exige a senha
+// atual, mas só funciona no mesmo tenant (getById já checa isso).
+export async function resetPassword(id: string, novaSenha: string, requester: Requester) {
+  await getById(id, requester)
+  const senhaHash = await bcrypt.hash(novaSenha, env.BCRYPT_SALT_ROUNDS)
+  await prisma.usuario.update({ where: { id }, data: { senhaHash } })
+}
+
 export async function setStatus(id: string, ativo: boolean, requester: Requester) {
   await getById(id, requester)
   return prisma.usuario.update({

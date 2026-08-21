@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import SearchField from "@/components/Search/SearchField";
+import SearchUsuarios from "@/components/Search/SearchUsuarios";
 import Footer from "@/components/Footer";
 import { activePage } from "@/utils/functions/setActivePage";
 import AssociadosTable from "@/components/Tables/AssociadosTable";
@@ -32,7 +32,7 @@ const UsuariosLista = () => {
                 />
                 : null}
             <div className="containerHeader">Lista de Usuários</div>
-            <SearchField />
+            <SearchUsuarios />
             <div className="containerList">
                 <AssociadosTable
                     columns={columns}

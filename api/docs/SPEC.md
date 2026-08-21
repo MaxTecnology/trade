@@ -185,7 +185,8 @@ Usuários pertencem a uma entidade (Agência ou Associado). Usuários de Associa
 | GET | `/usuarios` | Listar usuários da entidade | `associate_admin`, `agency_admin` |
 | GET | `/usuarios/:id` | Detalhar usuário | próprio usuário, admin da entidade |
 | PUT | `/usuarios/:id` | Atualizar dados | próprio usuário, admin da entidade |
-| PATCH | `/usuarios/:id/senha` | Alterar senha | próprio usuário |
+| PATCH | `/usuarios/:id/senha` | Alterar a própria senha (exige senha atual) | próprio usuário |
+| PATCH | `/usuarios/:id/senha/redefinir` | Redefinir senha de outro usuário do mesmo tenant (sem senha atual — cobre "esqueci a senha") | `associate_admin`, `agency_admin` |
 | PATCH | `/usuarios/:id/status` | Ativar/desativar usuário | admin da entidade |
 | DELETE | `/usuarios/:id` | Remover usuário | `associate_admin`, `agency_admin` |
 

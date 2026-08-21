@@ -259,17 +259,21 @@ export const editUser = async (event, url) => {
     })
 }
 
-// Edita um Usuario (sub-conta) — PUT só aceita nome/email (schema não tem
-// ativo/senha; status é endpoint dedicado, senha só o próprio dono troca,
-// exigindo a senha atual, então não dá pra reeditar aqui).
+// Edita um Usuario (sub-conta) — PUT só aceita nome (e-mail é só leitura no
+// form, de propósito). Status e senha são endpoints dedicados; senha só
+// manda se o admin preencheu "Nova senha" (reset — não exige senha atual,
+// diferente da troca self-service).
 export const updateUser = async (event, id) => {
     event.preventDefault()
     const formData = new FormData(event.target)
     const nome = formData.get('nome')
-    const email = formData.get('email')
     const ativo = formData.get('ativo') === 'true'
-    await api.put(`usuarios/${id}`, { nome, email })
+    const novaSenha = formData.get('novaSenha')
+    await api.put(`usuarios/${id}`, { nome })
     await api.patch(`usuarios/${id}/status`, { ativo })
+    if (novaSenha) {
+        await api.patch(`usuarios/${id}/senha/redefinir`, { novaSenha })
+    }
 }
 
 export const editItem = async (event, url, setState, oferta) => {
