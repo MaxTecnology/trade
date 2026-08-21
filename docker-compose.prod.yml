@@ -59,6 +59,12 @@ services:
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-12}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      # Seed não roda mais em todo restart do container (ver
+      # docs/tech-debt.md) — só quando precisar (primeiro deploy, ou pra
+      # reaplicar categorias/subcategorias padrão), suba com
+      # `RUN_SEED=true docker compose -f docker-compose.prod.yml up -d api`
+      # uma vez, depois volte a subir sem a variável.
+      RUN_SEED: ${RUN_SEED:-false}
       B2_KEY_ID: ${B2_KEY_ID}
       B2_APPLICATION_KEY: ${B2_APPLICATION_KEY}
       B2_BUCKET_NAME: ${B2_BUCKET_NAME}

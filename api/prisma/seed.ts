@@ -73,57 +73,11 @@ async function main() {
     await upsertSubcategoria(sub.nome, sub.parenteId)
   }
 
-  // Sequence para número de conta (7 dígitos)
-  await prisma.$executeRaw`
-    CREATE SEQUENCE IF NOT EXISTS conta_numero_seq START 1 MINVALUE 1 MAXVALUE 9999999;
-  `
-
-  // Constraints SQL do SCHEMA.md §4 — idempotentes via DO $$ ... $$
-  await prisma.$executeRaw`
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'valor_rt_positivo'
-      ) THEN
-        ALTER TABLE oferta ADD CONSTRAINT valor_rt_positivo CHECK ("valorRT" > 0);
-      END IF;
-    END $$;
-  `
-  await prisma.$executeRaw`
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'quantidade_nao_negativa'
-      ) THEN
-        ALTER TABLE oferta ADD CONSTRAINT quantidade_nao_negativa CHECK ("quantidadeDisponivel" >= 0);
-      END IF;
-    END $$;
-  `
-  await prisma.$executeRaw`
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'valor_transacao_positivo'
-      ) THEN
-        ALTER TABLE transacao ADD CONSTRAINT valor_transacao_positivo CHECK ("valorRT" > 0);
-      END IF;
-    END $$;
-  `
-  await prisma.$executeRaw`
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'parcelas_validas'
-      ) THEN
-        ALTER TABLE transacao ADD CONSTRAINT parcelas_validas CHECK (parcelas >= 1 AND parcelas <= 12);
-      END IF;
-    END $$;
-  `
-  await prisma.$executeRaw`
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'nivel_maximo'
-      ) THEN
-        ALTER TABLE categoria ADD CONSTRAINT nivel_maximo CHECK (nivel <= 3);
-      END IF;
-    END $$;
-  `
+  // Sequence de número de conta e CHECK constraints (valor_rt_positivo,
+  // quantidade_nao_negativa, valor_transacao_positivo, parcelas_validas,
+  // nivel_maximo) viviam aqui como $executeRaw idempotente — movidas pra
+  // migration formal (20260821220119_constraints_e_sequence_formais),
+  // ver docs/tech-debt.md.
 
   console.log('Seed concluído com sucesso.')
 }

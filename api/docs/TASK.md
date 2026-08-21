@@ -233,7 +233,7 @@
 
 **Regras**
 - [x] Validar loja aberta antes de criar oferta
-- [x] ~~Validar limite RT do plano antes de criar oferta~~ — removido; limite de venda é validado no momento da compra (`limiteVendaMensal`/`limiteVendaTotal` do comprador), não na criação da oferta (ver `SPEC.md` §8)
+- [x] ~~Validar limite RT do plano antes de criar oferta~~ — removido; limite de venda é validado no momento da compra (`limiteVendaMensal`/`limiteVendaTotal` do vendedor), não na criação da oferta (ver `SPEC.md` §8)
 - [x] Implementar filtros: categoria, cidade, estado, valorMin, valorMax, tipoAtendimento
 - [x] Implementar paginação (default 20, max 100)
 - [x] Registrar job `offer.close` quando quantidade chegar a zero
@@ -255,7 +255,7 @@
 
 **Regras — Permuta**
 - [x] Validar saldo suficiente da conta compradora
-- [x] Validar limite de venda (`limiteVendaMensal`/`limiteVendaTotal` do comprador — substituem `plano.limiteRT`)
+- [x] Validar limite de venda (`limiteVendaMensal`/`limiteVendaTotal` do **vendedor** — substituem `plano.limiteRT`; corrigido de "do comprador" em 2026-08-14, ver `tech-debt.md`)
 - [x] Validar oferta aberta e com quantidade disponível
 - [x] Implementar parcelamento (sem juros — `maxParcelas` do plano foi removido, sem teto de parcelas)
 - [x] Operação atômica via `prisma.$transaction`

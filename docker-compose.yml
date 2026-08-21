@@ -37,6 +37,9 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://redetrade:redetrade@postgres:5432/redetrade
       REDIS_URL: redis://redis:6379
+      # Local/dev: sempre roda o seed (idempotente) pra manter categorias/
+      # subcategorias/superadmin padrão sempre presentes ao testar.
+      RUN_SEED: "true"
     env_file:
       - ./api/.env
     depends_on:

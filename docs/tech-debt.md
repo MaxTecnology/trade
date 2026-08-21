@@ -223,17 +223,21 @@ No caminho, mais 2 bugs pré-existentes descobertos e corrigidos: `useQueryAgenc
 
 Validado com Postgres real: Comprador/Vendedor (texto), Agência e Associado (seleção) todos filtram corretamente sobre um cenário com agência+associado gerido reais.
 
-## Constraints de domínio aplicadas via seed.ts, não via migration formal
-`saldo_nao_negativo`, `valor_rt_positivo` e demais `CHECK` constraints são aplicadas via `$executeRaw` idempotente dentro de `api/prisma/seed.ts`, não pela migration do Prisma. Um ambiente que rode só `prisma migrate deploy` sem executar o seed (ex.: pipeline futuro que separe seed de migration) sobe sem essas constraints de integridade — risco real dado que são regras invioláveis do domínio (ver `CLAUDE.md`).
-**Ação futura:** mover para uma migration Prisma formal (`prisma migrate dev --create-only` + editar SQL).
+## [RESOLVIDO 2026-08-21] Constraints de domínio aplicadas via seed.ts, não via migration formal
+~~`saldo_nao_negativo`, `valor_rt_positivo` e demais `CHECK` constraints são aplicadas via `$executeRaw` idempotente dentro de `api/prisma/seed.ts`~~ — movidas pra migration formal `20260821220119_constraints_e_sequence_formais` (`prisma migrate dev --create-only` + SQL manual, guardas `IF NOT EXISTS` mantidas pra idempotência em ambientes que já tinham). Também movida a `CREATE SEQUENCE conta_numero_seq` (usada por `gerarNumeroConta()` em toda criação de Agência/Associado/Matriz) — estava no mesmo risco e nem tinha sido citada antes como constraint, mas é tão crítica quanto (sem ela, nenhuma conta nova pode ser criada).
+
+**Validado**: `prisma migrate deploy` contra um Postgres **novo** (container descartável, nunca rodou seed) aplicou as 12 migrations e criou a sequence + as 5 constraints sozinho — confirmado via `\dS+ conta_numero_seq` e `pg_constraint`. `seed.ts` continua rodando sem erro (idempotente) no banco que já tinha essas constraints do jeito antigo.
 
 ## Imagem de produção da API carrega `devDependencies` inteiras
 `api/Dockerfile` tem um estágio `base` (`npm ci --only=production`) que nunca é usado — o estágio `production` copia `node_modules` do `builder`, que instalou tudo (`npm ci` completo). Isso acontece porque `prisma` e `tsx` (usados em runtime pelo `entrypoint.sh` para `migrate deploy`/seed) estão em `devDependencies`.
 **Ação futura:** mover `prisma` e `tsx` para `dependencies` e ajustar o Dockerfile para copiar `node_modules` do estágio `base` — reduz tamanho de imagem e superfície de CVE. Precisa validar que o Prisma Client gerado no `builder` continua acessível (ver onde `prisma generate` grava o client) antes de trocar a origem do `node_modules`.
 
-## Seed roda em todo boot do container (idempotente, mas não ideal)
-`entrypoint.sh` executa `prisma/seed.ts` a cada start/restart do container `api`, não só na primeira vez. Confirmado idempotente (upserts com `update: {}`), mas adiciona latência em todo restart e mistura responsabilidade de bootstrap com runtime.
-**Ação futura:** separar seed do boot automático — rodar uma vez via `docker compose run --rm api npm run db:seed` ou flag `RUN_SEED` controlada manualmente no primeiro deploy.
+## [RESOLVIDO 2026-08-21] Seed roda em todo boot do container (idempotente, mas não ideal)
+~~`entrypoint.sh` executa `prisma/seed.ts` a cada start/restart do container `api`, não só na primeira vez.~~ Corrigido: `entrypoint.sh` só roda o seed quando `RUN_SEED=true`. `docker-compose.yml` (local/dev) seta `RUN_SEED: "true"` sempre, pra manter o fluxo de teste desta sessão sem mudança. `docker-compose.prod.yml` deixa `RUN_SEED` default `false` — pra rodar o seed uma vez em produção (primeiro deploy, ou reaplicar categorias padrão), sobe com `RUN_SEED=true docker compose -f docker-compose.prod.yml up -d api` uma vez e depois volta a subir sem a variável.
+
+**Ordem importa**: só foi seguro desacoplar o seed do boot **depois** de mover a sequence/constraints pra migration formal (item acima) — senão um ambiente novo que nunca rodasse o seed manualmente ficaria sem `conta_numero_seq` e sem as CHECK constraints indefinidamente.
+
+**Validado**: container local com `RUN_SEED=true` roda o seed (log "Running database seed..."); container de teste descartável sem a variável mostra "Skipping seed (RUN_SEED not set to true)." e sobe normalmente.
 
 ## [RESOLVIDO 2026-08-14] `limiteVendaMensal`/`limiteVendaTotal` limitavam o comprador, não o vendedor
 ~~Os campos se chamam "limite de **venda**", mas `validarLimiteVenda` agregava débitos da conta do **comprador**~~ — herdado do antigo `plano.limiteRT`, que também limitava o comprador. Decisão de produto tomada: **o campo agora limita de fato quem vende** (agrega créditos — RT recebido — na conta de quem está vendendo), não quem compra. Quem compra já é limitado por `saldo` + `limiteCredito` (checagem própria, com CHECK constraint no banco); um teto de volume adicional do lado do comprador era redundante com isso. Do lado do vendedor não existia nenhum freio — vender é só crédito na conta — e é isso que o negócio quer limitar (evitar que um membro flood a economia de RT vendendo desproporcionalmente).
