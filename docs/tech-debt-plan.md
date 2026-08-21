@@ -11,7 +11,7 @@
 - [x] `TASK.md` desatualizado (limiteRT do plano → limiteVendaMensal/Total)
 - [x] Seed rodando em todo restart do container → rodar só uma vez
 - [x] Constraints de integridade (`CHECK`) via migration formal em vez de `seed.ts`
-- [ ] Timezone do servidor no corte de "mês corrente" (`validarLimiteVenda`)
+- [x] Timezone do servidor no corte de "mês corrente" (`validarLimiteVenda`)
 - [x] Checagem de saldo fora da transação Prisma → erro amigável (`INSUFFICIENT_BALANCE`)
 - [x] Cobertura de teste em `limites.ts` (`getLimiteCreditoDaConta`/`validarLimiteVenda`)
 - [x] `Agencia.create()` não retorna a `conta` recém-criada (Associado retorna, Agência não)
