@@ -8,9 +8,11 @@ Pedido pelo usuário junto com os filtros de Estorno (item acima). Achado: "Gera
 
 Como `ExtratosSearch.jsx` não tem acesso ao `getFilteredRowModel()` de `ExtratosTable.jsx` (componentes irmãos, não pai/filho), o PDF respeita os filtros ativos via `estornoFilters.js` — replica os mesmos predicados de `constantsEstorno.js` rodando direto sobre o array de solicitações antes de gerar o PDF. **Se os filtros da tabela mudarem, esse arquivo precisa ser atualizado junto** (comentário no próprio arquivo já avisa).
 
-**Fora de escopo, ainda quebrado**: "Gerar PDF" em `Extratos.jsx` (usa o mesmo `ExtratosSearch.jsx` sem passar `onGerarPdf`), `ContasSearch.jsx`, `SearchfieldExtrato.jsx`, e `PDFVoucher.jsx` continuam com o mesmo bug — não foram tocados por não fazerem parte do pedido (Estornos especificamente).
+**Também corrigido, achado ao vivo**: "Meu Extrato" (`MeusExtratos.jsx`) tem o mesmo `ExtratosSearch.jsx` sem `onGerarPdf` — usuário clicou em "Gerar PDF" ali e caiu em "Nova Transação" com erros de 403 no console (`GET /agencias`, endpoint `superadmin`-only, chamado por quem estava logado como Agência). Mesmo fix aplicado: `onGerarPdf` + novo `exportMeuExtratoPdf.js`. De quebra, `constantsMeuExtrato.js` ganhou as colunas ocultas de Período (`dataInicio`/`dataTermino`), que também não filtravam nada.
 
-**Validado**: Docker + Playwright real — download do PDF capturado e conferido campo a campo (via leitura do PDF gerado), 3 linhas com Comprador/Vendedor/Agência/Motivo corretos.
+**Fora de escopo, ainda quebrado**: "Gerar PDF" em `Extratos.jsx` (usa o mesmo `ExtratosSearch.jsx` sem passar `onGerarPdf`), `ContasSearch.jsx`, `SearchfieldExtrato.jsx`, e `PDFVoucher.jsx` continuam com o mesmo bug. Em "Meu Extrato" os filtros de Associado/Agência/Comprador/Vendedor de `ExtratosSearch.jsx` continuam decorativos — não fazem sentido nesse contexto (é sempre a própria conta) e não foram implementados; só Período foi ligado.
+
+**Validado**: Docker + Playwright real — download do PDF capturado e conferido campo a campo (via leitura do PDF gerado) nas duas telas (Estornos e Meu Extrato).
 
 ## [RESOLVIDO 2026-08-20] Filtros de Estornos (Associado/Agência/Comprador/Vendedor) não filtravam nada
 

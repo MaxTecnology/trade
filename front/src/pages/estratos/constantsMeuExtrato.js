@@ -1,6 +1,7 @@
 import { formatDate } from "@/hooks/ListasHook";
 import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 import { StatusTransacaoRelationCell } from "@/utils/functions/tables/statusTransacao";
+import { filterStart, filterEnd } from "@/utils/functions/tables/date";
 
 // Colunas próprias pro ledger da própria conta (movimentacao_conta, via
 // GET /extrato) — não reaproveita constantsExtratos.js (Transacao/campos
@@ -45,5 +46,19 @@ export const columns = [
         accessorKey: 'transacao.status',
         header: 'Status',
         cell: StatusTransacaoRelationCell,
+    },
+    // Colunas ocultas (ver invisibleFields em ExtratosTable.jsx) — só existem
+    // pra alimentar o filtro de Período de ExtratosSearch.jsx.
+    {
+        id: 'dataInicio',
+        accessorKey: 'criadoEm',
+        header: 'dataInicio',
+        filterFn: filterStart,
+    },
+    {
+        id: 'dataTermino',
+        accessorKey: 'criadoEm',
+        header: 'dataTermino',
+        filterFn: filterEnd,
     },
 ];

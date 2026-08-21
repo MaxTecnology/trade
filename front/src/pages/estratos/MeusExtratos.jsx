@@ -6,12 +6,19 @@ import ExtratosSearch from "@/components/Search/ExtratosSearch";
 import ExtratosTable from "@/components/Tables/ExtratosTable";
 import TransaçõesModal from "@/Modals/TransaçõesModal";
 import { useQueryExtrato } from "@/hooks/ReactQuery/useQueryExtrato";
+import filters from "@/store/filters";
+import { applyMeuExtratoFilters } from "@/utils/functions/meuExtratoFilters";
+import { exportMeuExtratoPdf } from "@/utils/functions/exportMeuExtratoPdf";
 
 const MeusExtratos = () => {
     const { data } = useQueryExtrato()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState({})
     const [id, setId] = useState()
+
+    const handleGerarPdf = () => {
+        exportMeuExtratoPdf(applyMeuExtratoFilters(data?.data ?? [], filters.table))
+    }
 
     return (
         <div className="container">
@@ -23,7 +30,7 @@ const MeusExtratos = () => {
                 />
                 : null}
             <div className="containerHeader">Meus extratos</div>
-            <ExtratosSearch />
+            <ExtratosSearch onGerarPdf={handleGerarPdf} />
             <div className="containerList">
                 <ExtratosTable
                     columns={columns}
