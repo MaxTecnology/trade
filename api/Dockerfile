@@ -1,8 +1,3 @@
-FROM node:22-alpine AS base
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
@@ -11,9 +6,20 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
+# node_modules do builder tem devDependencies (typescript, vitest, eslint...) —
+# stage separado gera um node_modules limpo, só com dependencies reais
+# (inclui prisma/tsx: usados em runtime por entrypoint.sh, não são dev-only
+# apesar do nome do pacote).
+FROM node:22-alpine AS prod-deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY prisma ./prisma
+RUN npx prisma generate
+
 FROM node:22-alpine AS production
 WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts

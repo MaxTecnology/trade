@@ -18,7 +18,7 @@
 
 ## Fase 2 — infra, precisa mais cuidado na validação
 
-- [ ] Imagem Docker da API carregando `devDependencies` em produção
+- [x] Imagem Docker da API carregando `devDependencies` em produção
 
 ## Fase 3 — precisa decisão de produto antes de codar
 
