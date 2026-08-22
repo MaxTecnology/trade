@@ -23,7 +23,7 @@
 ## Fase 3 — precisa decisão de produto antes de codar
 
 - [x] `Cobranca` ganha campo `tipo` (`inscricao | manutencao | comissao | outro`) — base pro item abaixo e pro relatório de emissão
-- [x] Manutenção anual do plano — reaproveita módulo de Cobrança, 100% manual (gerar/quitar/bloquear), com relatório de acompanhamento (`GET /cobrancas/manutencao-anual`)
+- [x] Manutenção anual do plano — reaproveita módulo de Cobrança, 100% manual (gerar/quitar/bloquear), com relatório de acompanhamento (`GET /cobrancas/manutencao-anual` + tela em Contas)
 - [ ] Relatório de emissão da Matriz (`GET /relatorios/emissao-matriz`) — desenho já validado com o usuário (circulação atual, injeção direta, crédito aprovado, queima, compra da Matriz), falta implementar
 
 ## Fase 4 — investigação/feature maior, cada uma com conversa de escopo própria
