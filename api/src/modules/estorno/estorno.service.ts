@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import * as transactionService from '../transaction/transaction.service.js'
@@ -58,10 +59,26 @@ export async function solicitarEstorno(
     throw new AppError('VALIDATION_ERROR', 'Já existe uma solicitação de estorno em andamento para esta transação.', 422)
   }
 
-  return prisma.solicitacaoEstorno.create({
-    data: { transacaoId: input.transacaoId, solicitanteId: requester.id, motivo: input.motivo },
-    include,
-  })
+  // A checagem acima (findFirst) tem uma corrida: duas requisições concorrentes
+  // pra mesma transação podem ambas passar antes de qualquer create acontecer.
+  // O índice único parcial no banco (migration 20260822011824) garante a regra
+  // de qualquer forma — a segunda tentativa concorrente cai aqui, código P2002
+  // (unique constraint), mapeada pro mesmo erro amigável da checagem acima.
+  try {
+    return await prisma.solicitacaoEstorno.create({
+      data: { transacaoId: input.transacaoId, solicitanteId: requester.id, motivo: input.motivo },
+      include,
+    })
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002' &&
+      error.meta?.modelName === 'SolicitacaoEstorno'
+    ) {
+      throw new AppError('VALIDATION_ERROR', 'Já existe uma solicitação de estorno em andamento para esta transação.', 422)
+    }
+    throw error
+  }
 }
 
 export async function listarMinhas(usuarioId: string, query: ListEstornoQueryType) {

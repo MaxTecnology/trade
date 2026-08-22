@@ -552,6 +552,13 @@ model SolicitacaoEstorno {
   @@map("solicitacao_estorno")
 }
 
+// Índice único parcial (raw SQL, migration 20260822011824 — não expressável
+// no schema.prisma): no máximo uma SolicitacaoEstorno ativa (em_analise ou
+// encaminhado) por transacaoId.
+//   CREATE UNIQUE INDEX solicitacao_estorno_transacao_ativa_unica
+//     ON solicitacao_estorno (transacaoId)
+//     WHERE status IN ('em_analise', 'encaminhado');
+
 // ─────────────────────────────────────────
 // VOUCHER
 // ─────────────────────────────────────────

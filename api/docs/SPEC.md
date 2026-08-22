@@ -783,7 +783,7 @@ Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `n
 
 - Só pode solicitar quem é comprador/vendedor da transação, ou `agency_admin`/`superadmin`.
 - Apenas transações `permuta` ou `negociada`, ainda não `estornada`, dentro do prazo de 30 dias.
-- Não permite duas solicitações simultâneas em andamento (`em_analise`/`encaminhado`) para a mesma transação.
+- Não permite duas solicitações simultâneas em andamento (`em_analise`/`encaminhado`) para a mesma transação — checado na aplicação (`findFirst` antes do `create`) **e** garantido no banco por um índice único parcial (`solicitacao_estorno_transacao_ativa_unica`, `transacaoId` único onde `status IN (em_analise, encaminhado)`), que fecha a corrida entre duas requisições concorrentes pra mesma transação. A segunda tentativa concorrente recebe o mesmo erro amigável da checagem de aplicação (`VALIDATION_ERROR` 422), nunca um 500 — `estorno.service.ts::solicitarEstorno()` captura a violação de unicidade (`Prisma.PrismaClientKnownRequestError`, `code: 'P2002'`, `meta.modelName: 'SolicitacaoEstorno'`) e reconverte.
 - `agency_admin` só encaminha (`PATCH /estornos/:id/encaminhar`) solicitações da própria agência — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 - Ao aprovar, executa a mesma lógica de estorno direto (§9) — valida saldo suficiente na conta a ser debitada, reverte movimentações, restaura quantidade da oferta (se aplicável), gera voucher de estorno.
 - Ao negar, a transação original permanece `concluida` — nenhuma reversão ocorre.
