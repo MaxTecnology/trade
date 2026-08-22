@@ -464,13 +464,13 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 - Registra como `tipo: credito` na tabela `transacao`.
 
 **Negociação direta (`negociada`):**
-- Fora do marketplace de Ofertas — o comprador escolhe qualquer associado ativo (via `GET /associados/diretorio`) e define o `valorRT` diretamente, sem oferta publicada.
+- Fora do marketplace de Ofertas — o comprador escolhe um vendedor e define o `valorRT` diretamente, sem oferta publicada.
 - **Sempre em RT** — não existe valor em dinheiro real (BRL) numa negociação direta. RT é a moeda interna do sistema e não circula para fora dele (ver `ARCHITECTURE.md §4`).
-- Mesmas validações de saldo do comprador (`limiteCredito`) e limite de venda do vendedor (`limiteVendaMensal`/`limiteVendaTotal`) que a permuta.
+- Vendedor pode ser **Associado** (default, via `vendedorId` + `vendedorTipo: 'associado'`, escolhido via `GET /associados/diretorio`), **Agência** (`vendedorTipo: 'agencia'`, `vendedorId` = id da Agência) ou a própria **Matriz** (`vendedorTipo: 'matriz'`, sem `vendedorId` — só existe uma). Mesma resolução genérica já usada em `permuta()`: `Transacao.vendedorId` só é preenchido quando o vendedor é um Associado (é uma FK estrita pra `Associado`); Agência/Matriz como vendedor deixam `vendedorId` `null` na transação, resolvidos depois via `contaOrigemId`/`contaDestinoId` nos relatórios (mesmo padrão de `permuta()`/`oferta.associadoId` opcional).
+- Mesmas validações de saldo do comprador (`limiteCredito`) e limite de venda do vendedor (`limiteVendaMensal`/`limiteVendaTotal`, pulada quando o vendedor é a Matriz ou quando a Agência não tem teto configurado) que a permuta.
 - Não decrementa estoque de oferta (não há oferta envolvida) — `quantidade` fica `null`.
 - Gera voucher, comissão da plataforma e comissão de gerente, igual à permuta.
-- Não é permitido negociar consigo mesmo.
-- `negociada()` como **vendedor** continua exigindo um Associado (`vendedorId` aponta sempre para `Associado.id`) — Agência/Matriz vendendo por negociação direta (sem oferta) não é suportado nesta rodada (ver `docs/tech-debt.md`).
+- Não é permitido negociar consigo mesmo, pra qualquer combinação de tipo (checado por `contaId`, não só por `associadoId`).
 
 **Avaliação (`avaliar`):**
 - Apenas o `usuarioIniciador` (quem fez a compra) pode avaliar, e só uma vez por transação.

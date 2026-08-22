@@ -2,20 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { createT } from "@/hooks/ListasHook";
 import Footer from "@/components/Footer";
 import { useNavigate } from 'react-router-dom';
-import { getName } from "@/hooks/getId";
+import { getName, isMatriz } from "@/hooks/getId";
 import RealInput from "@/components/Inputs/CampoMoeda";
 import { activePage } from "@/utils/functions/setActivePage";
 import NovaTransaçãoModal from "@/Modals/NovaTransaçãoModal";
 import AssociadosDiretorioOptions from "@/components/Options/AssociadosDiretorioOptions";
+import AgenciasOptions from "@/components/Options/AgenciasOptions";
 import { toast } from "sonner";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 import useModal from "@/hooks/useModal";
 
-// Negociação direta entre associados, fora do marketplace de Ofertas — sempre em RT
-// (não há valor em dinheiro real envolvido, ver AJUSTES.md).
+// Negociação direta, fora do marketplace de Ofertas — sempre em RT (não há
+// valor em dinheiro real envolvido, ver AJUSTES.md). Vendedor pode ser
+// Associado (padrão), Agência ou a própria Matriz — os dois últimos só
+// aparecem pra quem é Matriz, já que GET /agencias (usado no seletor de
+// Agência) é superadmin-only; pra Associado/Agência a tela continua igual
+// a antes, só Associado como vendedor.
 const TransaçãoCadastrar = () => {
     const [reference, setReference] = useState(true)
     const [vendedor, setVendedor] = useState("")
+    const [vendedorTipo, setVendedorTipo] = useState("associado")
     const [formData, setFormData] = useState('');
     const [modal, modalToggle] = useModal()
     const [rate, setRate] = useState(null)
@@ -70,19 +76,46 @@ const TransaçãoCadastrar = () => {
                         <label className="required">Comprador</label>
                         <input readOnly defaultValue={getName()} type="text" className="form-control readOnly" name="nomeComprador" required />
                     </div>
-                    <div className="form-group f2">
-                        <label className="required">Vendedor</label>
-                        <select
-                            required
-                            value={vendedor}
-                            onChange={(event) => { setVendedor(JSON.parse(event.target.value)) }}
-                        >
-                            <option value="" disabled>
-                                Selecione
-                            </option>
-                            <AssociadosDiretorioOptions />
-                        </select>
-                    </div>
+                    {isMatriz() ? (
+                        <div className="form-group f2">
+                            <label className="required">Tipo de Vendedor</label>
+                            <select
+                                value={vendedorTipo}
+                                onChange={(event) => {
+                                    setVendedorTipo(event.target.value)
+                                    setVendedor("")
+                                }}
+                            >
+                                <option value="associado">Associado</option>
+                                <option value="agencia">Agência</option>
+                                <option value="matriz">Matriz (eu mesma)</option>
+                            </select>
+                        </div>
+                    ) : null}
+                    {vendedorTipo !== "matriz" ? (
+                        <div className="form-group f2">
+                            <label className="required">Vendedor</label>
+                            <select
+                                required
+                                value={vendedor?.id ?? ""}
+                                onChange={(event) => {
+                                    // AgenciasOptions só manda o id puro (reaproveitado em várias
+                                    // buscas que só precisam disso); AssociadosDiretorioOptions
+                                    // manda o objeto inteiro serializado — trata os dois formatos.
+                                    if (vendedorTipo === "agencia") {
+                                        setVendedor({ id: event.target.value })
+                                    } else {
+                                        setVendedor(JSON.parse(event.target.value))
+                                    }
+                                }}
+                            >
+                                <option value="" disabled>
+                                    Selecione
+                                </option>
+                                {vendedorTipo === "agencia" ? <AgenciasOptions /> : <AssociadosDiretorioOptions />}
+                            </select>
+                        </div>
+                    ) : null}
                     <div className="form-group">
                         <label className="required">Valor RT$</label>
                         <RealInput name="valorRT" placeholder="Valor RT$" required reference={reference} />
@@ -111,8 +144,11 @@ const TransaçãoCadastrar = () => {
                         <textarea name="descricao" rows={5} />
                     </div>
                 </div>
-                <input type="hidden" name="vendedorId" value={vendedor ? vendedor.id : ""} />
-                <input type="hidden" name="nomeVendedor" value={vendedor ? (vendedor.nomeFantasia || vendedor.nome) : ""} />
+                <input type="hidden" name="vendedorTipo" value={vendedorTipo} />
+                {vendedorTipo !== "matriz" ? (
+                    <input type="hidden" name="vendedorId" value={vendedor ? vendedor.id : ""} />
+                ) : null}
+                <input type="hidden" name="nomeVendedor" value={vendedorTipo === "matriz" ? "Matriz" : (vendedor ? (vendedor.nomeFantasia || vendedor.nome) : "")} />
                 <div className="buttonContainer">
                     <ButtonMotion onClick={handleclick} type="button">Voltar</ButtonMotion>
                     <ButtonMotion className="confirmButton" type="submit">Enviar</ButtonMotion>

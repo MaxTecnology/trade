@@ -30,7 +30,7 @@
 
 - [x] Módulo Cobranças/`ContasModal.jsx` — mesmo padrão de campos legados
       quebrados já corrigido em Créditos/Usuários
-- [ ] `negociada()` aceitar Agência/Matriz como vendedor (hoje só Associado)
+- [x] `negociada()` aceitar Agência/Matriz como vendedor (hoje só Associado)
 - [ ] Tela de front pra Agência/Matriz cadastrar oferta ou comprar (API pronta)
 - [ ] Índice único parcial pra impedir duas `SolicitacaoEstorno` simultâneas
       pra mesma transação (hoje só checado na aplicação)

@@ -6,13 +6,22 @@ export const permutaSchema = z.object({
   parcelas: z.number().int().min(1).max(12).default(1),
 })
 
-// Negociação direta entre associados, fora do marketplace de ofertas — sempre em RT.
-export const negociadaSchema = z.object({
-  vendedorId: z.string().uuid(),
-  valorRT: z.number().positive(),
-  parcelas: z.number().int().min(1).max(12).default(1),
-  descricao: z.string().optional(),
-})
+// Negociação direta, fora do marketplace de ofertas — sempre em RT. Vendedor
+// pode ser Associado (default, comportamento original), Agência ou a própria
+// Matriz — vendedorId não se aplica à Matriz (só existe uma, sem id de
+// entidade própria; identificada só por Conta.entityType).
+export const negociadaSchema = z
+  .object({
+    vendedorId: z.string().uuid().optional(),
+    vendedorTipo: z.enum(['associado', 'agencia', 'matriz']).default('associado'),
+    valorRT: z.number().positive(),
+    parcelas: z.number().int().min(1).max(12).default(1),
+    descricao: z.string().optional(),
+  })
+  .refine((data) => data.vendedorTipo === 'matriz' || !!data.vendedorId, {
+    message: 'vendedorId é obrigatório quando vendedorTipo não é matriz',
+    path: ['vendedorId'],
+  })
 
 export const avaliarSchema = z.object({
   notaAtendimento: z.number().int().min(1).max(5),

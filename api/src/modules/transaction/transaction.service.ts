@@ -185,7 +185,7 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
   })
   if (!compradorConta) throw Errors.notFound('Conta do comprador')
 
-  if (compradorConta.entityType === 'associado' && input.vendedorId === compradorConta.associadoId) {
+  if (compradorConta.entityType === 'associado' && input.vendedorTipo === 'associado' && input.vendedorId === compradorConta.associadoId) {
     throw new AppError('VALIDATION_ERROR', 'Não é possível negociar consigo mesmo.', 422)
   }
 
@@ -201,12 +201,51 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
   }
   // Matriz: sem status pra checar, sem comissão (percentualComissao fica 0).
 
-  const vendedorAssociado = await prisma.associado.findUnique({
-    where: { id: input.vendedorId },
-    include: { conta: true },
-  })
-  if (!vendedorAssociado?.conta) throw Errors.notFound('Associado vendedor')
-  if (vendedorAssociado.status !== 'ativo') throw Errors.associateSuspended()
+  // Resolução genérica do vendedor — mesma lógica de permuta() (Associado,
+  // Agência ou Matriz), só que partindo de vendedorId+vendedorTipo em vez de
+  // uma oferta (negociada() é fora do marketplace, não tem oferta no meio).
+  let vendedorConta: { id: string; saldo: unknown; entityType: string }
+  let vendedorAssociadoId: string | null = null
+  let limiteVendaMensalVendedor = 0
+  let limiteVendaTotalVendedor = 0
+  let pularValidacaoLimiteVenda = false
+
+  if (input.vendedorTipo === 'agencia') {
+    const vendedorAgencia = await prisma.agencia.findUnique({
+      where: { id: input.vendedorId },
+      include: { conta: true },
+    })
+    if (!vendedorAgencia?.conta) throw Errors.notFound('Agência vendedora')
+    if (vendedorAgencia.status !== 'ativo') throw Errors.agencySuspended()
+    vendedorConta = vendedorAgencia.conta
+    // Mesma regra de null usada em permuta(): agency.service.ts não exige
+    // limiteVendaMensal/Total no cadastro — null é "sem teto configurado
+    // ainda", não "zerado por esquecimento".
+    if (vendedorAgencia.limiteVendaMensal === null || vendedorAgencia.limiteVendaTotal === null) {
+      pularValidacaoLimiteVenda = true
+    } else {
+      limiteVendaMensalVendedor = Number(vendedorAgencia.limiteVendaMensal)
+      limiteVendaTotalVendedor = Number(vendedorAgencia.limiteVendaTotal)
+    }
+  } else if (input.vendedorTipo === 'matriz') {
+    vendedorConta = await prisma.conta.findFirstOrThrow({ where: { entityType: 'matriz' } })
+    pularValidacaoLimiteVenda = true
+  } else {
+    const vendedorAssociado = await prisma.associado.findUnique({
+      where: { id: input.vendedorId },
+      include: { conta: true },
+    })
+    if (!vendedorAssociado?.conta) throw Errors.notFound('Associado vendedor')
+    if (vendedorAssociado.status !== 'ativo') throw Errors.associateSuspended()
+    vendedorConta = vendedorAssociado.conta
+    vendedorAssociadoId = vendedorAssociado.id
+    limiteVendaMensalVendedor = Number(vendedorAssociado.limiteVendaMensal ?? 0)
+    limiteVendaTotalVendedor = Number(vendedorAssociado.limiteVendaTotal ?? 0)
+  }
+
+  if (compradorConta.id === vendedorConta.id) {
+    throw new AppError('VALIDATION_ERROR', 'Não é possível negociar consigo mesmo.', 422)
+  }
 
   const valorTotal = input.valorRT
   const limiteCreditoComprador = Number(compradorConta.limiteCredito ?? 0)
@@ -214,16 +253,17 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
     throw Errors.insufficientBalance()
   }
 
-  // Limite de venda é do lado de quem VENDE (recebe RT) — vendedor aqui é
-  // sempre Associado (negociada() não generaliza o lado vendedor).
-  await validarLimiteVenda({
-    contaId: vendedorAssociado.conta.id,
-    valorNovaOperacao: valorTotal,
-    limiteVendaMensal: Number(vendedorAssociado.limiteVendaMensal ?? 0),
-    limiteVendaTotal: Number(vendedorAssociado.limiteVendaTotal ?? 0),
-  })
+  // Limite de venda é do lado de quem VENDE (recebe RT) — quem compra já é
+  // limitado por saldo + limiteCredito, não precisa de teto de volume extra.
+  if (!pularValidacaoLimiteVenda) {
+    await validarLimiteVenda({
+      contaId: vendedorConta.id,
+      valorNovaOperacao: valorTotal,
+      limiteVendaMensal: limiteVendaMensalVendedor,
+      limiteVendaTotal: limiteVendaTotalVendedor,
+    })
+  }
 
-  const vendedorConta = vendedorAssociado.conta
   const valorParcela = valorTotal / input.parcelas
   const compradorContaSaldo = Number(compradorConta.saldo)
   const vendedorContaSaldo = Number(vendedorConta.saldo)
@@ -239,7 +279,7 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
         parcelas: input.parcelas,
         descricao: input.descricao,
         compradorId: compradorConta.associado?.id ?? null,
-        vendedorId: input.vendedorId,
+        vendedorId: vendedorAssociadoId,
         usuarioIniciadorId: usuarioId,
         contaOrigemId: compradorConta.id,
         contaDestinoId: vendedorConta.id,
