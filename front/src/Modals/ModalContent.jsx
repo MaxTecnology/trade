@@ -141,6 +141,11 @@ const ModalContent = ({ modalItem, modalFunction }) => {
                     { name: 'Contas a Pagar', icon: <FaMoneyCheckAlt />, route: "/contasPagar" }
                 );
             }
+            if (isMatriz()) {
+                component.push(
+                    { name: 'Manutenção Anual', icon: <BsGraphUp />, route: "/manutencaoAnual" }
+                );
+            }
             break;
         // Adicione casos para outras categorias aqui
         case 'Usuarios':

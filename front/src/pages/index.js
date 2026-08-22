@@ -43,6 +43,7 @@ const UsuariosDados = lazy(() => import('@/pages/usuarios/UsuariosDados.jsx'))
 const TransaçõesExtorno = lazy(() => import('@/pages/transacoes/TransaçõesExtorno.jsx'))
 const EstratosEstorno = lazy(() => import('@/pages/estratos/ExtratosEstorno.jsx'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword.jsx'))
+const ManutencaoAnual = lazy(() => import('@/pages/relatorios/ManutencaoAnual.jsx'))
 export {
     Login,
     PlanoAssociado,
@@ -87,5 +88,6 @@ export {
     UsuariosDados,
     TransaçõesExtorno,
     EstratosEstorno,
-    ResetPassword
+    ResetPassword,
+    ManutencaoAnual
 };
