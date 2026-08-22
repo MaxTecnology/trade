@@ -9,6 +9,7 @@ import {
   comissoesGerentesController,
   usoPlanoConta,
   associadosController,
+  emissaoMatrizController,
 } from './report.controller.js'
 
 export async function reportRoutes(app: FastifyInstance) {
@@ -36,4 +37,5 @@ export async function reportRoutes(app: FastifyInstance) {
   app.get('/relatorios/comissoes-gerentes', agencyOrSuper, comissoesGerentesController)
   app.get('/relatorios/uso-plano', assocAdmin, usoPlanoConta)
   app.get('/relatorios/associados', adminOrGerente, associadosController)
+  app.get('/relatorios/emissao-matriz', { preHandler: [authGuard, roleGuard('superadmin')] }, emissaoMatrizController)
 }

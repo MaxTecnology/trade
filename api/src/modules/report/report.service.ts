@@ -11,10 +11,10 @@ interface ReportFilters {
   format?: string
 }
 
-function dateRange(dataInicio?: string, dataFim?: string): Record<string, unknown> {
+function dateRange(dataInicio?: string, dataFim?: string, campo = 'criadoEm'): Record<string, unknown> {
   if (!dataInicio && !dataFim) return {}
   return {
-    criadoEm: {
+    [campo]: {
       ...(dataInicio ? { gte: new Date(dataInicio) } : {}),
       ...(dataFim ? { lte: new Date(dataFim) } : {}),
     },
@@ -238,4 +238,76 @@ export async function relatorioAssociados(requester: { role: string; entityId: s
     prisma.associado.count({ where }),
   ])
   return { items, total, page, limit }
+}
+
+/**
+ * Relatório de emissão de RT da Matriz — unifica os 4 caminhos que criam ou
+ * destroem RT no sistema (nenhum tinha visibilidade unificada antes):
+ * 1) injeção direta (POST /transacoes/credito, Transacao sem contaOrigemId)
+ * 2) crédito solicitado pelo associado e aprovado pela Matriz (SolicitacaoCredito)
+ * 3) queima (Cobranca em RT quitada — a perna de crédito sempre cai na Matriz
+ *    quando não tem agência, mas o valor ainda sai de circulação do lado do devedor)
+ * 4) compra da Matriz no mercado normal (permuta/negociada com ela como compradora)
+ *    — informativo: é zero-soma no total (débito dela, crédito do vendedor), não
+ *    entra no líquido, mas mostra o quanto ela está "girando" o próprio limite.
+ *
+ * circulacaoAtual = SUM(saldo) das contas != matriz, sempre instantâneo (ignora
+ * o filtro de período) — soma de todo RT que já existe, criado e não destruído.
+ */
+export async function relatorioEmissaoMatriz(filters: { dataInicio?: string; dataFim?: string }) {
+  const contaMatriz = await prisma.conta.findFirstOrThrow({ where: { entityType: 'matriz' } })
+
+  const [circulacaoAgg, injecaoAgg, creditoAprovadoAgg, queimaAgg, compraMatrizAgg] = await Promise.all([
+    prisma.conta.aggregate({
+      where: { entityType: { not: 'matriz' } },
+      _sum: { saldo: true },
+    }),
+    prisma.transacao.aggregate({
+      where: { tipo: 'credito', contaOrigemId: null, ...dateRange(filters.dataInicio, filters.dataFim) },
+      _sum: { valorRT: true },
+      _count: true,
+    }),
+    prisma.solicitacaoCredito.aggregate({
+      where: { status: 'aprovado', ...dateRange(filters.dataInicio, filters.dataFim, 'atualizadoEm') },
+      _sum: { valorSolicitado: true },
+      _count: true,
+    }),
+    prisma.cobranca.aggregate({
+      where: {
+        pago: true,
+        valorRT: { not: null },
+        agenciaId: null,
+        ...dateRange(filters.dataInicio, filters.dataFim, 'atualizadoEm'),
+      },
+      _sum: { valorRT: true },
+      _count: true,
+    }),
+    prisma.transacao.aggregate({
+      where: {
+        tipo: { in: ['permuta', 'negociada'] },
+        contaOrigemId: contaMatriz.id,
+        ...dateRange(filters.dataInicio, filters.dataFim),
+      },
+      _sum: { valorRT: true },
+      _count: true,
+    }),
+  ])
+
+  const injecaoDireta = { total: Number(injecaoAgg._sum.valorRT ?? 0), quantidade: injecaoAgg._count }
+  const creditoAprovado = {
+    total: Number(creditoAprovadoAgg._sum.valorSolicitado ?? 0),
+    quantidade: creditoAprovadoAgg._count,
+  }
+  const queima = { total: Number(queimaAgg._sum.valorRT ?? 0), quantidade: queimaAgg._count }
+  const compraMatriz = { total: Number(compraMatrizAgg._sum.valorRT ?? 0), quantidade: compraMatrizAgg._count }
+
+  return {
+    circulacaoAtual: Number(circulacaoAgg._sum.saldo ?? 0),
+    periodo: { dataInicio: filters.dataInicio ?? null, dataFim: filters.dataFim ?? null },
+    injecaoDireta,
+    creditoAprovado,
+    queima,
+    compraMatriz,
+    emissaoLiquida: injecaoDireta.total + creditoAprovado.total - queima.total,
+  }
 }

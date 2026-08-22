@@ -574,6 +574,7 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
 | GET | `/relatorios/comissoes-gerentes` | Relatório de comissões de todos os gerentes | `agency_admin`, `superadmin` |
 | GET | `/relatorios/uso-plano` | Quanto o associado já **vendeu** este mês vs. `limiteVendaMensal` (substituiu `plano.limiteRT`) | `associate_admin` |
 | GET | `/relatorios/associados` | Consolidado de associados | `agency_admin`, `superadmin`, `gerente` (apenas os próprios) |
+| GET | `/relatorios/emissao-matriz` | Emissão de RT — circulação atual + 4 caminhos de emissão/queima, ver seção própria abaixo | `superadmin` |
 
 ### Filtros comuns
 
@@ -619,6 +620,32 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
     "page": 1,
     "limit": 20,
     "total": 45
+  }
+}
+```
+
+### `GET /relatorios/emissao-matriz` — detalhe
+
+Nenhum outro relatório dá visão unificada de quanto RT foi criado ou destruído no sistema — cada caminho grava de um jeito diferente (ver `docs/tech-debt.md`, entrada "Taxa de Manutenção..." não, a de emissão). Este endpoint cruza os 4 caminhos:
+
+1. **`injecaoDireta`** — `POST /transacoes/credito` (`Transacao{tipo:'credito', contaOrigemId:null}`), filtrado por `criadoEm`.
+2. **`creditoAprovado`** — fluxo de solicitação do associado aprovado pela Matriz (`SolicitacaoCredito{status:'aprovado'}`), filtrado por `atualizadoEm` (data da decisão, não da solicitação original).
+3. **`queima`** — `Cobranca` em RT quitada sem agência vinculada (`Cobranca{pago:true, valorRT≠null, agenciaId:null}`), filtrado por `atualizadoEm`. Reduz `emissaoLiquida` mesmo a perna de crédito indo pra Matriz (ver `docs/tech-debt.md`) — o RT saiu de circulação do lado de quem devia.
+4. **`compraMatriz`** — Matriz comprando no mercado normal (`Transacao{tipo IN (permuta,negociada), contaOrigemId: contaDaMatriz}`), filtrado por `criadoEm`. **Informativo, não entra em `emissaoLiquida`** — é zero-soma (débito da Matriz, crédito de quem vendeu), não muda o total em circulação.
+
+`circulacaoAtual` = `SUM(conta.saldo) WHERE entityType != 'matriz'` — sempre instantâneo, **ignora** `dataInicio`/`dataFim`. É o total de RT que já existe hoje (criado e não destruído), não um valor do período. `emissaoLiquida = injecaoDireta + creditoAprovado − queima`, escopado ao período pedido (ou histórico completo, se nenhuma data for passada) — quando não há `compraMatriz` no histórico, `emissaoLiquida` acumulado desde o início bate exatamente com `circulacaoAtual` (validado empiricamente).
+
+```json
+{
+  "success": true,
+  "data": {
+    "circulacaoAtual": 300,
+    "periodo": { "dataInicio": null, "dataFim": null },
+    "injecaoDireta": { "total": 500, "quantidade": 1 },
+    "creditoAprovado": { "total": 0, "quantidade": 0 },
+    "queima": { "total": 200, "quantidade": 1 },
+    "compraMatriz": { "total": 0, "quantidade": 0 },
+    "emissaoLiquida": 300
   }
 }
 ```

@@ -83,3 +83,9 @@ export async function associadosController(request: FastifyRequest, reply: Fasti
   const result = await reportService.relatorioAssociados(request.user, q)
   return reply.send(paginated(result.items, result.page, result.limit, result.total))
 }
+
+export async function emissaoMatrizController(request: FastifyRequest, reply: FastifyReply) {
+  const q = request.query as Query
+  const result = await reportService.relatorioEmissaoMatriz(q)
+  return reply.send(success(result))
+}
