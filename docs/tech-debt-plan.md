@@ -28,8 +28,8 @@
 
 ## Fase 4 — investigação/feature maior, cada uma com conversa de escopo própria
 
-- [ ] Módulo Cobranças/`ContasModal.jsx` — mesmo padrão de campos legados
-      quebrados já corrigido em Créditos/Usuários; não auditado a fundo ainda.
+- [x] Módulo Cobranças/`ContasModal.jsx` — mesmo padrão de campos legados
+      quebrados já corrigido em Créditos/Usuários
 - [ ] `negociada()` aceitar Agência/Matriz como vendedor (hoje só Associado)
 - [ ] Tela de front pra Agência/Matriz cadastrar oferta ou comprar (API pronta)
 - [ ] Índice único parcial pra impedir duas `SolicitacaoEstorno` simultâneas

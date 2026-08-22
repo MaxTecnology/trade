@@ -705,7 +705,7 @@ Registro de cobranças associadas a contas — taxas de plano, manutenção, ins
 
 ### Regras de Negócio
 
-- `GET /cobrancas/minhas` detecta automaticamente se é associado ou agência e retorna as cobranças correspondentes.
+- `GET /cobrancas/minhas` detecta automaticamente se é associado ou agência e retorna as cobranças correspondentes. Aceita `?direcao=pagar|receber` (default `receber`) — só tem efeito pra Agência (Associado é sempre devedor, então "pagar"/"receber" dão o mesmo resultado pra ele): `pagar` retorna só cobranças onde a própria conta da Agência é a devedora (ex: comissão da plataforma quando ela compra); `receber` retorna repasse dos seus associados + cobranças com `agenciaId` dela que não sejam da própria conta (mutuamente exclusivo com `pagar`, nunca duplica).
 - Agência vê cobranças próprias + dos seus associados.
 - Cobranças já quitadas não podem ser quitadas novamente.
 - Toda cobrança tem `valorBRL` OU `valorRT` preenchido (nunca os dois nulos — validado por CHECK no banco).

@@ -6,10 +6,19 @@ import ContasTable from "@/components/Tables/ContasTable";
 import { columns } from "./constantsContas";
 import ContasSearch from "@/components/Search/ContasSearch";
 import { useQueryContasReceber } from "@/hooks/ReactQuery/contas/useQueryContasReceber";
+import { useQueryContasReceberMatriz } from "@/hooks/ReactQuery/useQueryContasReceberMatriz";
 import ContasModal from "@/Modals/ContasModal";
+import { isMatriz } from "@/hooks/getId";
+import { exportContasPdf } from "@/utils/functions/exportContasPdf";
 
 const ContasReceber = () => {
-    const { data } = useQueryContasReceber();
+    // Matriz vê tudo (GET /cobrancas) — ela não é "dona" de uma conta com
+    // recebíveis no mesmo sentido que uma Agência; Agência vê só o que é
+    // dela + dos seus associados (GET /cobrancas/minhas, direção padrão).
+    const receberMatriz = useQueryContasReceberMatriz(isMatriz());
+    const receberAgencia = useQueryContasReceber(!isMatriz());
+    const { data, refetch } = isMatriz() ? receberMatriz : receberAgencia;
+
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState()
 
@@ -27,13 +36,14 @@ const ContasReceber = () => {
                 />
                 : null}
             <div className="containerHeader">Contas a Receber</div>
-            <ContasSearch />
+            <ContasSearch onGerarPdf={() => exportContasPdf(data?.data ?? [], "Contas a Receber")} />
             <div className="containerList">
                 <ContasTable
                     columns={columns}
-                    data={data ? data : []}
+                    data={data?.data ?? []}
                     modaltoggle={modalToggle}
                     setInfo={setInfo}
+                    revalidate={refetch}
                 />
             </div>
             <Footer />

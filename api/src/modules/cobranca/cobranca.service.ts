@@ -146,15 +146,33 @@ export async function listarCobrancasPorAssociado(associadoId: string, query: Li
   return { items, total, page, limit }
 }
 
-export async function listarCobrancasPorAgencia(agenciaId: string, query: ListCobrancaQueryType) {
-  // Cobranças diretas da agência + cobranças dos seus associados
-  const associados = await prisma.associado.findMany({ where: { agenciaId }, select: { id: true } })
-  const assocIds = associados.map((a) => a.id)
+export async function listarCobrancasPorAgencia(
+  agenciaId: string,
+  query: ListCobrancaQueryType,
+  direcao: 'pagar' | 'receber' = 'receber',
+) {
+  const agencia = await prisma.agencia.findUnique({ where: { id: agenciaId }, select: { conta: { select: { id: true } } } })
+  const contaPropriaId = agencia?.conta?.id ?? ''
   const { page, limit, pago } = query
-  const where = {
-    OR: [{ agenciaId }, { associadoId: { in: assocIds } }],
-    ...(pago !== undefined ? { pago } : {}),
+
+  let where: Record<string, unknown>
+  if (direcao === 'pagar') {
+    // A própria conta da agência é a devedora (ex: comissão da plataforma
+    // quando ela compra diretamente) — nunca inclui cobrança de associado.
+    where = { contaId: contaPropriaId, ...(pago !== undefined ? { pago } : {}) }
+  } else {
+    // A receber: repasse da inscrição/comissão dos seus associados + cobranças
+    // com agenciaId dela que não sejam da própria conta (evita duplicar as
+    // que já aparecem em "a pagar").
+    const associados = await prisma.associado.findMany({ where: { agenciaId }, select: { id: true } })
+    const assocIds = associados.map((a) => a.id)
+    where = {
+      OR: [{ agenciaId }, { associadoId: { in: assocIds } }],
+      NOT: { contaId: contaPropriaId },
+      ...(pago !== undefined ? { pago } : {}),
+    }
   }
+
   const [items, total] = await prisma.$transaction([
     prisma.cobranca.findMany({
       where,

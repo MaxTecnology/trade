@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
-import TransaçõesModal from "../../Modals/TransaçõesModal";
 import Footer from "../../components/Footer";
 import { activePage } from "../../utils/functions/setActivePage";
 import useModal from "@/hooks/useModal";
 import ContasTable from "@/components/Tables/ContasTable";
 import { columns } from "./constantsContas";
-import { useQueryCobranças } from "@/hooks/ReactQuery/useQueryCobranças";
+import { useQueryContasPagar } from "@/hooks/ReactQuery/contas/useQueryContasPagar";
 import ContasSearch from "@/components/Search/ContasSearch";
+import ContasModal from "@/Modals/ContasModal";
+import { exportContasPdf } from "@/utils/functions/exportContasPdf";
 
 const ContasPagar = () => {
-    const { data } = useQueryCobranças();
+    const { data, refetch } = useQueryContasPagar();
     const [modalIsOpen, modalToggle] = useModal(false);
-    const [reload, setReload] = useState(false)
     const [info, setInfo] = useState()
 
     useEffect(() => {
@@ -21,22 +21,21 @@ const ContasPagar = () => {
     return (
         <div className="container">
             {modalIsOpen ?
-                <TransaçõesModal
+                <ContasModal
                     isOpen={true}
                     modalToggle={modalToggle}
-                    info={info} // Substitua associadoData pelo seu objeto associado
-                    setState={setReload}
+                    info={info}
                 />
                 : null}
             <div className="containerHeader">Contas a pagar</div>
-            <ContasSearch />
+            <ContasSearch onGerarPdf={() => exportContasPdf(data?.data ?? [], "Contas a Pagar")} />
             <div className="containerList">
                 <ContasTable
                     columns={columns}
-                    data={data ? data : []}
+                    data={data?.data ?? []}
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
-                    setState={setReload}
+                    revalidate={refetch}
                 />
             </div>
             <Footer />

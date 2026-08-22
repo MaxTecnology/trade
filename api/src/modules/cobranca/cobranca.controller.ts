@@ -26,7 +26,7 @@ export async function minhasController(req: FastifyRequest, reply: FastifyReply)
     return reply.send(paginated(result.items, result.page, result.limit, result.total))
   }
   if (user.entityType === 'agencia') {
-    const result = await listarCobrancasPorAgencia(user.entityId, query)
+    const result = await listarCobrancasPorAgencia(user.entityId, query, query.direcao)
     return reply.send(paginated(result.items, result.page, result.limit, result.total))
   }
   throw Errors.forbidden()

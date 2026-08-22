@@ -19,6 +19,7 @@ export const CriarCobrancaSchema = z
 
 export const ListCobrancaQuery = z.object({
   pago: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
+  direcao: z.enum(['pagar', 'receber']).default('receber'),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 })
