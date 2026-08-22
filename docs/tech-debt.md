@@ -257,15 +257,14 @@ Só `saldoSuficienteParaDebito` (função pura) tinha teste automatizado. `getLi
 ## [RESOLVIDO] Corte de "mês corrente" em `validarLimiteVenda` usa timezone do servidor
 Entrada desatualizada — já tinha sido corrigido numa sessão anterior (commit `f7cfee1`, antes desta entrada de tech-debt.md ser escrita) e nunca foi marcado aqui. `inicioMesBrasilia()` calcula o corte via UTC explícito (offset fixo -3h, Brasil não tem horário de verão desde 2019), não depende do timezone do container. 4 testes cobrindo meio do mês, os 3 minutos antes/depois da virada em Brasília, e virada de ano — `limites.test.ts`.
 
-## `TASK.md` desatualizado após a migração de limiteRT do plano pra limiteVendaMensal/Total
-`api/docs/TASK.md` ainda lista como concluído "Validar limite RT do plano antes de criar oferta" e "Validar limite mensal do plano" — ambos descrevem comportamento retirado por essa branch (ver `SPEC.md` §9, já atualizado). `TASK.md` é checklist histórico de construção, baixo risco, mas vale sincronizar numa próxima passada de limpeza de docs.
+## [RESOLVIDO] `TASK.md` desatualizado após a migração de limiteRT do plano pra limiteVendaMensal/Total
+`api/docs/TASK.md` corrigido — referências a "limiteRT do plano" atualizadas pra "limiteVendaMensal/Total do vendedor", com nota apontando pra `docs/tech-debt.md` (histórico da correção de 2026-08-14). Primeiro item resolvido da Fase 1 do plano de débito técnico (`docs/tech-debt-plan.md`).
 
-## `negociada()` só generaliza o lado comprador — Agência/Matriz não conseguem vender por negociação direta
-`negociadaSchema.vendedorId` continua exigindo um `Associado.id` — a compra/venda por Agência e Matriz (Task 9, ver `AJUSTES.md` 2026-08-13) generalizou o **comprador** de `permuta()`/`negociada()` e o dono de `Oferta`, mas não o **vendedor** de `negociada()`. Agência/Matriz só conseguem vender via `Oferta` (marketplace), não por negociação direta sem oferta.
-**Ação futura:** se o negócio precisar, `negociadaSchema.vendedorId` precisa aceitar um `contaId` genérico, com ajuste correspondente no front (hoje o "diretório de associados" só lista Associados).
+## [RESOLVIDO 2026-08-22] `negociada()` só generaliza o lado comprador — Agência/Matriz não conseguem vender por negociação direta
+Ver entrada completa mais abaixo ("`negociada()` só aceitava Associado como vendedor") — `vendedorTipo` (`associado | agencia | matriz`) generaliza o vendedor da negociação direta, mesma lógica já usada em `permuta()`.
 
-## Sem tela de front pra Agência/Matriz cadastrar oferta ou comprar
-A API de Ofertas/Transações está pronta e validada end-to-end (curl + Postgres real, ver `task-9-report.md`) para Agência e Matriz como compradoras/donas de oferta — mas não existe nenhuma tela no front que use isso. Front é rodada separada, fora do escopo desta branch.
+## [RESOLVIDO 2026-08-22 — já funcionava, sem mudança de código] Sem tela de front pra Agência/Matriz cadastrar oferta ou comprar
+Ver entrada completa mais abaixo — auditando pra implementar, confirmado que o front já era genérico o bastante (nenhuma mudança de código necessária).
 
 ## [RESOLVIDO 2026-08-14] `estorno.service.ts`/`report.service.ts` filtravam só por `compradorId`/`vendedorId`, ignorando compra/venda de Agência e Matriz
 ~~Ambos os módulos filtravam transações só por `compradorId`/`vendedorId` — FK só de `Associado`, ficam `null` quando quem compra/vende é Agência ou Matriz.~~ Corrigido: `relatorioPermutas`/`relatorioComissoes` (`report.service.ts`) e `solicitarEstorno`/`listarFilhas` (`estorno.service.ts`) passam a considerar também `contaOrigemId`/`contaDestinoId` — a agência (ou Matriz) participando diretamente de uma transação (via Oferta) agora aparece nos relatórios e no fluxo de estorno da própria agência, além dos associados que ela já gerenciava. Validado com Postgres real: Agência comprando de Associado agora aparece em `/relatorios/permutas`, `/relatorios/comissoes` (comissão calculada corretamente) e `/estornos/filhos`.
@@ -314,13 +313,13 @@ Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-0
 
 ~~Achado na revisão final da branch de compra/venda por Agência e Matriz (2026-08-14) — qualquer `associate_operator`+ autenticado conseguia ler qualquer transação por id.~~ Corrigido junto com o item acima na mesma sessão de hardening — ver commit que adiciona filtro `OR: [{ contaOrigemId: contaId }, { contaDestinoId: contaId }]` em `getById`, mesmo padrão que `list()` já aplicava.
 
-## [Alto — PARCIALMENTE RESOLVIDO 2026-08-14] Matriz emitindo RT via `permuta()`/`negociada()` sem rastreio contábil equivalente ao de `credito()`
+## [RESOLVIDO 2026-08-22] Matriz emitindo RT via `permuta()`/`negociada()` sem rastreio contábil equivalente ao de `credito()`
 
 Achado na revisão final da branch de compra/venda por Agência e Matriz — interação entre a Task 1 (Matriz ganhou `Conta` real com `limiteCredito` altíssimo fixo, "sem limite na prática") e a Task 7 (guard de `/transacoes/permuta`/`/negociada` abriu pra `superadmin`). Um `superadmin` "comprando" como Matriz cria RT novo levando o saldo da Matriz a negativo — exatamente como o fluxo já existente `credito()`, mas gravado como `tipo: 'permuta'`/`'negociada'`.
 
 **Parte resolvida:** `limiteCredito` da Matriz deixou de ser um valor mágico só no seed — agora é editável via `PATCH /matriz/limite-credito` (`superadmin`-only, módulo novo `api/src/modules/matriz/`), dando visibilidade/auditabilidade operacional sobre o teto, mesmo que o valor continue alto na prática.
 
-**Parte ainda pendente (decisão de produto):** essas transações continuam gravadas como `tipo: 'permuta'`/`'negociada'`, fora do relatório de emissão que hoje só olha `tipo: 'credito'`. Como o `report.service.ts` agora já enxerga a Matriz normalmente em `relatorioPermutas`/`relatorioComissoes` (ver item de filtros acima, resolvido junto), a visibilidade básica já existe — falta decidir se vale a pena um relatório dedicado de "emissão via compra" separado do relatório de permutas comum, ou se basta a visão já disponível.
+**Parte que faltava, resolvida:** `GET /relatorios/emissao-matriz` (ver entrada própria mais abaixo) agora trata compra da Matriz como uma categoria própria (`compraMatriz`), separada de injeção direta/crédito aprovado/queima — exatamente o relatório dedicado que faltava decidir. Fecha o item.
 
 ## [RESOLVIDO 2026-08-14] Visibilidade pós-compra de Agência/Matriz
 
