@@ -200,7 +200,12 @@ export async function quitarCobranca(id: string) {
       throw Errors.insufficientBalance()
     }
 
-    const contaCredora = cobranca.agencia?.conta ?? null
+    // Se a cobrança tem uma agência associada, o RT vai pra ela (ex: taxa de inscrição
+    // recolhida pela agência que cadastrou o associado). Sem agência, o RT volta pra
+    // Matriz — ela é quem emitiu esse RT no fluxo de inscrição, então é a contraparte
+    // natural. Antes esse RT era só debitado sem nenhuma perna de crédito (quebrava
+    // partida dobrada); agora toda quitação em RT sempre tem as duas pernas.
+    const contaCredora = cobranca.agencia?.conta ?? (await prisma.conta.findFirstOrThrow({ where: { entityType: 'matriz' } }))
 
     await prisma.$transaction(async (tx) => {
       await tx.movimentacaoConta.create({
@@ -214,21 +219,16 @@ export async function quitarCobranca(id: string) {
       })
       await tx.conta.update({ where: { id: contaDevedora.id }, data: { saldo: { decrement: valor } } })
 
-      // Se a cobrança tem uma agência associada, o RT vai para ela (ex: taxa de inscrição
-      // recolhida pela agência que cadastrou o associado). Sem agência, o RT é retirado de
-      // circulação — simétrico à injeção de RT pela Matriz, que credita sem debitar origem.
-      if (contaCredora) {
-        await tx.movimentacaoConta.create({
-          data: {
-            contaId: contaCredora.id,
-            tipo: 'credito',
-            valor,
-            saldoApos: Number(contaCredora.saldo) + valor,
-            descricao: cobranca.descricao ?? `Cobrança RT quitada #${id.slice(0, 8)}`,
-          },
-        })
-        await tx.conta.update({ where: { id: contaCredora.id }, data: { saldo: { increment: valor } } })
-      }
+      await tx.movimentacaoConta.create({
+        data: {
+          contaId: contaCredora.id,
+          tipo: 'credito',
+          valor,
+          saldoApos: Number(contaCredora.saldo) + valor,
+          descricao: cobranca.descricao ?? `Cobrança RT quitada #${id.slice(0, 8)}`,
+        },
+      })
+      await tx.conta.update({ where: { id: contaCredora.id }, data: { saldo: { increment: valor } } })
 
       await tx.cobranca.update({ where: { id }, data: { pago: true } })
     })
