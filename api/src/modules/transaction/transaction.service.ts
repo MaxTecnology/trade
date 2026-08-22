@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import { saldoSuficienteParaDebito, validarLimiteVenda, getLimiteCreditoDaConta } from '../../shared/utils/limites.js'
@@ -11,6 +12,34 @@ import type {
   ListTransactionQuery,
 } from './transaction.schema.js'
 
+const compradorContaInclude = {
+  associado: { include: { plano: true } },
+  agencia: { include: { plano: true } },
+} satisfies Prisma.ContaInclude
+
+type CompradorConta = Prisma.ContaGetPayload<{ include: typeof compradorContaInclude }>
+
+/**
+ * Valida se o comprador pode operar (Associado/Agência suspensos são
+ * barrados) e resolve o percentual de comissão da plataforma, que sempre
+ * vem do plano de quem compra. Matriz não tem plano — cai no `return 0`
+ * (sem comissão de plataforma pra si mesma). Usado por permuta() e
+ * negociada(), único ponto de resolução do comprador entre as duas.
+ */
+function resolverComissaoComprador(compradorConta: CompradorConta): number {
+  if (compradorConta.entityType === 'associado') {
+    if (!compradorConta.associado) throw Errors.notFound('Associado')
+    if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
+    return Number(compradorConta.associado.plano.percentualComissao)
+  }
+  if (compradorConta.entityType === 'agencia') {
+    if (!compradorConta.agencia) throw Errors.notFound('Agência')
+    if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
+    return Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
+  }
+  return 0
+}
+
 export async function permuta(input: PermutaInput, compradorContaId: string, usuarioId: string) {
   const oferta = await prisma.oferta.findUnique({
     where: { id: input.ofertaId },
@@ -22,24 +51,11 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
 
   const compradorConta = await prisma.conta.findUnique({
     where: { id: compradorContaId },
-    include: {
-      associado: { include: { plano: true } },
-      agencia: { include: { plano: true } },
-    },
+    include: compradorContaInclude,
   })
   if (!compradorConta) throw Errors.notFound('Conta do comprador')
 
-  let percentualComissao = 0
-  if (compradorConta.entityType === 'associado') {
-    if (!compradorConta.associado) throw Errors.notFound('Associado')
-    if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
-    percentualComissao = Number(compradorConta.associado.plano.percentualComissao)
-  } else if (compradorConta.entityType === 'agencia') {
-    if (!compradorConta.agencia) throw Errors.notFound('Agência')
-    if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
-    percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
-  }
-  // Matriz: sem status pra checar, sem comissão (percentualComissao fica 0).
+  const percentualComissao = resolverComissaoComprador(compradorConta)
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
   const limiteCredito = Number(compradorConta.limiteCredito ?? 0)
@@ -178,10 +194,7 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
 export async function negociada(input: NegociadaInput, compradorContaId: string, usuarioId: string) {
   const compradorConta = await prisma.conta.findUnique({
     where: { id: compradorContaId },
-    include: {
-      associado: { include: { plano: true } },
-      agencia: { include: { plano: true } },
-    },
+    include: compradorContaInclude,
   })
   if (!compradorConta) throw Errors.notFound('Conta do comprador')
 
@@ -189,17 +202,7 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
     throw new AppError('VALIDATION_ERROR', 'Não é possível negociar consigo mesmo.', 422)
   }
 
-  let percentualComissao = 0
-  if (compradorConta.entityType === 'associado') {
-    if (!compradorConta.associado) throw Errors.notFound('Associado')
-    if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
-    percentualComissao = Number(compradorConta.associado.plano.percentualComissao)
-  } else if (compradorConta.entityType === 'agencia') {
-    if (!compradorConta.agencia) throw Errors.notFound('Agência')
-    if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
-    percentualComissao = Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
-  }
-  // Matriz: sem status pra checar, sem comissão (percentualComissao fica 0).
+  const percentualComissao = resolverComissaoComprador(compradorConta)
 
   // Resolução genérica do vendedor — mesma lógica de permuta() (Associado,
   // Agência ou Matriz), só que partindo de vendedorId+vendedorTipo em vez de

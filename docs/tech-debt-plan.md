@@ -35,7 +35,8 @@
 - [x] Índice único parcial pra impedir duas `SolicitacaoEstorno` simultâneas
       pra mesma transação (hoje só checado na aplicação)
 
-## Fora do plano ativo
+## Resolvido fora da Fase 4 original
 
-- Duplicação de lógica de resolução do comprador entre `permuta()`/`negociada()`
-  — decisão já tomada de deixar como está (pequeno demais pra abstrair).
+- [x] Duplicação de lógica de resolução do comprador entre `permuta()`/`negociada()`
+      — extraído `resolverComissaoComprador()` (decisão revista após discussão
+      com o usuário: a duplicação já era real e comprovada, não especulativa).
