@@ -599,6 +599,7 @@ model Cobranca {
   valorRT      Decimal? @db.Decimal(15, 2) // preenchido quando a cobrança é em RT (não debita a conta — saldo nunca fica negativo)
   vencimento   DateTime
   pago         Boolean  @default(false)
+  tipo         TipoCobranca @default(outro) // inscricao | manutencao | comissao | outro
   contaId      String
   associadoId  String?
   agenciaId    String?

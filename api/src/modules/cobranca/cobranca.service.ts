@@ -1,7 +1,108 @@
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import { getLimiteCreditoDaConta, saldoSuficienteParaDebito } from '../../shared/utils/limites.js'
+import { proximoVencimentoManutencao } from '../../shared/utils/data.js'
 import type { CriarCobrancaInput, ListCobrancaQueryType } from './cobranca.schema.js'
+
+interface EntidadeComPlano {
+  id: string
+  nome: string
+  status: string
+  criadoEm: Date
+  diaVencimentoFatura: number | null
+  plano: { nome: string; taxaManutencaoAnual: unknown } | null
+  conta: { id: string; numero: string } | null
+}
+
+function montarItemManutencao(
+  entidade: EntidadeComPlano,
+  tipo: 'associado' | 'agencia',
+  ultimaPorConta: Map<string, { id: string; vencimento: Date; pago: boolean }>,
+) {
+  if (!entidade.conta || !entidade.plano) return null
+
+  const ultima = ultimaPorConta.get(entidade.conta.id)
+  const proximoVencimento = proximoVencimentoManutencao(
+    entidade.criadoEm,
+    entidade.diaVencimentoFatura ?? 10,
+    ultima,
+  )
+  const emAberto = !!ultima && !ultima.pago
+  const hoje = new Date()
+  const diasAtraso =
+    emAberto && proximoVencimento < hoje
+      ? Math.floor((hoje.getTime() - proximoVencimento.getTime()) / (1000 * 60 * 60 * 24))
+      : 0
+
+  return {
+    tipo,
+    id: entidade.id,
+    nome: entidade.nome,
+    status: entidade.status,
+    plano: entidade.plano.nome,
+    valorManutencao: entidade.plano.taxaManutencaoAnual,
+    contaId: entidade.conta.id,
+    contaNumero: entidade.conta.numero,
+    ultimaCobrancaId: ultima?.id ?? null,
+    ultimaCobrancaPaga: ultima?.pago ?? null,
+    proximoVencimento,
+    emAberto,
+    diasAtraso,
+  }
+}
+
+export async function relatorioManutencaoAnual() {
+  const [associados, agencias] = await Promise.all([
+    prisma.associado.findMany({
+      where: { status: { not: 'inativo' }, plano: { taxaManutencaoAnual: { gt: 0 } } },
+      select: {
+        id: true,
+        nome: true,
+        status: true,
+        criadoEm: true,
+        diaVencimentoFatura: true,
+        plano: { select: { nome: true, taxaManutencaoAnual: true } },
+        conta: { select: { id: true, numero: true } },
+      },
+    }),
+    prisma.agencia.findMany({
+      where: { status: { not: 'inativo' }, plano: { taxaManutencaoAnual: { gt: 0 } } },
+      select: {
+        id: true,
+        nome: true,
+        status: true,
+        criadoEm: true,
+        diaVencimentoFatura: true,
+        plano: { select: { nome: true, taxaManutencaoAnual: true } },
+        conta: { select: { id: true, numero: true } },
+      },
+    }),
+  ])
+
+  const contaIds = [...associados, ...agencias]
+    .map((e) => e.conta?.id)
+    .filter((id): id is string => !!id)
+
+  const ultimasCobrancas = await prisma.cobranca.findMany({
+    where: { contaId: { in: contaIds }, tipo: 'manutencao' },
+    orderBy: { vencimento: 'desc' },
+    select: { id: true, contaId: true, vencimento: true, pago: true },
+  })
+  const ultimaPorConta = new Map<string, { id: string; vencimento: Date; pago: boolean }>()
+  for (const c of ultimasCobrancas) {
+    // orderBy vencimento desc — a primeira ocorrência por contaId já é a mais recente.
+    if (!ultimaPorConta.has(c.contaId)) ultimaPorConta.set(c.contaId, c)
+  }
+
+  const items = [
+    ...associados.map((a) => montarItemManutencao(a, 'associado', ultimaPorConta)),
+    ...agencias.map((a) => montarItemManutencao(a, 'agencia', ultimaPorConta)),
+  ].filter((i): i is NonNullable<typeof i> => i !== null)
+
+  items.sort((a, b) => a.proximoVencimento.getTime() - b.proximoVencimento.getTime())
+
+  return { items }
+}
 
 const include = {
   conta: { select: { numero: true } },

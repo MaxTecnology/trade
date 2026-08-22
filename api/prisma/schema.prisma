@@ -94,6 +94,13 @@ enum StatusCredito {
   negado
 }
 
+enum TipoCobranca {
+  inscricao
+  manutencao
+  comissao
+  outro
+}
+
 enum TipoComissaoGerente {
   inscricao
   transacao
@@ -579,6 +586,7 @@ model Cobranca {
   valorRT     Decimal?  @db.Decimal(15, 2) // preenchido quando a cobrança é em RT (não debita a conta diretamente — mantém saldo >= 0)
   vencimento  DateTime
   pago        Boolean   @default(false)
+  tipo        TipoCobranca @default(outro)
   contaId     String
   associadoId String?
   agenciaId   String?

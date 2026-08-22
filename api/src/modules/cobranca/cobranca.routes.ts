@@ -7,6 +7,7 @@ import {
   todasController,
   quitarController,
   deletarController,
+  manutencaoAnualController,
 } from './cobranca.controller.js'
 
 export async function cobrancaRoutes(app: FastifyInstance) {
@@ -17,6 +18,7 @@ export async function cobrancaRoutes(app: FastifyInstance) {
   app.post('/cobrancas', superadmin, criarController)
   app.get('/cobrancas', superadmin, todasController)
   app.get('/cobrancas/minhas', auth, minhasController)
+  app.get('/cobrancas/manutencao-anual', superadmin, manutencaoAnualController)
   app.patch('/cobrancas/:id/quitar', adminOrSuper, quitarController)
   app.delete('/cobrancas/:id', superadmin, deletarController)
 }

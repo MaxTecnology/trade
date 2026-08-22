@@ -672,6 +672,7 @@ Registro de cobranças associadas a contas — taxas de plano, manutenção, ins
 | POST | `/cobrancas` | Criar cobrança | `superadmin` |
 | GET | `/cobrancas` | Todas as cobranças | `superadmin` |
 | GET | `/cobrancas/minhas` | Cobranças da entidade logada | qualquer autenticado |
+| GET | `/cobrancas/manutencao-anual` | Situação da taxa de manutenção anual (todo Associado/Agência com plano ativo) | `superadmin` |
 | PATCH | `/cobrancas/:id/quitar` | Quitar cobrança | `superadmin`, `agency_admin` |
 | DELETE | `/cobrancas/:id` | Remover cobrança | `superadmin` |
 
@@ -684,6 +685,8 @@ Registro de cobranças associadas a contas — taxas de plano, manutenção, ins
 - **Quitar cobrança em BRL**: apenas marca `pago: true`. O pagamento acontece fora do sistema (PIX/boleto) — o endpoint só reconcilia manualmente.
 - **Quitar cobrança em RT**: move o RT de verdade, de forma atômica. Debita `contaId` (valida saldo suficiente antes, considerando `limiteCredito` do associado/agência devedora — retorna `INSUFFICIENT_BALANCE` se ultrapassar), credita a conta de `agenciaId` se a cobrança tiver uma agência vinculada. Sem agência, o RT é retirado de circulação (simétrico à injeção de RT pela Matriz, que credita sem debitar origem).
 - **Comissão da plataforma**: gerada automaticamente pelo job `commission.calculate` após cada `permuta`/`negociada` concluída — cria uma `Cobranca` (BRL) vinculada à transação (`transacaoId`), cobrada do comprador. Idempotente (não duplica se o job reprocessar).
+- **`tipo`** (`inscricao | manutencao | comissao | outro`) — discrimina a origem da cobrança; `POST /cobrancas` aceita `tipo` no body (default `outro`). Cobranças de inscrição (`associate.service.ts`) e de comissão da plataforma (job `commission.calculate`) já se auto-classificam.
+- **Manutenção anual (`GET /cobrancas/manutencao-anual`)**: sempre 100% manual — não existe job automático que cria a cobrança nem bloqueio automático por atraso. A Matriz cria manualmente via `POST /cobrancas` (com `tipo: 'manutencao'`) quando decide cobrar; o endpoint de leitura só calcula, pra cada Associado/Agência com `plano.taxaManutencaoAnual > 0`, qual o próximo vencimento esperado (1 ano após o cadastro, ou 1 ano após o vencimento da última cobrança de manutenção paga, no dia fixo de `diaVencimentoFatura`, clampado pro último dia do mês quando o dia não existe — ex: dia 30 em fevereiro) e se há uma pendência em aberto (`emAberto`, `diasAtraso`). Bloqueio do inadimplente continua manual (mudar `status` pra `suspenso`), sem automação — decisão explícita do produto.
 
 ---
 

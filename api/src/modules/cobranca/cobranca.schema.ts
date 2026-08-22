@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+export const TipoCobrancaEnum = z.enum(['inscricao', 'manutencao', 'comissao', 'outro'])
+
 export const CriarCobrancaSchema = z
   .object({
     contaId: z.string().uuid(),
@@ -9,6 +11,7 @@ export const CriarCobrancaSchema = z
     valorRT: z.number().positive().optional(),
     vencimento: z.string().datetime(),
     descricao: z.string().optional(),
+    tipo: TipoCobrancaEnum.default('outro'),
   })
   .refine((data) => data.valorBRL !== undefined || data.valorRT !== undefined, {
     message: 'Informe valorBRL ou valorRT',

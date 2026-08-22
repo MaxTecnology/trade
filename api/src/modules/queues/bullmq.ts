@@ -116,6 +116,7 @@ export function startWorkers() {
           associadoId: contaOrigem.associadoId,
           agenciaId,
           transacaoId,
+          tipo: 'comissao',
         },
       })
     },

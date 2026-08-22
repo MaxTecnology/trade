@@ -7,6 +7,7 @@ import {
   listarTodasCobrancas,
   quitarCobranca,
   deletarCobranca,
+  relatorioManutencaoAnual,
 } from './cobranca.service.js'
 import { success, paginated } from '../../shared/utils/response.js'
 import { Errors } from '../../shared/errors/AppError.js'
@@ -47,4 +48,9 @@ export async function deletarController(req: FastifyRequest, reply: FastifyReply
   const { id } = req.params as { id: string }
   await deletarCobranca(id)
   return reply.status(204).send()
+}
+
+export async function manutencaoAnualController(_req: FastifyRequest, reply: FastifyReply) {
+  const data = await relatorioManutencaoAnual()
+  return reply.send(success(data))
 }

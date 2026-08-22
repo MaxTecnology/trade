@@ -118,6 +118,7 @@ export async function create(input: CreateAssociateInput) {
           contaId: conta.id,
           associadoId: associado.id,
           agenciaId: input.agenciaId ?? null,
+          tipo: 'inscricao',
         },
       })
     }
@@ -134,6 +135,7 @@ export async function create(input: CreateAssociateInput) {
           contaId: conta.id,
           associadoId: associado.id,
           agenciaId: input.agenciaId ?? null,
+          tipo: 'inscricao',
         },
       })
     }
