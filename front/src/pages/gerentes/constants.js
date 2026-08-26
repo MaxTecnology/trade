@@ -9,7 +9,7 @@ export const columns = [
     {
         id: 'agencia',
         header: 'Agência',
-        accessorFn: (row) => row.associado?.agencia?.nome ?? '-',
+        accessorFn: (row) => row.associado?.agencia?.nome ?? 'Matriz',
     },
     {
         id: 'plano',

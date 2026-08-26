@@ -20,9 +20,9 @@ export const columns = [
         header: 'RT$',
     },
     {
-        accessorKey: 'associado.agencia.nome',
+        id: 'agencia',
+        accessorFn: (row) => row.associado?.agencia?.nome ?? 'Matriz',
         header: 'Agência',
-        cell: (info) => info.getValue() ?? '-',
     },
     {
         accessorKey: 'status',

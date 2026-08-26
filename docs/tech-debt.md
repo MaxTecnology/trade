@@ -438,3 +438,10 @@ Item registrado no plano como pendente, mas ao auditar o front (`OfertasCadastra
 **Limitação conhecida:** ambos os endpoints paginam com limite máximo 100 — num mês com mais de 100 permutas/negociações, a soma fica truncada à primeira página. Mesmo padrão de fidelidade já usado nos outros cards do dashboard (Associados/Ofertas somam client-side sobre uma página só); não é uma regressão, é a mesma limitação pré-existente, documentada aqui por transparência.
 
 **Validado:** `npx tsc --noEmit` limpo; `npm test` 32/32; `npm run build` do front sem erro; contra API/Postgres reais em Docker + Playwright — 3 transações reais do mês corrente somando RT$ 160 (100+10+50) confirmadas exatamente nos dois campos ("Unidade" e "Geral") do card no dashboard real.
+
+## [RESOLVIDO 2026-08-26] Coluna "Agência" em branco quando o Associado foi cadastrado direto pela Matriz
+`constantCreditos.js` ("Créditos a Aprovar"/"Analisar Créditos"/"Meus Créditos"/"Créditos") e `gerentes/constants.js` ("Gerentes") mostravam `associado.agencia.nome` com fallback pra `'-'` quando o Associado (ou Gerente, que é um Associado) não tem `agenciaId` — cadastrado direto pela Matriz, sem agência no meio. Ficava em branco/traço, sem indicar quem de fato gerencia esse registro. Achado pelo usuário via captura de tela de "Créditos a Aprovar". O padrão certo (`?? 'Matriz'`) já existia em outros lugares do front (`associados/constants.js`, `OfertasInfo.jsx`) — só faltava nesses dois.
+
+**O que mudou:** os dois arquivos passaram de `?? '-'` pra `?? 'Matriz'`. Nenhuma mudança de backend — os dois includes já traziam `associado.agencia` (retorna `null` quando não tem agência, o que já bastava pro fallback funcionar).
+
+**Validado:** `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — solicitado crédito por um Associado sem agência, confirmado que "Créditos a Aprovar" mostra "Matriz" na coluna Agência (antes: branco).
