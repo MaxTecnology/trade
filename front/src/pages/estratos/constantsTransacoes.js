@@ -3,6 +3,7 @@ import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 import { filterStart, filterEnd } from "@/utils/functions/tables/date";
 import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
 import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
+import { compradorLabel, vendedorLabel } from "@/utils/functions/tables/compradorVendedor";
 
 // Filtro de texto — substring, case-insensitive, contra o valor já exibido.
 const filterIncludes = (row, columnId, filterValue) => {
@@ -41,16 +42,14 @@ export const columns = [
     },
     {
         id: 'comprador',
-        accessorKey: 'comprador.nome',
+        accessorFn: compradorLabel,
         header: 'Comprador',
-        cell: (info) => info.getValue() ?? '-',
         filterFn: filterIncludes,
     },
     {
         id: 'vendedor',
-        accessorKey: 'vendedor.nome',
+        accessorFn: vendedorLabel,
         header: 'Vendedor',
-        cell: (info) => info.getValue() ?? '-',
         filterFn: filterIncludes,
     },
     {

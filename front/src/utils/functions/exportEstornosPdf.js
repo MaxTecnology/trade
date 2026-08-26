@@ -2,6 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatDate } from '@/hooks/ListasHook'
 import { formatarNumeroParaRT } from '@/utils/functions/formartNumber'
+import { compradorLabel, vendedorLabel } from '@/utils/functions/tables/compradorVendedor'
 
 const STATUS_LABEL = {
     em_analise: 'Em análise',
@@ -35,8 +36,8 @@ export const exportEstornosPdf = (rows) => {
             r.solicitante?.nome ?? '-',
             r.transacao?.tipo ?? '-',
             `RT$ ${formatarNumeroParaRT(r.transacao?.valorRT ?? 0)}`,
-            r.transacao?.comprador?.nome ?? '-',
-            r.transacao?.vendedor?.nome ?? '-',
+            compradorLabel(r.transacao),
+            vendedorLabel(r.transacao),
             agenciaNome(r),
             r.motivo || 'Sem motivo informado',
             STATUS_LABEL[r.status] ?? r.status,

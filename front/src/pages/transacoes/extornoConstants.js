@@ -1,14 +1,15 @@
 import { filterEnd, filterStart } from "@/utils/functions/tables/date";
+import { compradorLabel, vendedorLabel } from "@/utils/functions/tables/compradorVendedor";
 
 export const columns = [
     {
         id: "comprador",
-        accessorKey: 'transacao.comprador.nome',
+        accessorFn: (row) => compradorLabel(row.transacao),
         header: 'Comprador',
     },
     {
         id: "vendedor",
-        accessorKey: 'transacao.vendedor.nome',
+        accessorFn: (row) => vendedorLabel(row.transacao),
         header: 'Vendedor',
     },
     {

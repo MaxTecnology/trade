@@ -19,8 +19,8 @@ const include = {
       vendedor: {
         select: { id: true, nome: true, agenciaId: true, agencia: { select: { nome: true } } },
       },
-      contaOrigem: { select: { agenciaId: true, agencia: { select: { nome: true } } } },
-      contaDestino: { select: { agenciaId: true, agencia: { select: { nome: true } } } },
+      contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
+      contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
     },
   },
 } as const

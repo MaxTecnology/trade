@@ -574,6 +574,12 @@ export async function list(query: ListTransactionQuery, contaId: string) {
       include: {
         comprador: { select: { nome: true } },
         vendedor: { select: { nome: true } },
+        // comprador/vendedor só existem quando essa ponta é um Associado —
+        // Agência/Matriz participando direto (via Oferta ou negociação) não
+        // preenchem essas FKs, só aparecem aqui pro front resolver o nome
+        // (mesmo padrão já usado em report.service.ts/estorno.service.ts).
+        contaOrigem: { select: { entityType: true, agencia: { select: { nome: true } } } },
+        contaDestino: { select: { entityType: true, agencia: { select: { nome: true } } } },
         voucher: true,
         // Última solicitação de estorno, pra UI mostrar "Estorno em análise" etc.
         // mesmo com transacao.status ainda concluida (só vira 'estornada' quando
@@ -591,6 +597,10 @@ export async function getById(id: string, contaId: string) {
   const t = await prisma.transacao.findUnique({
     where: { id },
     include: {
+      comprador: { select: { nome: true } },
+      vendedor: { select: { nome: true } },
+      contaOrigem: { select: { entityType: true, agencia: { select: { nome: true } } } },
+      contaDestino: { select: { entityType: true, agencia: { select: { nome: true } } } },
       voucher: true,
       movimentacoes: true,
       usuarioIniciador: { select: { nome: true, codigoOperador: true } },

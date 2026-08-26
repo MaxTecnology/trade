@@ -1,14 +1,15 @@
 import { formatDate } from "@/hooks/ListasHook";
+import { compradorLabel, vendedorLabel } from "@/utils/functions/tables/compradorVendedor";
 
 export const columns = [
     {
         id: "comprador",
-        accessorKey: 'comprador.nome',
+        accessorFn: compradorLabel,
         header: 'Comprador',
     },
     {
         id: "vendedor",
-        accessorKey: 'vendedor.nome',
+        accessorFn: vendedorLabel,
         header: 'Vendedor',
     },
     {

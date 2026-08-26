@@ -1,16 +1,17 @@
 import { filterEnd, filterStart } from "@/utils/functions/tables/date";
 import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
 import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
+import { compradorLabel, vendedorLabel } from "@/utils/functions/tables/compradorVendedor";
 
 export const columns = [
     {
         id: "comprador",
-        accessorKey: 'comprador.nome',
+        accessorFn: compradorLabel,
         header: 'Comprador',
     },
     {
         id: "vendedor",
-        accessorKey: 'vendedor.nome',
+        accessorFn: vendedorLabel,
         header: 'Vendedor',
     },
     {

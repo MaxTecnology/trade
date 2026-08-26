@@ -8,16 +8,17 @@ import useModal from "@/hooks/useModal";
 import { useQueryTransacoes } from "@/hooks/ReactQuery/useQueryTransacoes";
 import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
 import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
+import { compradorLabel, vendedorLabel } from "@/utils/functions/tables/compradorVendedor";
 
 const columns = [
     {
         id: "comprador",
-        accessorKey: 'comprador.nome',
+        accessorFn: compradorLabel,
         header: 'Comprador',
     },
     {
         id: "vendedor",
-        accessorKey: 'vendedor.nome',
+        accessorFn: vendedorLabel,
         header: 'Vendedor',
     },
     {

@@ -5,6 +5,7 @@ import { GrFormClose } from "react-icons/gr";
 import { formatDate } from '@/hooks/ListasHook';
 import { formatarNumeroParaRT } from '@/utils/functions/formartNumber';
 import { iniciadoPorLabel } from '@/utils/functions/tables/iniciadoPor';
+import { compradorLabel, vendedorLabel } from '@/utils/functions/tables/compradorVendedor';
 
 // Defina o elemento principal da sua aplicação (geralmente '#root' para um aplicativo React)
 const appElement = document.getElementById('root');
@@ -74,11 +75,11 @@ const TransaçõesModal = ({ isOpen, modalToggle, info }) => {
                     <div className="modalTransacoesSubContainer">
                         <div className="modalTransacoesItem">
                             <span>Vendedor</span>
-                            <p>{transacao?.vendedor?.nome ?? '-'}</p>
+                            <p>{vendedorLabel(transacao)}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Comprador</span>
-                            <p>{transacao?.comprador?.nome ?? '-'}</p>
+                            <p>{compradorLabel(transacao)}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Status</span>
