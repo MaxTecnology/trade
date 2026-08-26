@@ -50,7 +50,7 @@ const CreditoSolicitar = () => {
             }} className="containerForm transacoesContainer">
                 <div className="transacoesItens">
                     <div className="form-group">
-                        <label className="required-field-label">Associado</label>
+                        <label className="required-field-label">Solicitante</label>
                         <input readOnly defaultValue={getName()} type="text" className="readOnly" required />
                     </div>
                     <div className="form-group">

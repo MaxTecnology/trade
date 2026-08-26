@@ -180,6 +180,7 @@ model Agencia {
   usuarios       Usuario[]
   conta          Conta?
   cobranças      Cobranca[]
+  solicitacoesCredito SolicitacaoCredito[]
 
   @@map("agencia")
 }
@@ -557,7 +558,10 @@ model Voucher {
 
 model SolicitacaoCredito {
   id              String        @id @default(uuid())
-  associadoId     String
+  // Exatamente um dos dois deve estar preenchido — garantido também por
+  // CHECK constraint no banco (solicitacao_credito_dono_unico).
+  associadoId     String?
+  agenciaId       String?
   valorSolicitado Decimal       @db.Decimal(15, 2)
   descricao       String?
   // Justificativa da Matriz ao aprovar/negar — obrigatória na aplicação
@@ -568,9 +572,11 @@ model SolicitacaoCredito {
   criadoEm       DateTime      @default(now())
   atualizadoEm   DateTime      @updatedAt
 
-  associado Associado @relation(fields: [associadoId], references: [id])
+  associado Associado? @relation(fields: [associadoId], references: [id])
+  agencia   Agencia?   @relation(fields: [agenciaId], references: [id])
 
   @@index([associadoId, criadoEm])
+  @@index([agenciaId, criadoEm])
   @@index([status])
   @@map("solicitacao_credito")
 }

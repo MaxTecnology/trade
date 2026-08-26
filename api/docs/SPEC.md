@@ -654,7 +654,9 @@ Nenhum outro relatório dá visão unificada de quanto RT foi criado ou destruí
 
 ## 12. Solicitações de Crédito RT
 
-Fluxo de solicitação de **aumento do limite de crédito** (`limiteCredito`) para associados, com aprovação hierárquica — **não** é injeção direta de saldo. A Matriz não dá RT de graça ao aprovar; ela libera mais espaço pro associado ficar negativo quando comprar de verdade. O RT só entra em circulação nesse momento (permuta/negociada normal, contabilizado como sempre), não na aprovação do crédito. Decisão de produto de 2026-08-26 — antes disso, aprovar injetava saldo diretamente; ver `docs/tech-debt.md` pelo histórico.
+Fluxo de solicitação de **aumento do limite de crédito** (`limiteCredito`) para associados **e agências** (agência também compra/vende — ver `AJUSTES.md` 2026-08-13 — precisa do mesmo mecanismo de limite), com aprovação hierárquica — **não** é injeção direta de saldo. A Matriz não dá RT de graça ao aprovar; ela libera mais espaço pra entidade ficar negativa quando comprar de verdade. O RT só entra em circulação nesse momento (permuta/negociada normal, contabilizado como sempre), não na aprovação do crédito. Decisão de produto de 2026-08-26 — antes disso, aprovar injetava saldo diretamente; extensão a Agências no mesmo dia. Ver `docs/tech-debt.md` pelo histórico.
+
+`SolicitacaoCredito.associadoId`/`agenciaId` são **mutuamente exclusivos** — exatamente um preenchido, validado por CHECK no banco (`solicitacao_credito_dono_unico`), mesmo padrão de `cobranca_valor_definido` (§13).
 
 ### Fluxo de Status
 
@@ -666,24 +668,24 @@ em_analise → encaminhado → aprovado | negado
 
 | Método | Rota | Descrição | Role |
 |---|---|---|---|
-| POST | `/creditos` | Solicitar crédito | `associate_admin`, `associate_operator` |
-| GET | `/creditos/meus` | Minhas solicitações | `associate_admin`, `associate_operator` |
-| PUT | `/creditos/:id` | Atualizar solicitação (enquanto em_analise) | `associate_admin`, `associate_operator` |
-| DELETE | `/creditos/:id` | Excluir solicitação (enquanto em_analise) | `associate_admin`, `associate_operator` |
+| POST | `/creditos` | Solicitar crédito | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator` |
+| GET | `/creditos/meus` | Minhas solicitações | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator` |
+| PUT | `/creditos/:id` | Atualizar solicitação (enquanto em_analise) | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator` |
+| DELETE | `/creditos/:id` | Excluir solicitação (enquanto em_analise) | `associate_admin`, `associate_operator`, `agency_admin`, `agency_operator` |
 | GET | `/creditos/filhos` | Solicitações dos associados da agência | `agency_admin`, `agency_operator` |
-| PATCH | `/creditos/:id/encaminhar` | Encaminhar para Matriz | `agency_admin`, `superadmin` |
+| PATCH | `/creditos/:id/encaminhar` | Encaminhar para Matriz (só pedido de associado) | `agency_admin`, `superadmin` |
 | GET | `/creditos/matriz` | Solicitações encaminhadas (Matriz) | `superadmin` |
-| PATCH | `/creditos/:id/aprovar` | Aprovar e injetar RT na conta | `superadmin` |
+| PATCH | `/creditos/:id/aprovar` | Aprovar e aumentar limiteCredito | `superadmin` |
 | PATCH | `/creditos/:id/negar` | Negar solicitação | `superadmin` |
 | GET | `/creditos` | Todas as solicitações | `superadmin` |
 
 ### Regras de Negócio
 
-- Aprovação incrementa `limiteCredito` atomicamente via `prisma.$transaction`, sincronizado em `Associado` (fonte editável no cadastro) **e** `Conta` (usado na validação de saldo/CHECK do banco) — mesmo padrão de sincronização de `PUT /associados/:id`. Nenhum `MovimentacaoConta`/`saldo` é tocado — não é uma operação financeira, é um ajuste de teto de risco.
+- Aprovação incrementa `limiteCredito` atomicamente via `prisma.$transaction`, sincronizado na entidade dona (`Associado` ou `Agencia` — fonte editável no cadastro) **e** `Conta` (usado na validação de saldo/CHECK do banco) — mesmo padrão de sincronização de `PUT /associados/:id`/`PUT /agencias/:id`. Nenhum `MovimentacaoConta`/`saldo` é tocado — não é uma operação financeira, é um ajuste de teto de risco.
 - Não é possível editar ou excluir solicitações com status `aprovado` ou `negado`.
 - O campo `valorSolicitado` é o **aumento de limite pedido**, em RT (não é saldo a receber).
-- `agency_admin` só encaminha (`PATCH /creditos/:id/encaminhar`) solicitações dos próprios associados — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
-- `GET /creditos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando o associado não tem `agenciaId` (cadastrado direto pela Matriz) — sem Agência no meio não tem quem encaminhar.
+- `agency_admin` só encaminha (`PATCH /creditos/:id/encaminhar`) solicitações dos próprios associados — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma. Pedido de crédito da **própria** Agência não passa por essa etapa (ver abaixo) — tentar encaminhar retorna `VALIDATION_ERROR`.
+- `GET /creditos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando: o associado não tem `agenciaId` (cadastrado direto pela Matriz, sem quem encaminhar) **ou** o pedido é de uma Agência (`agenciaId` preenchido — cai direto na fila da Matriz, sem intermediário).
 - `PATCH /creditos/:id/aprovar` e `/negar` aceitam `respostaMatriz` no body — **opcional** (decisão do usuário: não forçar preenchimento). Quando informada, exige mínimo 10 caracteres (evita resposta parcial digitada sem querer); vazio/omitido salva `null`. Diferente do Estorno (§17), que continua exigindo.
 
 ---

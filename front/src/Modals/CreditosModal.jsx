@@ -34,9 +34,15 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
     }, []);
 
     const pendente = data.status === 'em_analise' || data.status === 'encaminhado'
-    // associadoId identifica DE QUEM é o pedido — comparar com o id do usuário
-    // logado (idUsuario) sempre daria falso, já que são entidades diferentes.
-    const souDono = isAssociado() && data.associadoId === state.user?.entityId
+    // associadoId/agenciaId identifica DE QUEM é o pedido — comparar com o id
+    // do usuário logado (idUsuario) sempre daria falso, já que são entidades
+    // diferentes.
+    const souDono =
+        (isAssociado() && data.associadoId === state.user?.entityId) ||
+        (isAgencia() && data.agenciaId === state.user?.entityId)
+    // Encaminhar só existe pra pedido de associado — pedido da própria
+    // Agência já cai direto na fila da Matriz.
+    const podeEncaminhar = isAgencia() && !souDono && data.status === 'em_analise'
 
     return (
         <Modal
@@ -55,12 +61,12 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                 <div className="modalTransacoesContainer">
                     <div className="modalTransacoesSubContainer">
                         <div className="modalTransacoesItem">
-                            <span>Associado</span>
-                            <p>{data.associado?.nome}</p>
+                            <span>Solicitante</span>
+                            <p>{data.associado?.nome ?? data.agencia?.nome}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Agência</span>
-                            <p>{data.associado?.agencia?.nome ?? 'Matriz'}</p>
+                            <p>{data.associado?.agencia?.nome ?? data.agencia?.nome ?? 'Matriz'}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Aumento de Limite</span>
@@ -167,7 +173,7 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                             </>
                             : null
                         }
-                        {isAgencia() && data.status === 'em_analise' ?
+                        {podeEncaminhar ?
                             <button type='button' onClick={() => forwardCreditos(data.id, modalToggle, setState)}>Encaminhar</button>
                             : null
                         }
