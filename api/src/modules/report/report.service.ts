@@ -244,15 +244,20 @@ export async function relatorioAssociados(requester: { role: string; entityId: s
 }
 
 /**
- * Relatório de emissão de RT da Matriz — unifica os 4 caminhos que criam ou
+ * Relatório de emissão de RT da Matriz — unifica os caminhos que criam ou
  * destroem RT no sistema (nenhum tinha visibilidade unificada antes):
  * 1) injeção direta (POST /transacoes/credito, Transacao sem contaOrigemId)
- * 2) crédito solicitado pelo associado e aprovado pela Matriz (SolicitacaoCredito)
- * 3) queima (Cobranca em RT quitada — a perna de crédito sempre cai na Matriz
+ * 2) queima (Cobranca em RT quitada — a perna de crédito sempre cai na Matriz
  *    quando não tem agência, mas o valor ainda sai de circulação do lado do devedor)
- * 4) compra da Matriz no mercado normal (permuta/negociada com ela como compradora)
+ * 3) compra da Matriz no mercado normal (permuta/negociada com ela como compradora)
  *    — informativo: é zero-soma no total (débito dela, crédito do vendedor), não
  *    entra no líquido, mas mostra o quanto ela está "girando" o próprio limite.
+ *
+ * `limiteAprovado` (SolicitacaoCredito aprovada) é só informativo, igual
+ * `compraMatriz` — desde a decisão de produto de 2026-08-26, aprovar crédito
+ * aumenta `limiteCredito` (teto de quanto pode ficar negativo), não injeta
+ * saldo — não cria RT nenhum na aprovação, só quando o associado de fato
+ * compra usando esse limite (contabilizado normalmente como permuta/negociada).
  *
  * circulacaoAtual = SUM(saldo) das contas != matriz, sempre instantâneo (ignora
  * o filtro de período) — soma de todo RT que já existe, criado e não destruído.
@@ -260,7 +265,7 @@ export async function relatorioAssociados(requester: { role: string; entityId: s
 export async function relatorioEmissaoMatriz(filters: { dataInicio?: string; dataFim?: string }) {
   const contaMatriz = await prisma.conta.findFirstOrThrow({ where: { entityType: 'matriz' } })
 
-  const [circulacaoAgg, injecaoAgg, creditoAprovadoAgg, queimaAgg, compraMatrizAgg] = await Promise.all([
+  const [circulacaoAgg, injecaoAgg, limiteAprovadoAgg, queimaAgg, compraMatrizAgg] = await Promise.all([
     prisma.conta.aggregate({
       where: { entityType: { not: 'matriz' } },
       _sum: { saldo: true },
@@ -297,9 +302,9 @@ export async function relatorioEmissaoMatriz(filters: { dataInicio?: string; dat
   ])
 
   const injecaoDireta = { total: Number(injecaoAgg._sum.valorRT ?? 0), quantidade: injecaoAgg._count }
-  const creditoAprovado = {
-    total: Number(creditoAprovadoAgg._sum.valorSolicitado ?? 0),
-    quantidade: creditoAprovadoAgg._count,
+  const limiteAprovado = {
+    total: Number(limiteAprovadoAgg._sum.valorSolicitado ?? 0),
+    quantidade: limiteAprovadoAgg._count,
   }
   const queima = { total: Number(queimaAgg._sum.valorRT ?? 0), quantidade: queimaAgg._count }
   const compraMatriz = { total: Number(compraMatrizAgg._sum.valorRT ?? 0), quantidade: compraMatrizAgg._count }
@@ -308,9 +313,9 @@ export async function relatorioEmissaoMatriz(filters: { dataInicio?: string; dat
     circulacaoAtual: Number(circulacaoAgg._sum.saldo ?? 0),
     periodo: { dataInicio: filters.dataInicio ?? null, dataFim: filters.dataFim ?? null },
     injecaoDireta,
-    creditoAprovado,
+    limiteAprovado,
     queima,
     compraMatriz,
-    emissaoLiquida: injecaoDireta.total + creditoAprovado.total - queima.total,
+    emissaoLiquida: injecaoDireta.total - queima.total,
   }
 }

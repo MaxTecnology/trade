@@ -39,7 +39,7 @@ const CreditoSolicitar = () => {
 
     return (
         <div className="container">
-            <div className="containerHeader">Solicitar Credito</div>
+            <div className="containerHeader">Solicitar Aumento de Limite de Crédito</div>
             <form onSubmit={(event) => {
                 event.preventDefault()
                 setReference(false);
@@ -54,8 +54,8 @@ const CreditoSolicitar = () => {
                         <input readOnly defaultValue={getName()} type="text" className="readOnly" required />
                     </div>
                     <div className="form-group">
-                        <label className="required-field-label">Valor R$</label>
-                        <RealInput name="valorSolicitado" placeholder="Valor R$" required reference={reference} />
+                        <label className="required-field-label">Aumento de Limite (RT$)</label>
+                        <RealInput name="valorSolicitado" placeholder="Aumento de Limite RT$" required reference={reference} />
                     </div>
                     <div className="form-group">
 

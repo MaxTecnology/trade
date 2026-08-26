@@ -17,7 +17,7 @@ export const columns = [
     },
     {
         accessorKey: 'valorSolicitado',
-        header: 'RT$',
+        header: 'Aumento de Limite',
     },
     {
         id: 'agencia',

@@ -166,21 +166,18 @@ export async function finalizarCredito(
     const conta = credito.associado.conta
     if (!conta) throw Errors.notFound('Conta do associado')
 
+    // "Crédito" é pedido de AUMENTO DE LIMITE, não injeção de saldo — a Matriz
+    // não dá RT de graça, ela libera mais espaço pro associado ficar negativo
+    // quando comprar de verdade (RT só entra em circulação nesse momento, via
+    // permuta/negociada normal). limiteCredito fica sincronizado em Associado
+    // (fonte editável no cadastro) e Conta (usado na validação de saldo/CHECK
+    // do banco) — mesmo padrão de sincronização de associate.service.ts::update().
+    const novoLimite = Number(credito.associado.limiteCredito ?? 0) + Number(credito.valorSolicitado)
+
     await prisma.$transaction([
       prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'aprovado', respostaMatriz } }),
-      prisma.movimentacaoConta.create({
-        data: {
-          contaId: conta.id,
-          tipo: 'credito',
-          valor: credito.valorSolicitado,
-          saldoApos: Number(conta.saldo) + Number(credito.valorSolicitado),
-          descricao: `Crédito aprovado — solicitação #${id.slice(0, 8)}`,
-        },
-      }),
-      prisma.conta.update({
-        where: { id: conta.id },
-        data: { saldo: { increment: credito.valorSolicitado } },
-      }),
+      prisma.associado.update({ where: { id: credito.associadoId }, data: { limiteCredito: novoLimite } }),
+      prisma.conta.update({ where: { id: conta.id }, data: { limiteCredito: novoLimite } }),
     ])
   } else {
     await prisma.solicitacaoCredito.update({ where: { id }, data: { status: 'negado', respostaMatriz } })

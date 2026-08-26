@@ -71,11 +71,6 @@ const EmissaoMatriz = () => {
                             sub={`${resumo.injecaoDireta.quantidade} operações`}
                         />
                         <StatCard
-                            titulo="Crédito Aprovado"
-                            valor={RT(resumo.creditoAprovado.total)}
-                            sub={`${resumo.creditoAprovado.quantidade} solicitações`}
-                        />
-                        <StatCard
                             titulo="Queima"
                             valor={RT(resumo.queima.total)}
                             sub={`${resumo.queima.quantidade} cobranças quitadas`}
@@ -85,7 +80,12 @@ const EmissaoMatriz = () => {
                             valor={RT(resumo.compraMatriz.total)}
                             sub="informativo — não entra na emissão líquida"
                         />
-                        <StatCard titulo="Emissão Líquida" valor={RT(resumo.emissaoLiquida)} sub="injeção + crédito aprovado − queima" destaque />
+                        <StatCard
+                            titulo="Limite Aprovado"
+                            valor={RT(resumo.limiteAprovado.total)}
+                            sub={`${resumo.limiteAprovado.quantidade} solicitações — não injeta RT, só aumenta o teto`}
+                        />
+                        <StatCard titulo="Emissão Líquida" valor={RT(resumo.emissaoLiquida)} sub="injeção direta − queima" destaque />
                     </div>
                 </div>
             ) : null}

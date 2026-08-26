@@ -626,14 +626,14 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
 
 ### `GET /relatorios/emissao-matriz` — detalhe
 
-Nenhum outro relatório dá visão unificada de quanto RT foi criado ou destruído no sistema — cada caminho grava de um jeito diferente (ver `docs/tech-debt.md`, entrada "Taxa de Manutenção..." não, a de emissão). Este endpoint cruza os 4 caminhos:
+Nenhum outro relatório dá visão unificada de quanto RT foi criado ou destruído no sistema — cada caminho grava de um jeito diferente (ver `docs/tech-debt.md`). Este endpoint cruza:
 
 1. **`injecaoDireta`** — `POST /transacoes/credito` (`Transacao{tipo:'credito', contaOrigemId:null}`), filtrado por `criadoEm`.
-2. **`creditoAprovado`** — fluxo de solicitação do associado aprovado pela Matriz (`SolicitacaoCredito{status:'aprovado'}`), filtrado por `atualizadoEm` (data da decisão, não da solicitação original).
-3. **`queima`** — `Cobranca` em RT quitada sem agência vinculada (`Cobranca{pago:true, valorRT≠null, agenciaId:null}`), filtrado por `atualizadoEm`. Reduz `emissaoLiquida` mesmo a perna de crédito indo pra Matriz (ver `docs/tech-debt.md`) — o RT saiu de circulação do lado de quem devia.
-4. **`compraMatriz`** — Matriz comprando no mercado normal (`Transacao{tipo IN (permuta,negociada), contaOrigemId: contaDaMatriz}`), filtrado por `criadoEm`. **Informativo, não entra em `emissaoLiquida`** — é zero-soma (débito da Matriz, crédito de quem vendeu), não muda o total em circulação.
+2. **`queima`** — `Cobranca` em RT quitada sem agência vinculada (`Cobranca{pago:true, valorRT≠null, agenciaId:null}`), filtrado por `atualizadoEm`. Reduz `emissaoLiquida` mesmo a perna de crédito indo pra Matriz (ver `docs/tech-debt.md`) — o RT saiu de circulação do lado de quem devia.
+3. **`compraMatriz`** — Matriz comprando no mercado normal (`Transacao{tipo IN (permuta,negociada), contaOrigemId: contaDaMatriz}`), filtrado por `criadoEm`. **Informativo, não entra em `emissaoLiquida`** — é zero-soma (débito da Matriz, crédito de quem vendeu), não muda o total em circulação.
+4. **`limiteAprovado`** — solicitação de aumento de `limiteCredito` aprovada pela Matriz (`SolicitacaoCredito{status:'aprovado'}`), filtrado por `atualizadoEm`. **Informativo, não entra em `emissaoLiquida`** — desde 2026-08-26 aprovar crédito só aumenta o teto de quanto o associado pode ficar negativo, não injeta saldo; o RT correspondente só é criado de fato quando ele compra usando esse limite (contabilizado normalmente como permuta/negociada).
 
-`circulacaoAtual` = `SUM(conta.saldo) WHERE entityType != 'matriz'` — sempre instantâneo, **ignora** `dataInicio`/`dataFim`. É o total de RT que já existe hoje (criado e não destruído), não um valor do período. `emissaoLiquida = injecaoDireta + creditoAprovado − queima`, escopado ao período pedido (ou histórico completo, se nenhuma data for passada) — quando não há `compraMatriz` no histórico, `emissaoLiquida` acumulado desde o início bate exatamente com `circulacaoAtual` (validado empiricamente).
+`circulacaoAtual` = `SUM(conta.saldo) WHERE entityType != 'matriz'` — sempre instantâneo, **ignora** `dataInicio`/`dataFim`. É o total de RT que já existe hoje (criado e não destruído), não um valor do período. `emissaoLiquida = injecaoDireta − queima`, escopado ao período pedido (ou histórico completo, se nenhuma data for passada).
 
 ```json
 {
@@ -642,7 +642,7 @@ Nenhum outro relatório dá visão unificada de quanto RT foi criado ou destruí
     "circulacaoAtual": 300,
     "periodo": { "dataInicio": null, "dataFim": null },
     "injecaoDireta": { "total": 500, "quantidade": 1 },
-    "creditoAprovado": { "total": 0, "quantidade": 0 },
+    "limiteAprovado": { "total": 0, "quantidade": 0 },
     "queima": { "total": 200, "quantidade": 1 },
     "compraMatriz": { "total": 0, "quantidade": 0 },
     "emissaoLiquida": 300
@@ -654,7 +654,7 @@ Nenhum outro relatório dá visão unificada de quanto RT foi criado ou destruí
 
 ## 12. Solicitações de Crédito RT
 
-Fluxo de solicitação de injeção de saldo RT para associados, com aprovação hierárquica.
+Fluxo de solicitação de **aumento do limite de crédito** (`limiteCredito`) para associados, com aprovação hierárquica — **não** é injeção direta de saldo. A Matriz não dá RT de graça ao aprovar; ela libera mais espaço pro associado ficar negativo quando comprar de verdade. O RT só entra em circulação nesse momento (permuta/negociada normal, contabilizado como sempre), não na aprovação do crédito. Decisão de produto de 2026-08-26 — antes disso, aprovar injetava saldo diretamente; ver `docs/tech-debt.md` pelo histórico.
 
 ### Fluxo de Status
 
@@ -679,9 +679,9 @@ em_analise → encaminhado → aprovado | negado
 
 ### Regras de Negócio
 
-- Aprovação injeta RT atomicamente via `prisma.$transaction` (movimentacao_conta + saldo).
+- Aprovação incrementa `limiteCredito` atomicamente via `prisma.$transaction`, sincronizado em `Associado` (fonte editável no cadastro) **e** `Conta` (usado na validação de saldo/CHECK do banco) — mesmo padrão de sincronização de `PUT /associados/:id`. Nenhum `MovimentacaoConta`/`saldo` é tocado — não é uma operação financeira, é um ajuste de teto de risco.
 - Não é possível editar ou excluir solicitações com status `aprovado` ou `negado`.
-- O campo `valorSolicitado` é em RT.
+- O campo `valorSolicitado` é o **aumento de limite pedido**, em RT (não é saldo a receber).
 - `agency_admin` só encaminha (`PATCH /creditos/:id/encaminhar`) solicitações dos próprios associados — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 - `GET /creditos/matriz` mostra `encaminhado`/`aprovado`/`negado` **e também** `em_analise` quando o associado não tem `agenciaId` (cadastrado direto pela Matriz) — sem Agência no meio não tem quem encaminhar.
 - `PATCH /creditos/:id/aprovar` e `/negar` aceitam `respostaMatriz` no body — **opcional** (decisão do usuário: não forçar preenchimento). Quando informada, exige mínimo 10 caracteres (evita resposta parcial digitada sem querer); vazio/omitido salva `null`. Diferente do Estorno (§17), que continua exigindo.

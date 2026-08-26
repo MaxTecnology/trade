@@ -63,7 +63,7 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                             <p>{data.associado?.agencia?.nome ?? 'Matriz'}</p>
                         </div>
                         <div className="modalTransacoesItem">
-                            <span>Valor</span>
+                            <span>Aumento de Limite</span>
                             <p>RT$ {formatarNumeroParaRT(data.valorSolicitado)}</p>
                         </div>
                     </div>
@@ -98,7 +98,7 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                         <div className='rowForm'>
                             <span>Editar Pedido de Crédito</span>
                             <div className="form-group">
-                                <label htmlFor="valorSolicitado">Valor:</label>
+                                <label htmlFor="valorSolicitado">Aumento de Limite:</label>
                                 <input required type="text" name="valorSolicitado" id="valorSolicitado" defaultValue={data.valorSolicitado} />
                             </div>
                             <div className="transacoesDesc">
