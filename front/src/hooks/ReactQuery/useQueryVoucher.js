@@ -4,6 +4,6 @@ import { getApiData } from '../ListasHook';
 export const useQueryVoucher = () => {
     return useQuery({
         queryKey: ['voucher'],
-        queryFn: async () => getApiData('transacoes?page=1&limit=200'),
+        queryFn: async () => getApiData('transacoes?page=1&limit=100'),
     });
 };
