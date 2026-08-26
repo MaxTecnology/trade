@@ -1,9 +1,18 @@
 import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
-import { motion } from "framer-motion";
 import { useQueryMeusAssociados } from "@/hooks/ReactQuery/useQueryMeusAssociados";
+import { isMatriz } from "@/hooks/getId";
+import { motion } from "framer-motion";
+
+// "Unidade" = associados que a própria entidade logada cadastrou/gerencia
+// diretamente; "Geral" = todos. GET /associados já vem escopado no backend
+// pra quem não é superadmin (agency_admin só vê os próprios) — só Matriz
+// precisa separar "diretos" (sem agência) do total na mesma resposta.
 const AssociadoCard_Dashboard = () => {
-  const { data: associados } = useQueryMeusAssociados();
-  const { data } = useQueryAssociados();
+  const { data: geralResp } = useQueryAssociados();
+  const { data: meusResp } = useQueryMeusAssociados(!isMatriz());
+
+  const geral = geralResp?.data ?? [];
+  const unidade = isMatriz() ? geral.filter((a) => !a.agenciaId) : (meusResp?.data ?? []);
 
   return (
     <motion.div
@@ -18,11 +27,11 @@ const AssociadoCard_Dashboard = () => {
         <div className="homeCardItemBody">
           <div>
             <p>Unidade</p>
-            <p>{associados && associados.length ? associados.length : 0}</p>
+            <p>{unidade.length}</p>
           </div>
           <div>
             <p>Geral</p>
-            <p>{data && data.data ? data.data.length : 0}</p>
+            <p>{geral.length}</p>
           </div>
         </div>
       </div>

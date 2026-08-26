@@ -466,3 +466,18 @@ Item registrado no plano como pendente, mas ao auditar o front (`OfertasCadastra
 **O que mudou:** componente reescrito — busca `GET /transacoes?page=1&limit=1` (já ordenado por `criadoEm desc` no backend, a primeira da página é a mais recente) via `useQuery`, mostra `formatDate(ultima.criadoEm)`.
 
 **Validado:** `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — "Última Transação" confirmada mostrando a data real (25/08/2026) no dashboard real, com transações de teste já existentes na base.
+
+## [RESOLVIDO 2026-08-26] Cards do dashboard (Associados/Ofertas/Fundo Permuta) não seguiam a regra Unidade vs Geral
+Regra de negócio explicada pelo usuário: "Unidade" = o que pertence diretamente a quem está logado (Matriz: associados/ofertas/fundo sem intermediário de agência; Agência: só os próprios); "Geral" = soma de tudo no sistema. `Permutas Mês` já tinha sido corrigido nessa lógica numa rodada anterior — faltavam os outros três, cada um com um bug de causa raiz diferente:
+
+- **Associados**: `useQueryMeusAssociados` chamava `agencias/${getId()}/associados` usando `getId()` (retorna `Usuario.id`) como se fosse o `Agencia.id` — sempre id errado, endpoint sempre voltava vazio/404. Afetava tanto Matriz (que nem deveria chamar essa rota) quanto o caso real de uma Agência logada (bug pré-existente, não reportado ainda).
+- **Ofertas**: filtrava por `item.usuarioId === getId()` — `Oferta` não tem campo `usuarioId` (tem `contaId`). Também lia `data.ofertas` em vez de `data.data` (formato de resposta errado).
+- **Fundo Permuta**: nunca teve implementação real — sempre chamava `GET /dashboard/total-fundo-permuta-matriz/1`, endpoint que não existe nesta API (mesmo padrão do "Permutas Mês", já documentado acima).
+
+**O que mudou:**
+- `useQueryMeusAssociados.js` — corrigido pra usar `state.user.entityId` (id da entidade — Agência ou Associado/Gerente — vindo do JWT/`/auth/me`) em vez de `getId()` (Usuario.id); ganhou parâmetro `enabled`.
+- `AssociadoCard_Dashboard.jsx` — Matriz: "Unidade" filtra a lista de `GET /associados` (que já vem sem-escopo pra ela) por `!agenciaId`; Agência/Gerente: usa `useQueryMeusAssociados` (agora corrigido).
+- `OfertasCard_Dashboard.jsx` — uma única fonte (`GET /ofertas`, marketplace público, mesma lista pra qualquer role); "Unidade" filtra por `contaId === minhaContaId` — funciona igual pra Matriz, Agência ou Associado, sem precisar de branch por role.
+- `FundoPermutaCard_Dashboard.jsx` (nova implementação) — soma `limiteCredito` de Agências (`GET /agencias`, só Matriz) + Associados (`GET /associados`, inclui Gerentes — são registros Associado). "Unidade" (Matriz) = todas as agências (ela cria todas direto) + associados/gerentes sem agência; "Unidade" (Agência) = só os próprios associados (via `useQueryMeusAssociados`).
+
+**Validado:** `npx tsc --noEmit` limpo; `npm test` 32/32; `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — cenário completo replicando o exemplo do usuário: 1 associado direto da Matriz + criada uma Agência com 1 associado próprio → confirmado `Associados: Unidade 1→1 (não muda), Geral 1→2 (sobe)` exatamente como descrito; `Fundo Permuta: Unidade 7.000→7.000 (não muda), Geral 7.000→7.500 (sobe)` mesma lógica aplicada a limiteCredito; visão da Agência logada confirmada separadamente (`Unidade`/`Geral` corretos pro escopo dela, incluindo Ofertas mostrando o marketplace público completo em "Geral" mesmo sem ela ter ofertas próprias).

@@ -1,16 +1,32 @@
-import { getApiData } from "@/hooks/ListasHook";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
 import { time } from "./constant";
 import { formatarNumeroParaReal } from "@/utils/functions/formartNumber";
-import { useQueryFundoPermuta } from "@/hooks/ReactQuery/dashboard/useQueryFundoPermuta";
+import { useQueryAgencias } from "@/hooks/ReactQuery/useQueryAgencias";
+import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
+import { useQueryMeusAssociados } from "@/hooks/ReactQuery/useQueryMeusAssociados";
+import { isMatriz } from "@/hooks/getId";
 
+const somaLimiteCredito = (items) =>
+    (items ?? []).reduce((soma, item) => soma + Number(item.limiteCredito ?? 0), 0);
+
+// Fundo de Permutas = limite de crédito liberado às agências, associados e
+// gerentes (gerente é um Associado, já entra na soma de associados). "Geral"
+// = tudo; "Unidade" (Matriz) = todas as agências (ela cria todas direto) +
+// associados/gerentes sem agência (diretos dela); "Unidade" (Agência) = só
+// os próprios associados (ela não libera crédito pra outra agência).
 const FundoPermutaCard_Dashboard = () => {
-    const [geral, setGeral] = useState({});
-    const { data: unidade } = useQueryFundoPermuta()
-    useEffect(() => {
-        getApiData("dashboard/total-fundo-permuta-matriz/1", setGeral)
-    }, []);
+    const { data: agencias } = useQueryAgencias(isMatriz());
+    const { data: associadosResp } = useQueryAssociados();
+    const { data: meusResp } = useQueryMeusAssociados(!isMatriz());
+
+    const associados = associadosResp?.data ?? [];
+    const somaAgencias = somaLimiteCredito(agencias);
+    const somaAssociados = somaLimiteCredito(associados);
+
+    const geral = somaAgencias + somaAssociados;
+    const unidade = isMatriz()
+        ? somaAgencias + somaLimiteCredito(associados.filter((a) => !a.agenciaId))
+        : somaLimiteCredito(meusResp?.data ?? []);
 
     return (
         <motion.div
@@ -25,31 +41,11 @@ const FundoPermutaCard_Dashboard = () => {
                 <div className="homeCardItemBody">
                     <div>
                         <p>Unidade</p>
-                        <p>
-                            {unidade && unidade.valorFundoPermutaUnidade ?
-                                <>
-                                    RT$ {formatarNumeroParaReal(unidade.valorFundoPermutaUnidade)}
-                                </>
-                                :
-                                <>
-                                    RT$ 0
-                                </>
-                            }
-                        </p>
+                        <p>RT$ {formatarNumeroParaReal(unidade)}</p>
                     </div>
                     <div>
                         <p>Geral</p>
-                        <p>
-                            {geral && geral.valorFundoPermutaTotal ?
-                                <>
-                                    RT$ {formatarNumeroParaReal(geral.valorFundoPermutaTotal)}
-                                </>
-                                :
-                                <>
-                                    RT$ 0
-                                </>
-                            }
-                        </p>
+                        <p>RT$ {formatarNumeroParaReal(geral)}</p>
                     </div>
                 </div>
             </div>

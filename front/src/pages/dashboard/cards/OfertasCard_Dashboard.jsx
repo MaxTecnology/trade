@@ -1,22 +1,16 @@
 import { useQueryOfertas } from "@/hooks/ReactQuery/useQueryOfertas";
-import { getId } from "@/hooks/getId";
 import { motion } from "framer-motion";
 import { time } from "./constant";
+import state from "@/store";
 
+// GET /ofertas é o marketplace público (mesma lista pra qualquer role) — dá
+// pra separar "Unidade" (minhas ofertas) filtrando pela própria conta, sem
+// precisar de um segundo endpoint.
 const OfertasCard_Dashboard = () => {
     const { data } = useQueryOfertas()
-
-    const filter = (data) => {
-        var ofertas = []
-        data.map((item) => {
-            if (item.usuarioId === getId()) {
-                ofertas.push(item)
-            }
-        })
-        return ofertas
-    }
-
-
+    const geral = data?.data ?? []
+    const minhaContaId = state.user?.conta?.id
+    const unidade = geral.filter((o) => o.contaId === minhaContaId)
 
     return (
         <motion.div
@@ -31,11 +25,11 @@ const OfertasCard_Dashboard = () => {
                 <div className="homeCardItemBody">
                     <div>
                         <p>Unidade</p>
-                        <p>{data && data.ofertas ? filter(data.ofertas).length : 0}</p>
+                        <p>{unidade.length}</p>
                     </div>
                     <div>
                         <p>Geral</p>
-                        <p>{data && data.ofertas ? data.ofertas.length : 0}</p>
+                        <p>{geral.length}</p>
                     </div>
                 </div>
             </div>
