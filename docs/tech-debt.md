@@ -499,3 +499,16 @@ Regra de negócio explicada pelo usuário: "Unidade" = o que pertence diretament
 **Fora do escopo desta rodada:** o filtro de busca da tela "Associados" (Agência/Categoria/Número da conta/Estado/Cidade) escreve em `filters.table`, mas a página nunca lê esse estado — busca é só decorativa, não filtra nada. Bug pré-existente, separado do reportado aqui, registrado pra não esquecer.
 
 **Validado:** `npx tsc --noEmit` limpo; `npm test` 32/32; `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — logado como Associado comum, confirmado zero 403 em `/associados`/`/agencias/.../associados` no dashboard, e a tela "Associados" mostrando o card do outro associado (excluindo o próprio, corretamente).
+
+## [RESOLVIDO 2026-08-26] Busca decorativa na tela "Associados" + 403 em loop no dashboard da Matriz
+Dois achados sinalizados numa resposta anterior, resolvidos agora:
+
+**1. Busca da tela "Associados" nunca filtrava nada** — `SearchField.jsx` escrevia em `filters.table` (Agência/Categoria/Número da conta/Estado/Cidade + busca livre), mas `Associados.jsx` nunca lia esse estado — os cards mostrados eram sempre a lista inteira, sem nenhum filtro aplicado. O `<form>` também não tinha `onSubmit`/`preventDefault` — clicar "Localizar" recarregava a página inteira (mesmo bug já corrigido em outras telas nesta sessão).
+
+**O que mudou:** `Associados.jsx` passou a ler `filters.table` via `useSnapshot` e aplicar os filtros de verdade (substring case-insensitive pra busca/cidade, igualdade pra agência/categoria/estado, substring pro número da conta) sobre a lista já carregada de `GET /associados/diretorio`. `SearchField.jsx` ganhou `onSubmit={(e) => e.preventDefault()}`. `associate.service.ts::listDiretorio()` ganhou `agenciaId` no select (só o id, não expõe nada novo) — precisava pra filtrar por agência sem comparar pelo nome.
+
+**2. Dashboard da Matriz também tinha 403 em loop** (mesma classe de bug corrigida antes pro Associado) — `ResumoFinanceiro.jsx` chamava `useQueryReceberAgencia`/`useQueryReceberAssociado`/`useQueryProximaFatura` (todos batendo em `GET /cobrancas/minhas`, que só existe pra `associado`/`agencia` — `entityType: 'matriz'` sempre 403) e `useQueryPagarGerentes` (`GET /relatorios/comissoes-gerentes`, só `superadmin`/`agency_admin`) sem nenhuma guarda de role.
+
+**O que mudou:** as 4 hooks ganharam parâmetro `enabled`; `ResumoFinanceiro.jsx` passou a chamá-las com `!isMatriz()` (as 3 de cobrança) e `podeListarTodosAssociados()` (comissões de gerentes).
+
+**Validado:** `npx tsc --noEmit` limpo; `npm test` 32/32; `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — zero 403 no dashboard tanto de Matriz quanto de Associado; filtro por cidade inexistente confirmado zerando os cards (de 2 pra 0); clique em "Localizar" confirmado sem recarregar a página.

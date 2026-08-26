@@ -219,6 +219,7 @@ export async function listDiretorio(exceptAssociadoId?: string) {
       descricao: true,
       imagemUrl: true,
       categoriaId: true,
+      agenciaId: true,
       contatos: true,
       agencia: { select: { nome: true } },
       gerente: { select: { nome: true } },

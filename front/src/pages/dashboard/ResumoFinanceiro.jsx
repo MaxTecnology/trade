@@ -3,7 +3,7 @@ import StarRating from "@/components/Stars/StarRating";
 import { useSnapshot } from "valtio";
 import { useQueryReceberAgencia } from "@/hooks/ReactQuery/useQueryReceberAgencia";
 import { useQueryReceberAssociado } from "@/hooks/ReactQuery/useQueryReceberAssociado";
-import { getType, isAssociado, isMatriz } from "@/hooks/getId";
+import { getType, isAssociado, isMatriz, podeListarTodosAssociados } from "@/hooks/getId";
 import { useQueryPlanos } from "@/hooks/ReactQuery/useQueryPlanos";
 import { useQueryPagarGerentes } from "@/hooks/ReactQuery/dashboard/useQueryPagarGerentes";
 import { useQueryProximaFatura } from "@/hooks/ReactQuery/dashboard/useQueryProximaFatura";
@@ -13,10 +13,13 @@ import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
 const ResumoFinanceiro = () => {
   const snap = useSnapshot(state);
   const { data: planos } = useQueryPlanos();
-  const { data: receberAgencia } = useQueryReceberAgencia();
-  const { data: receberAssociados } = useQueryReceberAssociado();
-  const { data: pagarGerentes } = useQueryPagarGerentes();
-  const { data: proximaFatura } = useQueryProximaFatura();
+  // GET /cobrancas/minhas só existe pra associado/agência (Matriz não tem
+  // "minhas cobranças"); GET /relatorios/comissoes-gerentes só pra
+  // superadmin/agency_admin — evita 403 em loop pra quem não tem acesso.
+  const { data: receberAgencia } = useQueryReceberAgencia(!isMatriz());
+  const { data: receberAssociados } = useQueryReceberAssociado(!isMatriz());
+  const { data: pagarGerentes } = useQueryPagarGerentes(podeListarTodosAssociados());
+  const { data: proximaFatura } = useQueryProximaFatura(!isMatriz());
 
   const type = getType();
   var taxa = 0;

@@ -23,7 +23,7 @@ const SearchField = () => {
     }
 
     return (
-        <form action="" className="containerSearch">
+        <form action="" onSubmit={(e) => e.preventDefault()} className="containerSearch">
             <div className="searchRow">
                 <SearchInput />
                 <div className="form-group f2">
