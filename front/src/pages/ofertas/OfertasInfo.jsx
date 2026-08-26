@@ -1,17 +1,27 @@
 import { useEffect, useState } from "react";
 import Footer from "@/components/Footer";
-import { formatDate } from "@/hooks/ListasHook";
+import { formatDate, getApiData } from "@/hooks/ListasHook";
 import { activePage } from "@/utils/functions/setActivePage";
 import api from "@/services/api";
 import { toast } from "sonner";
-import useRevalidate from "@/hooks/ReactQuery/useRevalidate";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import defaultImg from "@/assets/images/default_img.png";
 
 const OfertasInfo = () => {
     const [quantidade, setQuantidade] = useState(1);
     const [loading, setLoading] = useState(false);
-    const storedData = JSON.parse(localStorage.getItem("ofertaCard"));
-    const revalidate = useRevalidate();
+    const { id } = JSON.parse(localStorage.getItem("ofertaCard"));
+    const queryClient = useQueryClient();
+
+    // A oferta precisa vir sempre viva da API — quantidadeDisponivel muda a
+    // cada compra, então um snapshot do momento do clique (localStorage)
+    // ficaria congelado e nunca mostraria o estoque atualizado.
+    const { data } = useQuery({
+        queryKey: ['oferta', id],
+        queryFn: () => getApiData(`ofertas/${id}`),
+    });
+    const storedData = data?.data;
+
     const formatarNumeroParaReal = (numero) => {
         return new Intl.NumberFormat('pt-BR', {
             minimumFractionDigits: 2,
@@ -26,8 +36,12 @@ const OfertasInfo = () => {
         event.preventDefault()
         setLoading(true)
         toast.promise(
-            api.post('transacoes/permuta', { ofertaId: storedData.id, quantidade: Number(quantidade), parcelas: 1 })
-                .then(() => { setLoading(false); revalidate("ofertas") })
+            api.post('transacoes/permuta', { ofertaId: id, quantidade: Number(quantidade), parcelas: 1 })
+                .then(() => {
+                    setLoading(false)
+                    queryClient.invalidateQueries({ queryKey: ['oferta', id] })
+                    queryClient.invalidateQueries({ queryKey: ['ofertas'] })
+                })
                 .catch((err) => {
                     setLoading(false)
                     throw new Error(err?.response?.data?.error?.message ?? "Erro ao realizar permuta")
@@ -39,6 +53,8 @@ const OfertasInfo = () => {
             }
         )
     }
+
+    if (!storedData) return null;
 
     return (
         <div className="container">

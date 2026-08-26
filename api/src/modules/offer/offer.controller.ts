@@ -20,7 +20,7 @@ export async function createController(request: FastifyRequest, reply: FastifyRe
 
 export async function listController(request: FastifyRequest, reply: FastifyReply) {
   const query = listOfferQuerySchema.parse(request.query)
-  const { items, total } = await offerService.list(query)
+  const { items, total } = await offerService.list(query, request.user?.contaId)
   return reply.send(paginated(items, query.page, query.limit, total))
 }
 

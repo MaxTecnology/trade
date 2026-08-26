@@ -41,7 +41,7 @@ export async function create(input: CreateOfferInput, contaId: string) {
   })
 }
 
-export async function list(query: ListOfferQuery) {
+export async function list(query: ListOfferQuery, exceptContaId?: string) {
   const { categoria, cidade, estado, valorMin, valorMax, tipoAtendimento, page, limit } = query
   const skip = (page - 1) * limit
 
@@ -52,6 +52,7 @@ export async function list(query: ListOfferQuery) {
       { conta: { entityType: 'agencia' as const, agencia: { status: 'ativo' as const } } },
       { conta: { entityType: 'associado' as const, associado: { statusLoja: 'aberta' as const, status: 'ativo' as const } } },
     ],
+    ...(exceptContaId ? { contaId: { not: exceptContaId } } : {}),
     ...(categoria ? { categoriaId: categoria } : {}),
     ...(cidade ? { cidade } : {}),
     ...(estado ? { estado } : {}),
