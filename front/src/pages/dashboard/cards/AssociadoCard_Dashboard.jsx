@@ -1,15 +1,22 @@
 import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
 import { useQueryMeusAssociados } from "@/hooks/ReactQuery/useQueryMeusAssociados";
-import { isMatriz } from "@/hooks/getId";
+import { isMatriz, isGerente, podeListarTodosAssociados } from "@/hooks/getId";
 import { motion } from "framer-motion";
+import state from "@/store";
 
 // "Unidade" = associados que a própria entidade logada cadastrou/gerencia
-// diretamente; "Geral" = todos. GET /associados já vem escopado no backend
-// pra quem não é superadmin (agency_admin só vê os próprios) — só Matriz
-// precisa separar "diretos" (sem agência) do total na mesma resposta.
+// diretamente; "Geral" = todos. GET /associados só existe pra
+// superadmin/agency_admin, e GET /agencias/:id/associados (Unidade) só pra
+// superadmin/agency_admin/gerente (agency_operator NÃO) — só chamado quando
+// faz sentido, evita 403 em loop. Um Associado comum (não gerente) não
+// gerencia sub-associados — card fica com os dois campos zerados pra esse
+// caso, de propósito.
 const AssociadoCard_Dashboard = () => {
-  const { data: geralResp } = useQueryAssociados();
-  const { data: meusResp } = useQueryMeusAssociados(!isMatriz());
+  const podeVerGeral = podeListarTodosAssociados();
+  const podeVerUnidade = state.user?.role === 'agency_admin' || isGerente();
+
+  const { data: geralResp } = useQueryAssociados(podeVerGeral);
+  const { data: meusResp } = useQueryMeusAssociados(podeVerUnidade);
 
   const geral = geralResp?.data ?? [];
   const unidade = isMatriz() ? geral.filter((a) => !a.agenciaId) : (meusResp?.data ?? []);

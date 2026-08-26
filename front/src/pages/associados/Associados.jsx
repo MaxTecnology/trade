@@ -3,14 +3,14 @@ import SearchField from '@/components/Search/SearchField';
 import AssociadosCard from "./AssociadosCard";
 import Footer from "@/components/Footer";
 import { activePage } from "@/utils/functions/setActivePage";
-import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
+import { useQueryAssociadosDiretorio } from "@/hooks/ReactQuery/useQueryAssociadosDiretorio";
 import PaginationCards from "@/components/cards/PaginationCards";
 import { useSnapshot } from "valtio";
 import state from "@/store";
 
 const Associados = () => {
     useSnapshot(state);
-    const { data } = useQueryAssociados();
+    const { data } = useQueryAssociadosDiretorio();
     const [currentPage, setCurrentPage] = useState(1);
     const [cardsPerPage, setCardsPerPage] = useState(6);
     const user = state.user

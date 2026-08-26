@@ -4,7 +4,8 @@ import { formatarNumeroParaReal } from "@/utils/functions/formartNumber";
 import { useQueryAgencias } from "@/hooks/ReactQuery/useQueryAgencias";
 import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
 import { useQueryMeusAssociados } from "@/hooks/ReactQuery/useQueryMeusAssociados";
-import { isMatriz } from "@/hooks/getId";
+import { isMatriz, isGerente, podeListarTodosAssociados } from "@/hooks/getId";
+import state from "@/store";
 
 const somaLimiteCredito = (items) =>
     (items ?? []).reduce((soma, item) => soma + Number(item.limiteCredito ?? 0), 0);
@@ -13,11 +14,14 @@ const somaLimiteCredito = (items) =>
 // gerentes (gerente é um Associado, já entra na soma de associados). "Geral"
 // = tudo; "Unidade" (Matriz) = todas as agências (ela cria todas direto) +
 // associados/gerentes sem agência (diretos dela); "Unidade" (Agência) = só
-// os próprios associados (ela não libera crédito pra outra agência).
+// os próprios associados (ela não libera crédito pra outra agência). Cada
+// fetch só dispara quando o role tem permissão na rota correspondente,
+// evita 403 em loop (Associado comum, agency_operator etc.).
 const FundoPermutaCard_Dashboard = () => {
+    const podeVerUnidade = state.user?.role === 'agency_admin' || isGerente();
     const { data: agencias } = useQueryAgencias(isMatriz());
-    const { data: associadosResp } = useQueryAssociados();
-    const { data: meusResp } = useQueryMeusAssociados(!isMatriz());
+    const { data: associadosResp } = useQueryAssociados(podeListarTodosAssociados());
+    const { data: meusResp } = useQueryMeusAssociados(podeVerUnidade);
 
     const associados = associadosResp?.data ?? [];
     const somaAgencias = somaLimiteCredito(agencias);

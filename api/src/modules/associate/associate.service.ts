@@ -192,12 +192,15 @@ export async function list(requester: { role: string; entityId: string }, page =
   return { items, total }
 }
 
-// Diretório mínimo para negociação direta entre associados — sem dados financeiros
-// (saldo, plano, gerente), diferente de list() que é uso administrativo.
+// Diretório de associados visível a qualquer usuário autenticado (vendedor em
+// negociação direta E marketplace público de Associados) — deliberadamente
+// sem dados financeiros (saldo, limiteCredito etc.), diferente de list() que
+// é uso administrativo e exige role admin/superadmin. `conta` só traz
+// `numero` (não sensível, usado como filtro de busca), nunca `saldo`.
 // Gerente é tecnicamente um Associado (registro Associado + Usuario role:
 // 'gerente', ver CLAUDE.md), mas só pode ser comprador — nunca aparece como
-// opção de vendedor. Filtrado pelo tipoPlano do plano vinculado (gerente usa
-// sempre um Plano{tipoPlano:'gerente'}, nunca 'associado').
+// opção de vendedor nem no marketplace. Filtrado pelo tipoPlano do plano
+// vinculado (gerente usa sempre um Plano{tipoPlano:'gerente'}, nunca 'associado').
 export async function listDiretorio(exceptAssociadoId?: string) {
   return prisma.associado.findMany({
     where: {
@@ -212,6 +215,14 @@ export async function listDiretorio(exceptAssociadoId?: string) {
       cidade: true,
       estado: true,
       tipoAtendimento: true,
+      status: true,
+      descricao: true,
+      imagemUrl: true,
+      categoriaId: true,
+      contatos: true,
+      agencia: { select: { nome: true } },
+      gerente: { select: { nome: true } },
+      conta: { select: { numero: true } },
     },
     orderBy: { nome: 'asc' },
   })

@@ -42,3 +42,10 @@ export function isGerente() {
 export function isAdminEntidade() {
   return state.user?.role === 'associate_admin' || state.user?.role === 'agency_admin'
 }
+
+// Mesma checagem do guard de GET /associados (listagem administrativa,
+// com dados financeiros) — só superadmin e agency_admin, nunca
+// associate_admin/operator nem agency_operator.
+export function podeListarTodosAssociados() {
+  return isMatriz() || state.user?.role === 'agency_admin'
+}
