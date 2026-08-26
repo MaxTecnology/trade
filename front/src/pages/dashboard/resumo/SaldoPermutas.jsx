@@ -1,10 +1,9 @@
-import { useSnapshot } from "valtio";
 import { formatarNumeroParaReal } from "@/hooks/Functions";
-import state from "@/store";
+import { useQuerySaldoConta } from "@/hooks/ReactQuery/dashboard/useQuerySaldoConta";
 
 const SaldoPermutas = () => {
-    const snap = useSnapshot(state);
-    const saldoPermuta = snap.user?.conta?.saldoPermuta ?? 0
+    const { data } = useQuerySaldoConta();
+    const saldoPermuta = Number(data?.data?.saldo ?? 0)
     return (
         <div>
             Saldo em Permutas:

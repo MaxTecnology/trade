@@ -59,7 +59,10 @@ export async function extrato(contaId: string, filters: ReportFilters) {
 }
 
 export async function saldo(contaId: string) {
-  const conta = await prisma.conta.findUnique({ where: { id: contaId }, select: { saldo: true, numero: true } })
+  const conta = await prisma.conta.findUnique({
+    where: { id: contaId },
+    select: { saldo: true, numero: true, limiteCredito: true },
+  })
   return conta
 }
 

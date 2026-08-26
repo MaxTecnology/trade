@@ -1,10 +1,9 @@
-import { useSnapshot } from "valtio";
 import { formatarNumeroParaReal } from "../../../hooks/Functions";
-import state from "../../../store";
+import { useQuerySaldoConta } from "@/hooks/ReactQuery/dashboard/useQuerySaldoConta";
 
 const LimiteCredito = () => {
-    const snap = useSnapshot(state);
-    const limiteCredito = snap.user?.conta?.limiteCredito ?? 0
+    const { data } = useQuerySaldoConta();
+    const limiteCredito = Number(data?.data?.limiteCredito ?? 0)
     return (
         <div>
             Limite de Crédito:
