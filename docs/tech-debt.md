@@ -445,3 +445,10 @@ Item registrado no plano como pendente, mas ao auditar o front (`OfertasCadastra
 **O que mudou:** os dois arquivos passaram de `?? '-'` pra `?? 'Matriz'`. Nenhuma mudança de backend — os dois includes já traziam `associado.agencia` (retorna `null` quando não tem agência, o que já bastava pro fallback funcionar).
 
 **Validado:** `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — solicitado crédito por um Associado sem agência, confirmado que "Créditos a Aprovar" mostra "Matriz" na coluna Agência (antes: branco).
+
+## [RESOLVIDO 2026-08-26] Modal de detalhes do Crédito — valor sem formatação e "Sem agência" em vez de "Matriz"
+`CreditosModal.jsx` (compartilhado por Créditos/Meus Créditos/Analisar/Aprovar) mostrava `data.valorSolicitado` cru (ex: `10000`, sem separador de milhar) e `'Sem agência'` como fallback quando o Associado não tem `agenciaId` — mesmo bug de fallback já corrigido na tabela (`constantCreditos.js`) no ajuste anterior, só que faltava nesse modal. Achado pelo usuário via captura de tela.
+
+**O que mudou:** `Valor` passa a usar `formatarNumeroParaRT` (mesmo helper já usado em outros modais) com prefixo `RT$` — `RT$ 10.000,00`. `Agência` passa a cair em `'Matriz'` em vez de `'Sem agência'`, mesmo padrão já estabelecido.
+
+**Validado:** `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — solicitação de crédito de RT$ 10.000 confirmada exibindo `RT$ 10.000,00` e `Agência: Matriz` no modal real.

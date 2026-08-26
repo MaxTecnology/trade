@@ -5,6 +5,7 @@ import { closeModal } from '../hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
 import { useEffect } from 'react';
 import { formateValue } from '../hooks/Mascaras';
+import { formatarNumeroParaRT } from '@/utils/functions/formartNumber';
 import { isAgencia, isAssociado, isMatriz } from '../hooks/getId';
 import state from '../store';
 
@@ -59,11 +60,11 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Agência</span>
-                            <p>{data.associado?.agencia?.nome ?? 'Sem agência'}</p>
+                            <p>{data.associado?.agencia?.nome ?? 'Matriz'}</p>
                         </div>
                         <div className="modalTransacoesItem">
                             <span>Valor</span>
-                            <p>{data.valorSolicitado}</p>
+                            <p>RT$ {formatarNumeroParaRT(data.valorSolicitado)}</p>
                         </div>
                     </div>
                     <div className="modalTransacoesDivider"></div>
