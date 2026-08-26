@@ -1,17 +1,10 @@
-import { getApiData } from "@/hooks/ListasHook";
-import { getId } from "@/hooks/getId";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
 import { time } from "./constant";
 import { formatarNumeroParaReal } from "@/utils/functions/formartNumber";
+import { useQueryPermutasMes } from "@/hooks/ReactQuery/dashboard/useQueryPermutasMes";
 
 const PermutasCard_Dashboard = () => {
-    const [geral, setGeral] = useState({});
-    const [unidade, setUnidade] = useState({});
-    useEffect(() => {
-        getApiData("dashboard/total-valor-rt", setGeral)
-        getApiData(`dashboard/total-valor-rt-por-unidade/${getId()}`, setUnidade)
-    }, []);
+    const { valorUnidade, valorGeral } = useQueryPermutasMes();
 
     return (
         <motion.div
@@ -26,23 +19,11 @@ const PermutasCard_Dashboard = () => {
                 <div className="homeCardItemBody">
                     <div>
                         <p>Unidade</p>
-                        <p>
-                            {unidade && unidade.valorTotalTransacoes ?
-                                <>RT$ {formatarNumeroParaReal(unidade.valorTotalTransacoes)} </>
-                                :
-                                <>RT$ 0 </>
-                            }
-                        </p>
+                        <p>RT$ {formatarNumeroParaReal(valorUnidade)}</p>
                     </div>
                     <div>
                         <p>Geral</p>
-                        <p>
-                            {geral && geral.totalValorRT ?
-                                <>RT$ {formatarNumeroParaReal(geral.totalValorRT)}</>
-                                :
-                                <>RT$ 0 </>
-                            }
-                        </p>
+                        <p>RT$ {formatarNumeroParaReal(valorGeral)}</p>
                     </div>
                 </div>
             </div>
