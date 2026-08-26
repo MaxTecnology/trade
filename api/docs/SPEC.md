@@ -440,7 +440,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 | POST | `/transacoes/:id/estorno` | Estornar transação diretamente (sem solicitação) | `superadmin`, `agency_admin` |
 | GET | `/transacoes` | Listar transações da conta autenticada (filtra por `contaOrigemId`/`contaDestinoId`) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 | GET | `/transacoes/:id` | Detalhar transação — 404 se a conta autenticada não participou (`contaOrigemId`/`contaDestinoId`) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
-| GET | `/associados/diretorio` | Diretório mínimo de associados ativos (id, nome, cidade, estado, tipoAtendimento — sem dados financeiros) — pra escolher parceiro de negociação, ou como opções do filtro "Associado" em Extratos | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
+| GET | `/associados/diretorio` | Diretório mínimo de associados ativos (id, nome, cidade, estado, tipoAtendimento — sem dados financeiros) — pra escolher parceiro de negociação, ou como opções do filtro "Associado" em Extratos. Só associados com plano `tipoPlano: 'associado'` — Gerente (tecnicamente um Associado com plano `tipoPlano: 'gerente'`) nunca aparece aqui, só pode ser comprador, nunca vendedor | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 
 ### Regras de Negócio
 

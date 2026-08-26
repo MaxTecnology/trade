@@ -194,10 +194,15 @@ export async function list(requester: { role: string; entityId: string }, page =
 
 // Diretório mínimo para negociação direta entre associados — sem dados financeiros
 // (saldo, plano, gerente), diferente de list() que é uso administrativo.
+// Gerente é tecnicamente um Associado (registro Associado + Usuario role:
+// 'gerente', ver CLAUDE.md), mas só pode ser comprador — nunca aparece como
+// opção de vendedor. Filtrado pelo tipoPlano do plano vinculado (gerente usa
+// sempre um Plano{tipoPlano:'gerente'}, nunca 'associado').
 export async function listDiretorio(exceptAssociadoId?: string) {
   return prisma.associado.findMany({
     where: {
       status: 'ativo',
+      plano: { tipoPlano: 'associado' },
       ...(exceptAssociadoId ? { id: { not: exceptAssociadoId } } : {}),
     },
     select: {
