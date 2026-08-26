@@ -1,27 +1,18 @@
-import { formatDate } from "@/hooks/ListasHook";
-import state from "@/store";
-import { useState } from "react";
-import { useSnapshot } from "valtio";
+import { useQuery } from "@tanstack/react-query";
+import { getApiData, formatDate } from "@/hooks/ListasHook";
 
 const UltimaTransação = () => {
-    const snap = useSnapshot(state.user);
-    const [ultimaTransacao, setUltimaTransacao] = useState(0);
-    const data = snap && snap.transacoesComprador ? snap.transacoesComprador.concat(snap.transacoesVendedor) : [];
-
-
-    // Encontrar a transação mais recente
-    for (const transacao of data) {
-        if (transacao && transacao.createdAt && !ultimaTransacao) {
-            setUltimaTransacao(transacao.createdAt)
-        } else if (transacao && transacao.createdAt > ultimaTransacao) {
-            setUltimaTransacao(transacao.createdAt)
-        }
-    }
+    // GET /transacoes já ordena por criadoEm desc — a primeira da página 1 é a mais recente.
+    const { data } = useQuery({
+        queryKey: ["ultimaTransacao"],
+        queryFn: async () => getApiData("transacoes?page=1&limit=1"),
+    });
+    const ultima = data?.data?.[0];
 
     return (
         <div>
             Ultima Transação:
-            <span>{ultimaTransacao ? formatDate(ultimaTransacao) : "Sem transações"}</span>
+            <span>{ultima ? formatDate(ultima.criadoEm) : "Sem transações"}</span>
         </div>
     );
 };
