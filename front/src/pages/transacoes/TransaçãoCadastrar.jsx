@@ -88,7 +88,6 @@ const TransaçãoCadastrar = () => {
                             >
                                 <option value="associado">Associado</option>
                                 <option value="agencia">Agência</option>
-                                <option value="matriz">Matriz (eu mesma)</option>
                             </select>
                         </div>
                     ) : null}
