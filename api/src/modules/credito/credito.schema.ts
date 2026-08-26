@@ -10,10 +10,16 @@ export const AtualizarCreditoSchema = z.object({
   descricao: z.string().optional(),
 })
 
-// Justificativa da Matriz ao aprovar/negar — obrigatória, pra quem pediu
-// entender a decisão.
+// Justificativa da Matriz ao aprovar/negar — opcional (decisão do usuário:
+// não forçar preenchimento). Quando preenchida, mantém o mínimo pra evitar
+// resposta em branco de propósito só pra passar na validação.
 export const FinalizarCreditoSchema = z.object({
-  respostaMatriz: z.string().trim().min(10, 'Descreva o motivo da decisão (mínimo 10 caracteres).'),
+  respostaMatriz: z
+    .string()
+    .trim()
+    .min(10, 'Descreva o motivo da decisão (mínimo 10 caracteres).')
+    .optional()
+    .or(z.literal('')),
 })
 
 export const ListCreditoQuery = z.object({

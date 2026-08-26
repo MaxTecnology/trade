@@ -114,10 +114,8 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                             <span>Decisão da Matriz</span>
                             <div className="transacoesDesc">
                                 <div className="form-group desc">
-                                    <label className="required">Motivo da decisão</label>
+                                    <label>Motivo da decisão</label>
                                     <textarea
-                                        required
-                                        minLength={10}
                                         rows={3}
                                         placeholder="Descreva por que o crédito foi aprovado ou negado"
                                         value={respostaMatriz}
@@ -137,7 +135,6 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                                 <button
                                     className='modalAprove'
                                     type='button'
-                                    disabled={respostaMatriz.trim().length < 10}
                                     onClick={() => aproveCreditos(data.id, respostaMatriz, modalToggle, setState)}
                                 >
                                     Aprovar
@@ -145,7 +142,6 @@ const CreditosModal = ({ isOpen, modalToggle, info, setState }) => {
                                 <button
                                     className='modalDelete'
                                     type='button'
-                                    disabled={respostaMatriz.trim().length < 10}
                                     onClick={() => negateCreditos(data.id, respostaMatriz, modalToggle, setState)}
                                 >
                                     Negar

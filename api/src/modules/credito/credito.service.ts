@@ -145,8 +145,11 @@ export async function encaminharCredito(id: string, requester: { role: string; e
 export async function finalizarCredito(
   id: string,
   status: 'aprovado' | 'negado',
-  respostaMatriz: string,
+  respostaMatrizInput?: string,
 ) {
+  // Campo opcional — string vazia normaliza pra null em vez de ficar salva
+  // como '' no banco.
+  const respostaMatriz = respostaMatrizInput || null
   const credito = await prisma.solicitacaoCredito.findUnique({
     where: { id },
     include: { associado: { include: { conta: true } } },

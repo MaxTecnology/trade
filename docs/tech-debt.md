@@ -452,3 +452,10 @@ Item registrado no plano como pendente, mas ao auditar o front (`OfertasCadastra
 **O que mudou:** `Valor` passa a usar `formatarNumeroParaRT` (mesmo helper já usado em outros modais) com prefixo `RT$` — `RT$ 10.000,00`. `Agência` passa a cair em `'Matriz'` em vez de `'Sem agência'`, mesmo padrão já estabelecido.
 
 **Validado:** `npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — solicitação de crédito de RT$ 10.000 confirmada exibindo `RT$ 10.000,00` e `Agência: Matriz` no modal real.
+
+## [Decisão de produto 2026-08-26] `respostaMatriz` de Crédito deixou de ser obrigatória
+`PATCH /creditos/:id/aprovar`/`/negar` exigiam `respostaMatriz` (mínimo 10 caracteres) — mesma regra do Estorno. Pedido do usuário: remover a obrigatoriedade especificamente pra Crédito (Estorno não foi alterado, continua exigindo).
+
+**O que mudou:** `FinalizarCreditoSchema` (`credito.schema.ts`) — `respostaMatriz` vira opcional (`.optional().or(z.literal(''))`); quando preenchida, mantém o mínimo de 10 caracteres (evita texto parcial digitado sem querer, só permite ficar totalmente em branco ou uma resposta de verdade). `credito.service.ts::finalizarCredito()` normaliza string vazia pra `null` antes de salvar. Front (`CreditosModal.jsx`) — removido `required`/`minLength` da textarea e o `disabled` dos botões Aprovar/Negar que dependia do texto ter pelo menos 10 caracteres.
+
+**Validado:** `npx tsc --noEmit` limpo; `npm test` 32/32; contra API/Postgres reais em Docker + Playwright — aprovado crédito sem motivo (200, `respostaMatriz: null` salvo); negado com motivo curto (rejeitado, valida o mínimo quando preenchido); negado com motivo válido (aceito e salvo); botão "Aprovar" confirmado habilitado sem digitar nada e aprovação funcionando na tela real.
