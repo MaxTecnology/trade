@@ -56,7 +56,7 @@ const VoucherCadastrar = () => {
                         <label className="required">Vendedor</label>
                         <select
                             required
-                            value={vendedor}
+                            value={vendedor ? JSON.stringify(vendedor) : ""}
                             onChange={(event) => { setVendedor(JSON.parse(event.target.value)) }}
                         >
                             <option value="" disabled>

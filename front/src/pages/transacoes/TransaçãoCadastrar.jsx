@@ -96,7 +96,17 @@ const TransaçãoCadastrar = () => {
                             <label className="required">Vendedor</label>
                             <select
                                 required
-                                value={vendedor?.id ?? ""}
+                                value={
+                                    vendedorTipo === "agencia"
+                                        ? (vendedor?.id ?? "")
+                                        // AssociadosDiretorioOptions usa o objeto inteiro
+                                        // serializado como value da option (reaproveitado
+                                        // também no cadastro de Voucher) — precisa comparar
+                                        // do mesmo jeito aqui, senão o select nunca reconhece
+                                        // a opção como selecionada e volta pra "Selecione"
+                                        // visualmente, mesmo com o estado interno correto.
+                                        : (vendedor ? JSON.stringify(vendedor) : "")
+                                }
                                 onChange={(event) => {
                                     // AgenciasOptions só manda o id puro (reaproveitado em várias
                                     // buscas que só precisam disso); AssociadosDiretorioOptions
