@@ -123,21 +123,57 @@ export async function create(input: CreateAssociateInput) {
       })
     }
 
-    // Cobrança RT para o associado (não debita a conta na criação — saldo nunca fica negativo;
-    // o débito acontece de forma atômica quando a cobrança é quitada, ver cobranca.service.ts)
+    // Cobrança RT para o associado — nasce JÁ QUITADA: o RT da inscrição é
+    // movimentado dentro do próprio sistema (diferente do BRL, liquidado fora
+    // e só reconciliado manualmente), então não faz sentido deixar pendente.
+    // Fica registrada como Cobrança (pago: true) pra manter o histórico de
+    // que aquele débito inicial foi uma cobrança de inscrição, não uma
+    // permuta comum. limiteCredito >= valorInscricaoRT é garantido pelo Zod
+    // (createAssociateSchema.refine), então o débito nunca viola o CHECK de
+    // saldo — associado sempre começa com saldo 0.
     if (input.valorInscricaoRT && input.valorInscricaoRT > 0) {
+      const valor = input.valorInscricaoRT
       const vencimento = calcularVencimento(input.diaVencimentoFatura ?? 10)
+      const descricaoInscricao = `Inscrição - ${associado.nome}`
+
+      const contaCredora = input.agenciaId
+        ? await tx.conta.findUniqueOrThrow({ where: { agenciaId: input.agenciaId } })
+        : await tx.conta.findFirstOrThrow({ where: { entityType: 'matriz' } })
+
       await tx.cobranca.create({
         data: {
-          descricao: `Inscrição - ${associado.nome}`,
-          valorRT: input.valorInscricaoRT,
+          descricao: descricaoInscricao,
+          valorRT: valor,
           vencimento,
           contaId: conta.id,
           associadoId: associado.id,
           agenciaId: input.agenciaId ?? null,
           tipo: 'inscricao',
+          pago: true,
         },
       })
+
+      await tx.movimentacaoConta.create({
+        data: {
+          contaId: conta.id,
+          tipo: 'debito',
+          valor,
+          saldoApos: -valor,
+          descricao: descricaoInscricao,
+        },
+      })
+      await tx.conta.update({ where: { id: conta.id }, data: { saldo: { decrement: valor } } })
+
+      await tx.movimentacaoConta.create({
+        data: {
+          contaId: contaCredora.id,
+          tipo: 'credito',
+          valor,
+          saldoApos: Number(contaCredora.saldo) + valor,
+          descricao: descricaoInscricao,
+        },
+      })
+      await tx.conta.update({ where: { id: contaCredora.id }, data: { saldo: { increment: valor } } })
     }
 
     // Comissão de inscrição do gerente — taxaInscricao é R$ (dinheiro real
