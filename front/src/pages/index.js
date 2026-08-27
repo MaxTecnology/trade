@@ -33,7 +33,7 @@ const MeusExtratos = lazy(() => import('@/pages/estratos/MeusExtratos'));
 const MeusVouchers = lazy(() => import('@/pages/vouchers/MeusVouchers'));
 const CancelarVouchers = lazy(() => import('@/pages/vouchers/CancelarVouchers'));
 const TransaçõesMinhas = lazy(() => import('@/pages/transacoes/TransaçõesMinhas.jsx'));
-const PDFVoucher = lazy(() => import('@/components/PDFVoucher.jsx'));
+const VoucherVerificar = lazy(() => import('@/pages/vouchers/VoucherVerificar.jsx'));
 const CreditoMeus = lazy(() => import('@/pages/creditos/CreditoMeus.jsx'));
 const VoucherSolicitarCancelar = lazy(() => import('@/pages/vouchers/VoucherSolicitarCancelar.jsx'));
 const CreditoAprovar = lazy(() => import('@/pages/creditos/CreditoAprovar.jsx'));
@@ -79,7 +79,7 @@ export {
     MeusVouchers,
     CancelarVouchers,
     TransaçõesMinhas,
-    PDFVoucher,
+    VoucherVerificar,
     CreditoMeus,
     VoucherSolicitarCancelar,
     CreditoAprovar,

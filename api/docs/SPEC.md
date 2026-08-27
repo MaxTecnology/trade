@@ -537,23 +537,23 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 
 ### Contexto
 
-Vouchers são comprovantes gerados a cada permuta. Contêm dados da transação, das partes envolvidas e um código único de verificação.
+Vouchers são comprovantes gerados automaticamente para toda transação `permuta`/`negociada` (1:1, `transacaoId` único). Contêm dados da transação, das partes envolvidas e um código único de verificação.
 
 ### Endpoints
 
 | Método | Rota | Descrição | Role mínimo |
 |---|---|---|---|
-| GET | `/vouchers/:id` | Detalhar voucher | `associate_operator` |
-| GET | `/vouchers/:id/pdf` | Download do PDF do voucher | `associate_operator` |
+| GET | `/vouchers/:id` | Detalhar voucher (só quem participou, ou Agência de um dos participantes, ou superadmin) | `associate_admin\|operator`, `agency_admin\|operator`, `superadmin` |
+| GET | `/vouchers/:id/pdf` | Dados formatados pra montar o comprovante (mesma checagem de dono) | idem |
 | GET | `/vouchers/verificar/:codigo` | Verificar autenticidade | público |
 
 ### Regras de Negócio
 
-- Voucher é gerado automaticamente via job BullMQ após confirmação da permuta.
-- Contém: código único (UUID), data/hora, associado comprador, associado vendedor, oferta, valor RT, parcelas, status da transação.
-- Voucher de estorno é gerado quando uma transação é revertida.
-- O PDF é gerado sob demanda (`GET /vouchers/:id/pdf`) e cacheado no Redis por 1 hora.
-- `GET /vouchers/verificar/:codigo` é público — permite que terceiros confirmem a autenticidade de um voucher.
+- Voucher é gerado automaticamente dentro da mesma transação do banco que conclui a `permuta`/`negociada` (`transaction.service.ts`), reforçado por um job BullMQ (`voucher.generate`, idempotente via `upsert`).
+- Contém: código único (UUID, `codigo`), data/hora de emissão, e a transação vinculada (comprador/vendedor — resolvidos via `contaOrigem`/`contaDestino` quando a ponta é Agência/Matriz, mesmo padrão de `transaction.service.ts::list()`).
+- `GET /vouchers/:id` e `/pdf` (autenticados) fazem checagem de dono: Associado só vê voucher de transação onde foi comprador ou vendedor; Agência vê o próprio ou de qualquer associado dela; `superadmin` vê qualquer um. Quem não tem acesso recebe `404` (não `403`, não confirma a existência do id).
+- "PDF" é gerado no cliente via `jsPDF` (front, `exportVoucherPdf.js`) a partir dos dados retornados por `/vouchers/:id` ou `/vouchers/:id/pdf` — não há geração de PDF binário no servidor.
+- `GET /vouchers/verificar/:codigo` é público — usado pela tela `/voucherVerificar/:codigo` (sem login), pra qualquer pessoa com o código confirmar a autenticidade e baixar o mesmo comprovante.
 
 ---
 

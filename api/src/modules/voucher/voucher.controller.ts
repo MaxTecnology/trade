@@ -4,13 +4,13 @@ import { success } from '../../shared/utils/response.js'
 
 export async function getByIdController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as { id: string }
-  const voucher = await voucherService.getById(id)
+  const voucher = await voucherService.getById(id, request.user)
   return reply.send(success(voucher))
 }
 
 export async function getPdfController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as { id: string }
-  const pdf = await voucherService.getPdf(id)
+  const pdf = await voucherService.getPdf(id, request.user)
   return reply.send(success(pdf))
 }
 

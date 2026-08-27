@@ -14,7 +14,7 @@ import RequireAuth from './auth/RequireAuth.jsx'
 
 
 // PAGES
-import { AgenciasLista, AssociadoInfo, Associados, AssociadosLista, CadastrarAgencia, CadastrarAssociado, CancelarVouchers, Categorias, ContasPagar, ContasReceber, Credito, CreditoAnalise, CreditoAprovar, CreditoMeus, CreditoSolicitar, EmissaoMatriz, EstratosEstorno, Extratos, GerentesCadastrar, GerentesLista, Home, Login, ManutencaoAnual, MeusExtratos, MeusVouchers, Ofertas, OfertasCadastrar, OfertasExcluir, OfertasInfo, OfertasMinhas, PDFVoucher, PlanoAgencias, PlanoAssociado, PlanoGerente, ResetPassword, SubCategorias, TransaçãoCadastrar, Transações, TransaçõesExtorno, TransaçõesMinhas, UsuariosCadastrar, UsuariosDados, UsuariosLista, VoucherCadastrar, Vouchers, VoucherSolicitarCancelar } from './pages/index.js'
+import { AgenciasLista, AssociadoInfo, Associados, AssociadosLista, CadastrarAgencia, CadastrarAssociado, CancelarVouchers, Categorias, ContasPagar, ContasReceber, Credito, CreditoAnalise, CreditoAprovar, CreditoMeus, CreditoSolicitar, EmissaoMatriz, EstratosEstorno, Extratos, GerentesCadastrar, GerentesLista, Home, Login, ManutencaoAnual, MeusExtratos, MeusVouchers, Ofertas, OfertasCadastrar, OfertasExcluir, OfertasInfo, OfertasMinhas, PlanoAgencias, PlanoAssociado, PlanoGerente, ResetPassword, SubCategorias, TransaçãoCadastrar, Transações, TransaçõesExtorno, TransaçõesMinhas, UsuariosCadastrar, UsuariosDados, UsuariosLista, VoucherCadastrar, VoucherVerificar, Vouchers, VoucherSolicitarCancelar } from './pages/index.js'
 import Loading from './pages/Loading.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -29,7 +29,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <Login />
             </Suspense>
           } />
-          <Route path="/pdfVoucher" element={<PDFVoucher />} />
+          <Route path="/voucherVerificar/:codigo" element={
+            <Suspense fallback={<Loading />}>
+              <VoucherVerificar />
+            </Suspense>
+          } />
           <Route path="/resetPassword" element={<ResetPassword />} />
           <Route exact path="/" element={<App />}>
             <Route exact path="/" element={

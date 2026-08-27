@@ -2,19 +2,23 @@ import Modal from 'react-modal';
 import { useState } from 'react';
 import { closeModal } from '../hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
+import { toast } from 'sonner';
+import api from '@/services/api';
 import { formatDate } from '@/hooks/ListasHook';
 import { formatarNumeroParaRT } from '@/utils/functions/formartNumber';
 import { iniciadoPorLabel } from '@/utils/functions/tables/iniciadoPor';
 import { compradorLabel, vendedorLabel } from '@/utils/functions/tables/compradorVendedor';
+import { exportVoucherPdf } from '@/utils/functions/exportVoucherPdf';
 
 // Defina o elemento principal da sua aplicação (geralmente '#root' para um aplicativo React)
 const appElement = document.getElementById('root');
 
 // Configure o elemento principal para o react-modal
 Modal.setAppElement(appElement);
-const TransaçõesModal = ({ isOpen, modalToggle, info }) => {
+const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
     const [error, setError] = useState(false)
     const [sucess, setSucess] = useState(false)
+    const [baixando, setBaixando] = useState(false)
     // `info` pode ser uma Transacao direta (telas de listagem), uma
     // SolicitacaoEstorno com a transação aninhada em `transacao` (telas de
     // estorno), ou uma MovimentacaoConta (Meu Extrato, tem `saldoApos` — só
@@ -33,6 +37,22 @@ const TransaçõesModal = ({ isOpen, modalToggle, info }) => {
         estornada: 'Estornada',
         falha: 'Falha',
     }[transacao?.status] ?? transacao?.status
+    // Só mostra a seção de voucher quando a tela pediu (`voucher` prop) e a
+    // transação de fato tem um voucher vinculado (toda permuta/negociada tem,
+    // mas uma SolicitacaoEstorno/MovimentacaoConta antiga pode não trazer).
+    const voucherData = voucher ? transacao?.voucher : null
+
+    const baixarComprovante = () => {
+        setBaixando(true)
+        toast.promise(
+            api.get(`vouchers/${voucherData.id}`).then((res) => exportVoucherPdf(res.data.data)),
+            {
+                loading: 'Gerando comprovante...',
+                success: () => { setBaixando(false); return 'Comprovante gerado com sucesso!' },
+                error: (err) => { setBaixando(false); return err?.response?.data?.error?.message ?? 'Erro ao gerar comprovante' },
+            }
+        )
+    }
 
     return (
         <Modal
@@ -119,9 +139,34 @@ const TransaçõesModal = ({ isOpen, modalToggle, info }) => {
                             </div>
                         )}
                     </div>
+                    {voucherData && (
+                        <>
+                            <div className="modalTransacoesDivider"></div>
+                            <div className="modalTransacoesSubContainer">
+                                <div className="modalTransacoesItem">
+                                    <span>Código do voucher</span>
+                                    <p>{voucherData.codigo}</p>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
                 <div className='modalDivierForm'></div>
                 <div className="buttonContainer">
+                    {voucherData && (
+                        <>
+                            <button type='button' disabled={baixando} onClick={baixarComprovante}>Baixar comprovante</button>
+                            <a
+                                href={`/voucherVerificar/${voucherData.codigo}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="modalButtonSave"
+                                style={{ display: 'inline-flex', alignItems: 'center' }}
+                            >
+                                Verificar publicamente
+                            </a>
+                        </>
+                    )}
                     <button className='modalButtonClose' type='button' onClick={() => closeModal(modalToggle, setSucess, setError)} >Fechar</button>
                 </div>
             </form>
