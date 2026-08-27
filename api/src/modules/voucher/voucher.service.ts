@@ -72,6 +72,41 @@ export async function getPdf(id: string, requester: VoucherRequester) {
   return pdf
 }
 
+// Visão consolidada: Agência vê os vouchers de transações onde ela mesma
+// participou ou onde um dos seus associados participou; Matriz vê tudo.
+// Associado usa GET /transacoes (Meus Vouchers) — já escopado pela própria
+// conta — não passa por aqui.
+export async function listar(requester: VoucherRequester, query: { page: number; limit: number }) {
+  const { page, limit } = query
+  const skip = (page - 1) * limit
+
+  const where =
+    requester.role === 'superadmin'
+      ? {}
+      : {
+          transacao: {
+            OR: [
+              { comprador: { agenciaId: requester.entityId } },
+              { vendedor: { agenciaId: requester.entityId } },
+              { contaOrigem: { entityType: 'agencia' as const, agenciaId: requester.entityId } },
+              { contaDestino: { entityType: 'agencia' as const, agenciaId: requester.entityId } },
+            ],
+          },
+        }
+
+  const [items, total] = await prisma.$transaction([
+    prisma.voucher.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { emitidoEm: 'desc' },
+      include: { transacao: { include: transacaoInclude } },
+    }),
+    prisma.voucher.count({ where }),
+  ])
+  return { items, total }
+}
+
 export async function verificar(codigo: string) {
   const voucher = await prisma.voucher.findUnique({
     where: { codigo },

@@ -1,6 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import * as voucherService from './voucher.service.js'
-import { success } from '../../shared/utils/response.js'
+import { listVoucherQuerySchema } from './voucher.schema.js'
+import { success, paginated } from '../../shared/utils/response.js'
+
+export async function listarController(request: FastifyRequest, reply: FastifyReply) {
+  const query = listVoucherQuerySchema.parse(request.query)
+  const { items, total } = await voucherService.listar(request.user, query)
+  return reply.send(paginated(items, query.page, query.limit, total))
+}
 
 export async function getByIdController(request: FastifyRequest, reply: FastifyReply) {
   const { id } = request.params as { id: string }

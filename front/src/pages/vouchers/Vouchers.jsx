@@ -5,12 +5,12 @@ import Footer from "@/components/Footer";
 import { activePage } from "@/utils/functions/setActivePage";
 import useModal from "@/hooks/useModal";
 import VoucherTable from "@/components/Tables/VoucherTable";
-import { columns } from "./constants";
-import { useQueryVoucher } from "@/hooks/ReactQuery/useQueryVoucher";
+import { columns } from "./constantsVouchersAdmin";
+import { useQueryVouchersConsolidado } from "@/hooks/ReactQuery/useQueryVouchersConsolidado";
 import TransaçõesModal from "@/Modals/TransaçõesModal";
 
 const Vouchers = () => {
-    const { data } = useQueryVoucher()
+    const { data } = useQueryVouchersConsolidado()
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState({})
     const [id, setId] = useState()

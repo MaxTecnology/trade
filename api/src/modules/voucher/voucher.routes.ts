@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { authGuard } from '../../shared/guards/auth.guard.js'
 import { roleGuard } from '../../shared/guards/role.guard.js'
-import { getByIdController, getPdfController, verificarController } from './voucher.controller.js'
+import { listarController, getByIdController, getPdfController, verificarController } from './voucher.controller.js'
 
 export async function voucherRoutes(app: FastifyInstance) {
   // Sem checagem de dono aqui — quem participou (ou é da agência/matriz
@@ -12,7 +12,11 @@ export async function voucherRoutes(app: FastifyInstance) {
       roleGuard('associate_operator', 'associate_admin', 'agency_admin', 'agency_operator', 'superadmin'),
     ],
   }
+  // Visão consolidada — Associado usa GET /transacoes (Meus Vouchers), já
+  // escopado pela própria conta.
+  const consolidado = { preHandler: [authGuard, roleGuard('agency_admin', 'agency_operator', 'superadmin')] }
 
+  app.get('/vouchers', consolidado, listarController)
   app.get('/vouchers/verificar/:codigo', verificarController) // público
   app.get('/vouchers/:id', operator, getByIdController)
   app.get('/vouchers/:id/pdf', operator, getPdfController)

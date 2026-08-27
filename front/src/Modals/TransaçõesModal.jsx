@@ -40,7 +40,10 @@ const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
     // Só mostra a seção de voucher quando a tela pediu (`voucher` prop) e a
     // transação de fato tem um voucher vinculado (toda permuta/negociada tem,
     // mas uma SolicitacaoEstorno/MovimentacaoConta antiga pode não trazer).
-    const voucherData = voucher ? transacao?.voucher : null
+    // `info` pode já SER o Voucher (tela "Vouchers", que lista GET /vouchers
+    // — tem `.codigo` no topo) ou uma Transacao com `.voucher` aninhado
+    // (Meus Vouchers/Solicitar Cancelamento, que listam GET /transacoes).
+    const voucherData = voucher ? (info?.codigo ? info : transacao?.voucher) : null
 
     const baixarComprovante = () => {
         setBaixando(true)
