@@ -1,5 +1,15 @@
 import { z } from "zod"
-export const associadoSchema = z.object({
+
+// Campos de moeda chegam aqui como string mascarada ("RT$ 1.000,00") — mesma
+// lógica de parseMoney usada no submit (CadastrarAssociado.jsx).
+const parseMoneyValue = (val) => {
+    if (!val) return undefined
+    const cleaned = String(val).replace(/[^0-9,]/g, '').replace(',', '.')
+    const num = parseFloat(cleaned)
+    return isNaN(num) ? undefined : num
+}
+
+const associadoSchemaBase = z.object({
     // GERAL
     razaoSocial: z.string().min(3, "Obrigatório"),
     nomeFantasia: z.string().min(3, "Obrigatório"),
@@ -66,4 +76,14 @@ export const associadoSchema = z.object({
     tipoDeMoeda: z.string().optional(),
     statusConta: z.boolean().optional(),
     taxaRepasseMatriz: z.any().optional(),
+})
+
+export const associadoSchema = associadoSchemaBase.refine((data) => {
+    const valorRT = parseMoneyValue(data.valorInscricaoRT)
+    if (!valorRT) return true
+    const limite = parseMoneyValue(data.limiteCredito)
+    return limite !== undefined && valorRT <= limite
+}, {
+    message: "O valor de inscrição em RT não pode ser maior que o limite de crédito — a cobrança ficaria impossível de quitar.",
+    path: ["valorInscricaoRT"],
 })

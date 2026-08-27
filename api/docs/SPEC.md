@@ -147,6 +147,7 @@ Associados são as empresas que efetivamente realizam permutas. São vinculados 
 - CNPJ deve ser único no sistema.
 - O vínculo gerente → associado é **permanente** e não pode ser reatribuído.
 - `limiteCredito` define o teto de quanto a conta RT do associado pode ficar negativa (`saldo - valorDebito >= -limiteCredito`). `0`/não informado = nenhuma margem negativa.
+- `POST /associados`: `valorInscricaoRT` (quando informado) não pode ser maior que `limiteCredito` — validado por `.refine()` no Zod schema (`createAssociateSchema`), espelhado no front (`associadoSchema.js`) pra feedback inline. Sem essa checagem, o cadastro criaria uma `Cobranca` de inscrição em RT permanentemente impossível de quitar (a validação de saldo/limite em `cobranca.service.ts::quitarCobranca()` sempre bloquearia). Vale só na criação — edição posterior de `limiteCredito`/`valorInscricaoRT` (`PUT /associados/:id`) não repete a checagem, já que a quitação real sempre revalida saldo/limite atuais no momento de quitar, não o valor histórico de `valorInscricaoRT`.
 - `limiteVendaMensal`/`limiteVendaTotal` definem o teto de volume **creditado** na conta por vender (mês corrente / histórico total) — limitam quem vende (recebe RT), não quem compra. Quem compra já é limitado por `saldo`+`limiteCredito`. Substituem `plano.limiteRT`, que deixou de ser usado nas validações de transação — permanece só como valor de referência ao cadastrar o associado.
 
 ### Payload de Criação

@@ -54,6 +54,9 @@ export const createAssociateSchema = z.object({
   // Acesso
   senha: z.string().min(8),
   cpf: z.string().optional(),
+}).refine((data) => !data.valorInscricaoRT || data.valorInscricaoRT <= data.limiteCredito, {
+  message: 'O valor de inscrição em RT não pode ser maior que o limite de crédito — a cobrança ficaria impossível de quitar.',
+  path: ['valorInscricaoRT'],
 })
 
 export const updateAssociateSchema = z.object({
