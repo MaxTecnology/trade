@@ -609,3 +609,10 @@ Pedido do usuário: documentar no modal de edição do Associado quanto e como a
 **Bug relacionado encontrado no caminho:** `PlanosFields.jsx` comparava `type === "associado"` (minúsculo) pra decidir se mostra "Valor do Plano (R$)"/"Taxa de Manutenção Anual (R$)" — mas `EditarAssociadoModal.jsx` sempre passou `type={"Associado"}` (maiúsculo), então esses dois campos nunca apareciam na edição, só no cadastro. Corrigido pra `type?.toLowerCase() === "associado"` — os outros 3 lugares que usam `PlanosFields` já passavam minúsculo (`"agencia"`, `"gerente"`), então a mudança só afeta o caso que estava quebrado.
 
 **Validado:** `npx eslint`/`npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — criado associado de teste com `valorInscricaoBRL: 500`, `valorInscricaoRT: 1000`, `formaPagamento: 50`; aberto o modal de edição na UI real, confirmado os 6 campos readOnly mostrando exatamente: "Permuta / Dinheiro", "R$ 500,00", "RT$ 1.000,00" (mais os 2 campos do plano que passaram a aparecer). Nenhum tem atributo `name`. Dados de teste removidos ao final.
+
+## [RESOLVIDO 2026-08-26] Tarja roxa do card de Ofertas mostra categoria em vez de tipo de atendimento
+Pedido do usuário (print da tela "Ofertas"): a tarja roxa mostrava `tipoAtendimento` ("presencial, voucher", "presencial", "online") — trocado pra mostrar a categoria da oferta, mais útil pra quem está navegando o marketplace.
+
+**O que mudou:** `OfertasCard.jsx` — `data.tipoAtendimento?.join(', ')` → `data.categoria?.nome ?? 'Sem categoria'`. `categoria` já vinha incluída em `GET /ofertas` (`offer.service.ts::list()`), não precisou de mudança na API.
+
+**Validado:** `npx eslint`/`npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — criada oferta de teste com categoria "Alimentação", confirmado na UI real que a tarja mostra "Alimentação" em vez do tipo de atendimento. Dados de teste removidos ao final.

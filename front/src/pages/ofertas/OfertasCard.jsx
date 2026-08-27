@@ -87,7 +87,7 @@ const OfertasCard = ({ associado, index }) => {
             >
                 <img src={data.imagemUrl ? data.imagemUrl : defaultImg} alt="" className="ofertasCardImage" />
                 <div className="ofertasCardType">
-                    <span>{data.tipoAtendimento?.join(', ')}</span>
+                    <span>{data.categoria?.nome ?? 'Sem categoria'}</span>
                     <div >
                         SC
                         <img src={brazilIcon} alt="" />
