@@ -20,6 +20,13 @@ const parseBRNumber = (val) => {
     return isNaN(num) ? undefined : num
 }
 
+const FORMA_PAGAMENTO_LABEL = { 0: 'Dinheiro', 50: 'Permuta / Dinheiro', 100: 'Permuta' }
+
+const formatMoney = (value) => {
+    if (value === null || value === undefined || value === '') return '-'
+    return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
     const [imagemReference, setImageReference] = useState(null);
     const [reference, setReference] = useState(true)
@@ -228,6 +235,22 @@ const EditarAssociadoModal = ({ isOpen, modalToggle, associadoInfo }) => {
                     <p>Agência</p>
                 </div>
                 <PlanosFields type={"Associado"} defaultValue={info} />
+                {/* Documenta como/quanto a inscrição foi paga no cadastro — só leitura,
+                    não editável (não tem campo `name`, então nunca vai no PUT). Editar
+                    esses valores depois não faz sentido: já viraram Cobrança, e é a
+                    Cobrança que rege o que ainda está em aberto, não esses campos. */}
+                <div className="form-group">
+                    <label>Forma de Pagamento do Plano</label>
+                    <input type="text" className="readOnly" readOnly value={FORMA_PAGAMENTO_LABEL[info.formaPagamento] ?? '-'} />
+                </div>
+                <div className="form-group">
+                    <label>Valor em Dinheiro (R$)</label>
+                    <input type="text" className="readOnly" readOnly value={formatMoney(info.valorInscricaoBRL)} />
+                </div>
+                <div className="form-group">
+                    <label>Valor em Permuta (RT$)</label>
+                    <input type="text" className="readOnly" readOnly value={formatMoney(info.valorInscricaoRT)} />
+                </div>
                 <div className="form-group">
                     <label>Data Vencimento Fatura</label>
                     <select defaultValue={info.diaVencimentoFatura} className="form-control" name="diaVencimentoFatura">

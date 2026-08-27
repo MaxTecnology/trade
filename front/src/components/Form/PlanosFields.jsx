@@ -32,7 +32,7 @@ const PlanosFields = ({ type, defaultValue, optional }) => {
                 <PlanosOptions type={type} complex />
             </select>
         </div>
-        {type === "associado" &&
+        {type?.toLowerCase() === "associado" &&
             <div className="form-group">
                 <label className="required">Valor do Plano (R$)</label>
                 <input
@@ -54,7 +54,7 @@ const PlanosFields = ({ type, defaultValue, optional }) => {
                 value={selected?.percentualComissao ?? defaultPlano?.percentualComissao ?? ''}
             />
         </div>
-        {type === "associado" &&
+        {type?.toLowerCase() === "associado" &&
             <div className="form-group">
                 <label className="required">Taxa de Manutenção Anual (R$)</label>
                 <input
