@@ -1,6 +1,7 @@
 import api from "@/services/api";
 import { formHandler, formatForm } from "../formHandler";
 import { isAgencia } from "@/hooks/getId";
+import { toast } from "sonner";
 
 const uploadToB2 = async (file) => {
     if (!file || file.size === 0) return null
@@ -57,5 +58,11 @@ export async function createSubAccount(event) {
 
 export async function updateCharge(id, revalidate) {
     await api.patch(`cobrancas/${id}/quitar`)
-    if (revalidate) revalidate()
+        .then(() => {
+            if (revalidate) revalidate()
+            toast.success("Cobrança quitada com sucesso")
+        })
+        .catch((err) => {
+            toast.error(err?.response?.data?.error?.message ?? "Erro ao quitar cobrança")
+        })
 }
