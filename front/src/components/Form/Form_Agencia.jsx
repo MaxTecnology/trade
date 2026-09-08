@@ -3,13 +3,51 @@ import FormInput from "./formItens/FormInput";
 import FormPlano from "./formItens/FormPlano";
 import FormInputMoney from "./formItens/FormInputMoney";
 import { useWatch } from "react-hook-form";
+import { useEffect } from "react";
+
+const parseMoneyValue = (val) => {
+    if (!val) return 0
+    const cleaned = String(val).replace(/[^0-9,]/g, '').replace(',', '.')
+    const num = parseFloat(cleaned)
+    return isNaN(num) ? 0 : num
+}
+
+const formatMoney = (valor, currency) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor).replace('R$', currency)
 
 const Form_Agencia = ({ form, type }) => {
     const formaPagamento = useWatch({ control: form.control, name: "formaPagamento" })
+    const planoValor = useWatch({ control: form.control, name: "planoValor" })
     const fp = String(formaPagamento)
+    const valorPlano = parseMoneyValue(planoValor)
 
     const showBRL = fp === "0" || fp === "50"
     const showRT  = fp === "100" || fp === "50"
+
+    // Dinheiro/Permuta puro (100% de um jeito só) — não tem outra divisão
+    // válida, então já preenche o valor do plano inteiro e trava o campo.
+    // Evita o usuário digitar um valor diferente do plano por engano.
+    useEffect(() => {
+        if (fp === "0") {
+            form.setValue("valorInscricaoBRL", formatMoney(valorPlano, 'R$'))
+        } else if (fp === "100") {
+            form.setValue("valorInscricaoRT", formatMoney(valorPlano, 'RT$'))
+        }
+    }, [fp, valorPlano])
+
+    // Misto (Permuta/Dinheiro) — preencher um dos dois já calcula o outro
+    // como o restante do valor do plano, pra nunca passar nem ficar abaixo
+    // do total.
+    const handleBRLChange = (valorDinheiro) => {
+        if (fp !== "50") return
+        const restante = Math.max(0, valorPlano - valorDinheiro)
+        form.setValue("valorInscricaoRT", formatMoney(restante, 'RT$'))
+    }
+    const handleRTChange = (valorPermuta) => {
+        if (fp !== "50") return
+        const restante = Math.max(0, valorPlano - valorPermuta)
+        form.setValue("valorInscricaoBRL", formatMoney(restante, 'R$'))
+    }
 
     return (<>
         <FormPlano type={type} form={form} />
@@ -19,10 +57,27 @@ const Form_Agencia = ({ form, type }) => {
             { value: 50, label: "Permuta / Dinheiro" },
         ]} />
         {showBRL && (
-            <FormInputMoney required name="valorInscricaoBRL" label="Valor em Dinheiro (R$)" form={form} placeholder={"R$ 0,00"} currency="R$" />
+            <FormInputMoney
+                required
+                name="valorInscricaoBRL"
+                label="Valor em Dinheiro (R$)"
+                form={form}
+                placeholder={"R$ 0,00"}
+                currency="R$"
+                disabled={fp !== "50"}
+                onValueChange={handleBRLChange}
+            />
         )}
         {showRT && (
-            <FormInputMoney required name="valorInscricaoRT" label="Valor em Permuta (RT$)" form={form} placeholder={"RT$ 0,00"} />
+            <FormInputMoney
+                required
+                name="valorInscricaoRT"
+                label="Valor em Permuta (RT$)"
+                form={form}
+                placeholder={"RT$ 0,00"}
+                disabled={fp !== "50"}
+                onValueChange={handleRTChange}
+            />
         )}
         <FormSelect required form={form} name="dataVencimentoFatura" label="Data Vencimento Fatura" placeholder="Selecionar" items={[
             { value: 10, label: "10" },

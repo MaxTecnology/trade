@@ -31,7 +31,7 @@ const handleInputChange = (event, currency) => {
 };
 
 
-const FormInputMoney = ({ form, name, label, placeholder, required, type, className, divClassName, disabled, currency = 'RT$' }) => {
+const FormInputMoney = ({ form, name, label, placeholder, required, type, className, divClassName, disabled, currency = 'RT$', onValueChange }) => {
     return (<>
         <FormField
             control={form.control}
@@ -47,6 +47,10 @@ const FormInputMoney = ({ form, name, label, placeholder, required, type, classN
                             (e) => {
                                 const { value } = e.target
                                 form.setValue(name, handleInputChange(value, currency))
+                                if (onValueChange) {
+                                    const numeric = parseFloat(value.replace(/[^0-9]/g, '')) / 100 || 0
+                                    onValueChange(numeric)
+                                }
                             }
                         }
                     >

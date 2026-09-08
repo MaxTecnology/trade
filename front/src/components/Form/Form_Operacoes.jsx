@@ -10,6 +10,7 @@ import { useQueryGerentes } from "@/hooks/ReactQuery/useQueryGerentes";
 const Form_Operacoes = ({ form, type }) => {
     const { data: gerentes } = useQueryGerentes()
     const gerenteId = useWatch({ control: form.control, name: "gerente" })
+    const valorInscricaoRT = useWatch({ control: form.control, name: "valorInscricaoRT" })
 
     useEffect(() => {
         if (!gerenteId || !Array.isArray(gerentes)) {
@@ -19,6 +20,15 @@ const Form_Operacoes = ({ form, type }) => {
         const gerente = gerentes.find(g => g.id === gerenteId)
         form.setValue("taxaGerenteConta", gerente ? `${gerente.percentualComissao}%` : "")
     }, [gerenteId, gerentes])
+
+    // Limite de crédito precisa cobrir pelo menos o débito imediato da
+    // inscrição em RT (ver associate.service.ts::create() — a cobrança em
+    // RT já debita a conta na hora do cadastro), então segue automaticamente
+    // o valor em permuta — não editável, pra não permitir configurar um
+    // limite menor que o débito que vai acontecer.
+    useEffect(() => {
+        form.setValue("limiteCredito", valorInscricaoRT || "RT$ 0,00")
+    }, [valorInscricaoRT])
 
     return (
         <>
@@ -32,7 +42,7 @@ const Form_Operacoes = ({ form, type }) => {
                 { value: 3, label: "Compra/Venda" },
             ]}
             />
-            <FormInputMoney required name="limiteCredito" label="Limite Crédito" form={form} placeholder={"RT$ 0,00"} />
+            <FormInputMoney required disabled name="limiteCredito" label="Limite Crédito" form={form} placeholder={"RT$ 0,00"} />
             <FormInputMoney required name="limiteVendaMensal" label="Limite de Venda Mensal" form={form} placeholder={"RT$ 0,00"} />
             <FormInputMoney required name="limiteVendaTotal" label="Limite de Venda Total" form={form} placeholder={"RT$ 0,00"} />
             <FormSelect required form={form} name="aceitaOrcamento" label="Aceita Orcamento" placeholder="Selecionar" items={[
