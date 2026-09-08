@@ -407,6 +407,7 @@ Ofertas são produtos ou serviços disponibilizados para troca em RT — por Ass
 - Status possíveis: `aberta`, `fechada`, `pausada`.
 - Usuários só podem editar/fechar ofertas da própria conta (Associado, Agência ou Matriz).
 - `associadoId` agora é opcional — só preenchido quando a oferta pertence a um Associado (mantido por compatibilidade/consulta). `contaId` é o campo obrigatório que identifica o dono real da oferta (Associado, Agência ou Matriz), via `Conta.entityType`.
+- `GET /ofertas`, quando autenticado (`optionalAuthGuard`), exclui a oferta do próprio requisitante (`exceptContaId`) — pra não aparecer a própria oferta como opção de compra no marketplace. O `include` de `conta.associado` traz também `agenciaId` do associado dono — usado pelo front (dashboard) pra decidir se essa oferta pertence ao mesmo grupo hierárquico de quem está vendo (mesma Agência, ou associados diretos da Matriz), já que a exclusão acima tira a própria oferta da lista.
 
 ### Payload de Criação
 ```json

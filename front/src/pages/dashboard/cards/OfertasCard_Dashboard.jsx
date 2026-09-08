@@ -1,11 +1,35 @@
 import { useQueryOfertas, useQueryMinhaLoja } from "@/hooks/ReactQuery/useQueryOfertas";
 import { motion } from "framer-motion";
 import { time } from "./constant";
+import { isMatriz, isAgencia } from "@/hooks/getId";
+import state from "@/store";
 
 // GET /ofertas (marketplace) exclui a própria oferta do requisitante — certo
-// pra tela de marketplace, mas subcontaria "Unidade"/"Geral" aqui. Soma de
-// volta via GET /ofertas/minha-loja (nunca exclui, mas inclui fechada/
-// pausada — filtra só as abertas pra bater com o critério do marketplace).
+// pra tela de marketplace, errado pra "Unidade"/"Geral" aqui, que precisam
+// da lista completa. "Unidade" segue a mesma regra hierárquica do card
+// Associados: minha própria oferta + ofertas de quem está no meu grupo
+// (Matriz: associados sem agência; Agência: seus próprios associados;
+// Associado: colegas da mesma agência, ou colegas diretos da Matriz se eu
+// também não tenho agência).
+const pertenceAoMeuGrupo = (oferta) => {
+    const conta = oferta.conta
+    if (!conta) return false
+
+    if (isMatriz()) {
+        return conta.entityType === 'associado' && !conta.associado?.agenciaId
+    }
+    if (isAgencia()) {
+        const minhaAgenciaId = state.user?.entityId
+        return conta.entityType === 'associado' && conta.associado?.agenciaId === minhaAgenciaId
+    }
+    // Associado (comum ou gerente)
+    const minhaAgenciaId = state.user?.agenciaId
+    if (minhaAgenciaId) {
+        return conta.entityType === 'associado' && conta.associado?.agenciaId === minhaAgenciaId
+    }
+    return conta.entityType === 'associado' && !conta.associado?.agenciaId
+}
+
 const OfertasCard_Dashboard = () => {
     const { data: outrasResp } = useQueryOfertas()
     const { data: minhaLojaResp } = useQueryMinhaLoja()
@@ -14,7 +38,7 @@ const OfertasCard_Dashboard = () => {
     const minhasAbertas = (minhaLojaResp?.data ?? []).filter((o) => o.status === 'aberta')
 
     const geral = [...outras, ...minhasAbertas]
-    const unidade = minhasAbertas
+    const unidade = [...minhasAbertas, ...outras.filter(pertenceAoMeuGrupo)]
 
     return (
         <motion.div

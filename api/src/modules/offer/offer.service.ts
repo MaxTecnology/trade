@@ -74,7 +74,10 @@ export async function list(query: ListOfferQuery, exceptContaId?: string) {
       take: limit,
       include: {
         categoria: true,
-        conta: { include: { associado: { select: { nome: true } }, agencia: { select: { nome: true } } } },
+        // agenciaId do associado dono da oferta — front usa pra decidir se a
+        // oferta entra no "Unidade" do dashboard de quem está vendo (mesmo
+        // grupo hierárquico: própria Agência, ou associados diretos da Matriz).
+        conta: { include: { associado: { select: { nome: true, agenciaId: true } }, agencia: { select: { nome: true } } } },
       },
       orderBy: { criadoEm: 'desc' },
     }),
