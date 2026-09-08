@@ -39,6 +39,16 @@ export async function saldoController(request: FastifyRequest, reply: FastifyRep
   return reply.send(success(saldo))
 }
 
+export async function permutasMesResumoController(request: FastifyRequest, reply: FastifyReply) {
+  const result = await reportService.resumoPermutasMes(request.user)
+  return reply.send(success(result))
+}
+
+export async function fundoPermutaResumoController(request: FastifyRequest, reply: FastifyReply) {
+  const result = await reportService.resumoFundoPermuta(request.user)
+  return reply.send(success(result))
+}
+
 export async function permutasController(request: FastifyRequest, reply: FastifyReply) {
   const q = request.query as Query
   const result = await reportService.relatorioPermutas(

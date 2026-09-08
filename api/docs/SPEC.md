@@ -575,6 +575,8 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
 | GET | `/extrato` | Extrato de movimentações da conta autenticada (`contaId` do JWT) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 | GET | `/extrato/saldo` | Saldo atual da conta autenticada — `{ saldo, numero, limiteCredito }`, sempre fresco (não depende do snapshot de `/auth/me`, que só é buscado uma vez no login) | `associate_operator`, `associate_admin`, `agency_operator`, `agency_admin`, `superadmin` |
 | GET | `/relatorios/permutas` | Transações — todos os tipos por padrão, ou só um tipo via `?tipo=permuta`. `associate_admin` vê as próprias; `agency_admin` vê a agência + associados geridos; `superadmin` vê tudo, sem filtro | `associate_admin`, `agency_admin`, `superadmin` |
+| GET | `/relatorios/permutas-mes` | `{unidade, geral}` — soma de `valorRT` de `permuta`/`negociada` concluídas no mês corrente (Brasília). Card "Permutas Mês" do dashboard. | qualquer role autenticada |
+| GET | `/relatorios/fundo-permuta` | `{unidade, geral}` — soma de `limiteCredito` de agências + associados (exclui gerente). Card "Fundo Permuta" do dashboard. | qualquer role autenticada |
 | GET | `/relatorios/comissoes` | Relatório de comissões da plataforma (BRL) | `agency_admin`, `superadmin` |
 | GET | `/relatorios/comissoes-gerentes` | Relatório de comissões de todos os gerentes | `agency_admin`, `superadmin` |
 | GET | `/relatorios/uso-plano` | Quanto o associado já **vendeu** este mês vs. `limiteVendaMensal` (substituiu `plano.limiteRT`) | `associate_admin` |

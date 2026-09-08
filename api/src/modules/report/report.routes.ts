@@ -5,6 +5,8 @@ import {
   extratoController,
   saldoController,
   permutasController,
+  permutasMesResumoController,
+  fundoPermutaResumoController,
   comissoesController,
   comissoesGerentesController,
   usoPlanoConta,
@@ -29,10 +31,21 @@ export async function reportRoutes(app: FastifyInstance) {
   const adminOrGerente = {
     preHandler: [authGuard, roleGuard('superadmin', 'agency_admin', 'gerente')],
   }
+  // Qualquer entidade logada, incluindo Gerente — usado pelos cards
+  // Unidade/Geral do dashboard (Permutas Mês, Fundo Permuta), que fazem
+  // sentido pra qualquer role autenticada, não só quem administra contas.
+  const qualquerContaOuGerente = {
+    preHandler: [
+      authGuard,
+      roleGuard('associate_operator', 'associate_admin', 'agency_operator', 'agency_admin', 'superadmin', 'gerente'),
+    ],
+  }
 
   app.get('/extrato', qualquerConta, extratoController)
   app.get('/extrato/saldo', qualquerConta, saldoController)
   app.get('/relatorios/permutas', { preHandler: [authGuard, roleGuard('associate_admin', 'agency_admin', 'superadmin')] }, permutasController)
+  app.get('/relatorios/permutas-mes', qualquerContaOuGerente, permutasMesResumoController)
+  app.get('/relatorios/fundo-permuta', qualquerContaOuGerente, fundoPermutaResumoController)
   app.get('/relatorios/comissoes', agencyOrSuper, comissoesController)
   app.get('/relatorios/comissoes-gerentes', agencyOrSuper, comissoesGerentesController)
   app.get('/relatorios/uso-plano', assocAdmin, usoPlanoConta)

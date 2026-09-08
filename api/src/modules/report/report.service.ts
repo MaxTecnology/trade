@@ -66,6 +66,116 @@ export async function saldo(contaId: string) {
   return conta
 }
 
+// "Unidade" = eu + meu grupo hierárquico (mesma regra dos cards Associados/
+// Ofertas/Fundo Permuta do dashboard): Matriz conta ela mesma + associados
+// sem agência; Agência conta ela mesma + seus próprios associados; Associado
+// conta os colegas da mesma agência (ou colegas diretos da Matriz, se ele
+// também não tem agência). "Geral" é sempre o total do sistema, sem nenhuma
+// restrição — acessível pra qualquer role autenticada.
+export async function resumoPermutasMes(requester: {
+  role: string
+  entityType: string
+  entityId: string
+}) {
+  const inicioMes = inicioMesBrasilia()
+  const baseWhere = {
+    tipo: { in: ['permuta' as const, 'negociada' as const] },
+    status: 'concluida' as const,
+    criadoEm: { gte: inicioMes },
+  }
+
+  let grupoWhere: Record<string, unknown>
+  if (requester.role === 'superadmin') {
+    grupoWhere = {
+      OR: [
+        { contaOrigem: { entityType: 'matriz' as const } },
+        { contaDestino: { entityType: 'matriz' as const } },
+        { contaOrigem: { entityType: 'associado' as const, associado: { agenciaId: null } } },
+        { contaDestino: { entityType: 'associado' as const, associado: { agenciaId: null } } },
+      ],
+    }
+  } else if (requester.entityType === 'agencia') {
+    grupoWhere = {
+      OR: [
+        { contaOrigem: { entityType: 'agencia' as const, agenciaId: requester.entityId } },
+        { contaDestino: { entityType: 'agencia' as const, agenciaId: requester.entityId } },
+        { contaOrigem: { entityType: 'associado' as const, associado: { agenciaId: requester.entityId } } },
+        { contaDestino: { entityType: 'associado' as const, associado: { agenciaId: requester.entityId } } },
+      ],
+    }
+  } else {
+    const associado = await prisma.associado.findUnique({
+      where: { id: requester.entityId },
+      select: { agenciaId: true },
+    })
+    const minhaAgenciaId = associado?.agenciaId ?? null
+    grupoWhere = {
+      OR: [
+        { contaOrigem: { entityType: 'associado' as const, associado: { agenciaId: minhaAgenciaId } } },
+        { contaDestino: { entityType: 'associado' as const, associado: { agenciaId: minhaAgenciaId } } },
+      ],
+    }
+  }
+
+  const [geralAgg, unidadeAgg] = await Promise.all([
+    prisma.transacao.aggregate({ where: baseWhere, _sum: { valorRT: true } }),
+    prisma.transacao.aggregate({ where: { ...baseWhere, ...grupoWhere }, _sum: { valorRT: true } }),
+  ])
+
+  return {
+    unidade: Number(unidadeAgg._sum?.valorRT ?? 0),
+    geral: Number(geralAgg._sum?.valorRT ?? 0),
+  }
+}
+
+// Fundo de Permutas = limite de crédito liberado às agências, associados e
+// gerentes (excluídos aqui — sempre têm limiteCredito null/0, comissão não é
+// crédito). Mesma regra hierárquica de resumoPermutasMes: "Geral" é o total
+// do sistema sem restrição; "Unidade" é eu + meu grupo. Gerente cai no ramo
+// de associado comum (é um Associado, ver AJUSTES.md), sua própria
+// agenciaId decide o grupo do mesmo jeito.
+export async function resumoFundoPermuta(requester: {
+  role: string
+  entityType: string
+  entityId: string
+}) {
+  const naoGerente = { plano: { tipoPlano: { not: 'gerente' as const } } }
+
+  const [agenciasAgg, associadosAgg] = await Promise.all([
+    prisma.agencia.aggregate({ _sum: { limiteCredito: true } }),
+    prisma.associado.aggregate({ where: naoGerente, _sum: { limiteCredito: true } }),
+  ])
+  const geral = Number(agenciasAgg._sum.limiteCredito ?? 0) + Number(associadosAgg._sum.limiteCredito ?? 0)
+
+  let unidade: number
+  if (requester.role === 'superadmin') {
+    const diretosAgg = await prisma.associado.aggregate({
+      where: { ...naoGerente, agenciaId: null },
+      _sum: { limiteCredito: true },
+    })
+    unidade = Number(agenciasAgg._sum.limiteCredito ?? 0) + Number(diretosAgg._sum.limiteCredito ?? 0)
+  } else if (requester.entityType === 'agencia') {
+    const meusAgg = await prisma.associado.aggregate({
+      where: { ...naoGerente, agenciaId: requester.entityId },
+      _sum: { limiteCredito: true },
+    })
+    unidade = Number(meusAgg._sum.limiteCredito ?? 0)
+  } else {
+    const associado = await prisma.associado.findUnique({
+      where: { id: requester.entityId },
+      select: { agenciaId: true },
+    })
+    const minhaAgenciaId = associado?.agenciaId ?? null
+    const grupoAgg = await prisma.associado.aggregate({
+      where: { ...naoGerente, agenciaId: minhaAgenciaId },
+      _sum: { limiteCredito: true },
+    })
+    unidade = Number(grupoAgg._sum.limiteCredito ?? 0)
+  }
+
+  return { unidade, geral }
+}
+
 export async function relatorioPermutas(
   entityId: string,
   role: string,

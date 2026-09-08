@@ -1,36 +1,23 @@
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { time } from "./constant";
 import { formatarNumeroParaReal } from "@/utils/functions/formartNumber";
-import { useQueryAgencias } from "@/hooks/ReactQuery/useQueryAgencias";
-import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
-import { useQueryMeusAssociados } from "@/hooks/ReactQuery/useQueryMeusAssociados";
-import { isMatriz, isGerente, podeListarTodosAssociados } from "@/hooks/getId";
-import state from "@/store";
+import { getApiData } from "@/hooks/ListasHook";
 
-const somaLimiteCredito = (items) =>
-    (items ?? []).reduce((soma, item) => soma + Number(item.limiteCredito ?? 0), 0);
-
-// Fundo de Permutas = limite de crédito liberado às agências, associados e
-// gerentes (gerente é um Associado, já entra na soma de associados). "Geral"
-// = tudo; "Unidade" (Matriz) = todas as agências (ela cria todas direto) +
-// associados/gerentes sem agência (diretos dela); "Unidade" (Agência) = só
-// os próprios associados (ela não libera crédito pra outra agência). Cada
-// fetch só dispara quando o role tem permissão na rota correspondente,
-// evita 403 em loop (Associado comum, agency_operator etc.).
+// GET /relatorios/fundo-permuta calcula Unidade (eu + meu grupo hierárquico
+// — mesma regra dos outros cards do dashboard) e Geral (total do sistema)
+// no backend — precisa ser assim porque limiteCredito é dado financeiro,
+// não pode virar uma soma feita no front a partir de uma lista de outras
+// contas (só endpoints administrativos expõem limiteCredito individual, e
+// esses são bloqueados pra Associado comum).
 const FundoPermutaCard_Dashboard = () => {
-    const podeVerUnidade = state.user?.role === 'agency_admin' || isGerente();
-    const { data: agencias } = useQueryAgencias(isMatriz());
-    const { data: associadosResp } = useQueryAssociados(podeListarTodosAssociados());
-    const { data: meusResp } = useQueryMeusAssociados(podeVerUnidade);
+    const { data } = useQuery({
+        queryKey: ['fundoPermuta'],
+        queryFn: async () => getApiData('relatorios/fundo-permuta'),
+    });
 
-    const associados = associadosResp?.data ?? [];
-    const somaAgencias = somaLimiteCredito(agencias);
-    const somaAssociados = somaLimiteCredito(associados);
-
-    const geral = somaAgencias + somaAssociados;
-    const unidade = isMatriz()
-        ? somaAgencias + somaLimiteCredito(associados.filter((a) => !a.agenciaId))
-        : somaLimiteCredito(meusResp?.data ?? []);
+    const unidade = data?.data?.unidade ?? 0;
+    const geral = data?.data?.geral ?? 0;
 
     return (
         <motion.div
