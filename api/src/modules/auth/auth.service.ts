@@ -223,6 +223,10 @@ export async function me(userId: string) {
     entityType: usuario.entityType,
     entityId,
     entityName,
+    // Agência do associado logado (null se cadastrado direto pela Matriz) —
+    // front precisa pra calcular Unidade/Geral no dashboard sem duplicar
+    // lógica que já existe no diretório.
+    agenciaId: usuario.agenciaId,
     conta,
   }
 }

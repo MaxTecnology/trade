@@ -1,6 +1,7 @@
 import { useQueryAssociados } from "@/hooks/ReactQuery/useQueryAssociados";
 import { useQueryMeusAssociados } from "@/hooks/ReactQuery/useQueryMeusAssociados";
-import { isMatriz, isGerente, podeListarTodosAssociados } from "@/hooks/getId";
+import { useQueryAssociadosDiretorio } from "@/hooks/ReactQuery/useQueryAssociadosDiretorio";
+import { isMatriz, isAssociado, isGerente, podeListarTodosAssociados } from "@/hooks/getId";
 import { motion } from "framer-motion";
 import state from "@/store";
 
@@ -8,18 +9,37 @@ import state from "@/store";
 // diretamente; "Geral" = todos. GET /associados só existe pra
 // superadmin/agency_admin, e GET /agencias/:id/associados (Unidade) só pra
 // superadmin/agency_admin/gerente (agency_operator NÃO) — só chamado quando
-// faz sentido, evita 403 em loop. Um Associado comum (não gerente) não
-// gerencia sub-associados — card fica com os dois campos zerados pra esse
-// caso, de propósito.
+// faz sentido, evita 403 em loop.
+//
+// Associado comum (não gerente) não tem acesso a essas rotas administrativas
+// — usa /associados/diretorio (a mesma lista pública da tela Associados),
+// que EXCLUI o próprio requisitante (correto pro seletor de parceiro de
+// negociação, errado pra uma contagem) — soma +1 de volta pra compensar.
+// Cadastrado direto pela Matriz (sem agenciaId) = Unidade e Geral iguais;
+// vinculado a uma Agência = Unidade conta só os associados da mesma agência.
 const AssociadoCard_Dashboard = () => {
   const podeVerGeral = podeListarTodosAssociados();
   const podeVerUnidade = state.user?.role === 'agency_admin' || isGerente();
+  const ehAssociadoComum = isAssociado() && !isGerente();
 
   const { data: geralResp } = useQueryAssociados(podeVerGeral);
   const { data: meusResp } = useQueryMeusAssociados(podeVerUnidade);
+  const { data: diretorioResp } = useQueryAssociadosDiretorio(ehAssociadoComum);
 
-  const geral = geralResp?.data ?? [];
-  const unidade = isMatriz() ? geral.filter((a) => !a.agenciaId) : (meusResp?.data ?? []);
+  let geral;
+  let unidade;
+  if (ehAssociadoComum) {
+    const diretorio = diretorioResp?.data ?? [];
+    const minhaAgenciaId = state.user?.agenciaId;
+    geral = diretorio.length + 1;
+    unidade = minhaAgenciaId
+      ? diretorio.filter((a) => a.agenciaId === minhaAgenciaId).length + 1
+      : geral;
+  } else {
+    const geralAdmin = geralResp?.data ?? [];
+    geral = geralAdmin.length;
+    unidade = isMatriz() ? geralAdmin.filter((a) => !a.agenciaId).length : (meusResp?.data ?? []).length;
+  }
 
   return (
     <motion.div
@@ -34,11 +54,11 @@ const AssociadoCard_Dashboard = () => {
         <div className="homeCardItemBody">
           <div>
             <p>Unidade</p>
-            <p>{unidade.length}</p>
+            <p>{unidade}</p>
           </div>
           <div>
             <p>Geral</p>
-            <p>{geral.length}</p>
+            <p>{geral}</p>
           </div>
         </div>
       </div>

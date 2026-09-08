@@ -36,7 +36,7 @@
 - Login aceita `email` + `senha`.
 - Retorna `accessToken` no body e `refreshToken` em httpOnly cookie.
 - Máximo de 5 tentativas de login falhas consecutivas antes de bloquear por 15 minutos.
-- O campo `me` retorna: id, nome, email, role, entityType, entityId, contaId (quando aplicável).
+- O campo `me` retorna: id, nome, email, role, entityType, entityId, entityName, `agenciaId` (do `Usuario` logado — agência do Associado, `null` se cadastrado direto pela Matriz; irrelevante pra Agência/Matriz), conta (quando aplicável).
 
 ### Payload de Login
 ```json
