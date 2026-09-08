@@ -24,14 +24,26 @@ const Form_Agencia = ({ form, type }) => {
     const showBRL = fp === "0" || fp === "50"
     const showRT  = fp === "100" || fp === "50"
 
-    // Dinheiro/Permuta puro (100% de um jeito só) — não tem outra divisão
-    // válida, então já preenche o valor do plano inteiro e trava o campo.
-    // Evita o usuário digitar um valor diferente do plano por engano.
+    // Recalcula os dois campos inteiros toda vez que o modo muda (ou o valor
+    // do plano muda) — nunca só o campo visível, senão o outro fica com
+    // valor "fantasma" de um modo anterior (ex: seleciona Permuta, depois
+    // Dinheiro, depois volta pra Permuta/Dinheiro — sem isso, os dois
+    // ficariam com o valor cheio do plano em vez de dividir). Dinheiro/
+    // Permuta puro (100% de um jeito só) não tem outra divisão válida, então
+    // preenche o campo único com o valor total e zera o outro. Misto começa
+    // dividido meio a meio — só um ponto de partida sensato, o usuário pode
+    // reajustar digitando (ver handleBRLChange/handleRTChange abaixo).
     useEffect(() => {
         if (fp === "0") {
             form.setValue("valorInscricaoBRL", formatMoney(valorPlano, 'R$'))
+            form.setValue("valorInscricaoRT", formatMoney(0, 'RT$'))
         } else if (fp === "100") {
             form.setValue("valorInscricaoRT", formatMoney(valorPlano, 'RT$'))
+            form.setValue("valorInscricaoBRL", formatMoney(0, 'R$'))
+        } else if (fp === "50") {
+            const metade = valorPlano / 2
+            form.setValue("valorInscricaoBRL", formatMoney(metade, 'R$'))
+            form.setValue("valorInscricaoRT", formatMoney(metade, 'RT$'))
         }
     }, [fp, valorPlano])
 
