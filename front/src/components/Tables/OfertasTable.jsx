@@ -41,14 +41,14 @@ const OfertasTable = ({
     const revalidate = useRevalidate()
 
     const handleToggleStatus = (oferta) => {
-        const novoStatus = oferta.status === 'aberta' ? 'fechada' : 'aberta'
-        const acao = novoStatus === 'aberta' ? 'reabrir' : 'fechar'
+        const novoStatus = oferta.status === 'aberta' ? 'pausada' : 'aberta'
+        const acao = novoStatus === 'aberta' ? 'ativar' : 'pausar'
         state.action = () => toast.promise(
             api.patch(`ofertas/${oferta.id}/status`, { status: novoStatus })
                 .then(() => revalidate("ofertas")),
             {
-                loading: `${novoStatus === 'aberta' ? 'Reabrindo' : 'Fechando'} oferta...`,
-                success: `Oferta ${novoStatus === 'aberta' ? 'reaberta' : 'fechada'}!`,
+                loading: `${novoStatus === 'aberta' ? 'Ativando' : 'Pausando'} oferta...`,
+                success: `Oferta ${novoStatus === 'aberta' ? 'ativada' : 'pausada'}!`,
                 error: (e) => e?.response?.data?.error?.message || 'Erro ao alterar status da oferta',
             }
         )
@@ -101,7 +101,7 @@ const OfertasTable = ({
                                 {admin ? <ButtonMotion
                                     className={row.original.status === 'aberta' ? "buttonGreen" : "buttonDelete"}
                                     type="button"
-                                    title={row.original.status === 'aberta' ? 'Fechar oferta' : 'Reabrir oferta'}
+                                    title={row.original.status === 'aberta' ? 'Pausar oferta' : 'Ativar oferta'}
                                     onClick={() => handleToggleStatus(row.original)}
                                 >
                                     {row.original.status === 'aberta' ? <TbToggleRight /> : <TbToggleLeft />}

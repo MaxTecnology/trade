@@ -698,3 +698,10 @@ Achado do usuário: campos "Associado" e "Agência" tinham `required` no HTML �
 - `TransacoesTable.jsx` ganhou as duas colunas ocultas novas na lista `invisibleFields` (`agencia-filtro`, `associado-filtro`).
 
 **Validado:** `npx tsc --noEmit` limpo; `npm test` 32/32; `npx eslint`/`npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — criados 2 associados diretos da Matriz (transação de RT$300 entre eles) e uma Agência com 2 associados dela (transação de RT$150): logado como Matriz, confirmado que a tela mostra as duas transações sem preencher nenhum filtro, clicar em "Pesquisar" vazio não bloqueia nem recarrega a página; filtro por Agência isola corretamente só a transação daquela agência (1 linha); filtro de texto por Comprador e filtro por Associado específico (dropdown) testados e corretos. Dados de teste removidos ao final.
+
+## [RESOLVIDO 2026-09-08] Botão de status da oferta usava "fechar"/"reabrir" em vez de "pausar"/"ativar"
+Pedido do usuário (viu o popup de confirmação com o texto errado): o botão de alternar status de uma oferta (ícone toggle na tela "Minhas Ofertas") mudava entre `aberta`/`fechada` com os textos "Deseja fechar esta oferta?"/"Deseja reabrir esta oferta?" — mas a ação é temporária (pausar/ativar), não um fechamento definitivo. O modelo `Oferta` já tem um status `pausada` dedicado pra isso (`aberta | fechada | pausada`), só não estava sendo usado por esse botão.
+
+**O que mudou:** `OfertasTable.jsx::handleToggleStatus()` — alterna entre `aberta`/`pausada` em vez de `aberta`/`fechada`; textos do popup, toast e tooltip do botão atualizados pra "pausar"/"ativar".
+
+**Validado:** `npx eslint`/`npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — criada oferta de teste, confirmado o popup mostra "Deseja pausar esta oferta?" e depois "Deseja ativar esta oferta?", e o status no banco alterna corretamente `aberta → pausada → aberta`. Dado de teste removido ao final.
