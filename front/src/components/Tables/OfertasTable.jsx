@@ -21,7 +21,11 @@ const OfertasTable = ({
     setInfo,
     modaltoggle,
     admin }) => {
-    const formattedColumns = formatColumns(columns);
+    // 2º argumento (truthy) pula o mapeamento genérico de "status" pra
+    // "Atendendo"/"Não Atendendo" (feito pra outras telas, ex: Usuários) —
+    // aqui "status" é o status da própria oferta (ativa/pausada/fechada),
+    // já formatado por pages/ofertas/constants.js.
+    const formattedColumns = formatColumns(columns, true);
     const snap = useSnapshot(filters.table);
 
     const [columnFilters, setColumnFilters] = useState([])
@@ -41,14 +45,14 @@ const OfertasTable = ({
     const revalidate = useRevalidate()
 
     const handleToggleStatus = (oferta) => {
-        const novoStatus = oferta.status === 'aberta' ? 'pausada' : 'aberta'
-        const acao = novoStatus === 'aberta' ? 'ativar' : 'pausar'
+        const novoStatus = oferta.status === 'ativa' ? 'pausada' : 'ativa'
+        const acao = novoStatus === 'ativa' ? 'ativar' : 'pausar'
         state.action = () => toast.promise(
             api.patch(`ofertas/${oferta.id}/status`, { status: novoStatus })
                 .then(() => revalidate("ofertas")),
             {
-                loading: `${novoStatus === 'aberta' ? 'Ativando' : 'Pausando'} oferta...`,
-                success: `Oferta ${novoStatus === 'aberta' ? 'ativada' : 'pausada'}!`,
+                loading: `${novoStatus === 'ativa' ? 'Ativando' : 'Pausando'} oferta...`,
+                success: `Oferta ${novoStatus === 'ativa' ? 'ativada' : 'pausada'}!`,
                 error: (e) => e?.response?.data?.error?.message || 'Erro ao alterar status da oferta',
             }
         )
@@ -99,12 +103,12 @@ const OfertasTable = ({
                             ))}
                             <td className="flex justify-end gap-2">
                                 {admin ? <ButtonMotion
-                                    className={row.original.status === 'aberta' ? "buttonGreen" : "buttonDelete"}
+                                    className={row.original.status === 'ativa' ? "buttonGreen" : "buttonDelete"}
                                     type="button"
-                                    title={row.original.status === 'aberta' ? 'Pausar oferta' : 'Ativar oferta'}
+                                    title={row.original.status === 'ativa' ? 'Pausar oferta' : 'Ativar oferta'}
                                     onClick={() => handleToggleStatus(row.original)}
                                 >
-                                    {row.original.status === 'aberta' ? <TbToggleRight /> : <TbToggleLeft />}
+                                    {row.original.status === 'ativa' ? <TbToggleRight /> : <TbToggleLeft />}
                                 </ButtonMotion> : null}
                                 <Buttons
                                     type="Edit"

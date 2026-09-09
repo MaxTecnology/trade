@@ -45,7 +45,7 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
     where: { id: input.ofertaId },
     include: { conta: { include: { associado: true, agencia: true } } },
   })
-  if (!oferta || oferta.status !== 'aberta' || oferta.quantidadeDisponivel <= 0) {
+  if (!oferta || oferta.status !== 'ativa' || oferta.quantidadeDisponivel <= 0) {
     throw Errors.offerUnavailable()
   }
 

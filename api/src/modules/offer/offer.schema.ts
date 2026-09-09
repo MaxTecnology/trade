@@ -16,7 +16,7 @@ export const createOfferSchema = z.object({
 export const updateOfferSchema = createOfferSchema.partial()
 
 export const statusSchema = z.object({
-  status: z.enum(['aberta', 'fechada', 'pausada']),
+  status: z.enum(['ativa', 'fechada', 'pausada']),
 })
 
 export const listOfferQuerySchema = z.object({

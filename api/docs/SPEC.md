@@ -404,7 +404,7 @@ Ofertas são produtos ou serviços disponibilizados para troca em RT — por Ass
 - Limite de venda é validado no momento da compra (permuta/negociada — `limiteVendaMensal`/`limiteVendaTotal` do **vendedor**, ver §3 e §9), não na criação da oferta.
 - Quando `quantidadeDisponivel` chega a zero, a oferta é automaticamente fechada (via job BullMQ `offer.close`).
 - Ofertas fechadas ou de associados com loja fechada não aparecem na listagem pública.
-- Status possíveis: `aberta`, `fechada`, `pausada`.
+- Status possíveis: `ativa`, `fechada`, `pausada` (renomeado de `aberta` pra `ativa` em 2026-09-09).
 - Usuários só podem editar/fechar ofertas da própria conta (Associado, Agência ou Matriz).
 - `associadoId` agora é opcional — só preenchido quando a oferta pertence a um Associado (mantido por compatibilidade/consulta). `contaId` é o campo obrigatório que identifica o dono real da oferta (Associado, Agência ou Matriz), via `Conta.entityType`.
 - `GET /ofertas`, quando autenticado (`optionalAuthGuard`), exclui a oferta do próprio requisitante (`exceptContaId`) — pra não aparecer a própria oferta como opção de compra no marketplace. O `include` de `conta.associado` traz também `agenciaId` do associado dono — usado pelo front (dashboard) pra decidir se essa oferta pertence ao mesmo grupo hierárquico de quem está vendo (mesma Agência, ou associados diretos da Matriz), já que a exclusão acima tira a própria oferta da lista.
@@ -450,7 +450,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 **Permuta:**
 - A conta compradora deve ter saldo suficiente — considerando `limiteCredito` da conta compradora (`saldo - valor >= -limiteCredito`), não apenas saldo >= 0.
 - `limiteVendaMensal`/`limiteVendaTotal` do **vendedor** não podem estar atingidos (substituem `plano.limiteRT`) — limita quem vende (recebe RT), não quem compra; o comprador já é limitado por `limiteCredito`.
-- A oferta deve estar com status `aberta` e `quantidadeDisponivel > 0`.
+- A oferta deve estar com status `ativa` e `quantidadeDisponivel > 0`.
 - Pode ser parcelada (`parcelas`/`totalParcelas` na `Transacao`) sem juros — não é mais limitada pelo plano (`maxParcelas` foi removido, ver §Planos).
 - Toda permuta gera um voucher obrigatoriamente.
 - Operação atômica (ver fluxo em ARCHITECTURE.md §8).

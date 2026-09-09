@@ -705,3 +705,14 @@ Pedido do usuário (viu o popup de confirmação com o texto errado): o botão d
 **O que mudou:** `OfertasTable.jsx::handleToggleStatus()` — alterna entre `aberta`/`pausada` em vez de `aberta`/`fechada`; textos do popup, toast e tooltip do botão atualizados pra "pausar"/"ativar".
 
 **Validado:** `npx eslint`/`npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — criada oferta de teste, confirmado o popup mostra "Deseja pausar esta oferta?" e depois "Deseja ativar esta oferta?", e o status no banco alterna corretamente `aberta → pausada → aberta`. Dado de teste removido ao final.
+
+## [Decisão de produto 2026-09-09] Status de Oferta: `aberta` renomeado pra `ativa` + filtro de status em "Minhas Ofertas"
+Pedido do usuário: "ativa" pareia melhor com "pausada"/"fechada" do que "aberta" — e ele autorizou a migration completa (só havia 1 oferta na base online).
+
+**O que mudou:**
+- Migration `ALTER TYPE "StatusOferta" RENAME VALUE 'aberta' TO 'ativa'` — rename in-place, sem UPDATE separado: linhas existentes com `aberta` passam a reportar `ativa` automaticamente assim que a migration roda (inclusive a única oferta que já existia no banco online). **Não confundir com o enum `StatusLoja`** (`Associado.statusLoja` — "loja aberta pra negócio"), que é um conceito totalmente diferente e continua com o valor `aberta` — só o status da própria Oferta foi renomeado.
+- Toda referência a `'aberta'` de Oferta no código (backend: `offer.service.ts`, `offer.schema.ts`, `transaction.service.ts`; front: `OfertasTable.jsx`, `OfertasCard_Dashboard.jsx`, `OfertasCard.jsx`, `Ofertas.jsx`, `OfertasInfo.jsx`) trocada pra `'ativa'`.
+- Nova coluna "Status" em `pages/ofertas/constants.js` (mostra "Ativa"/"Pausada"/"Fechada") — precisou também pular o mapeamento genérico de `formatColumns()` que tratava qualquer coluna chamada `status` como booleano "Atendendo"/"Não Atendendo" (feito originalmente pra outra tela, ex: Usuários) — `OfertasTable.jsx` agora chama `formatColumns(columns, true)` pra pular esse comportamento.
+- Novo filtro de Status em `SearchfieldOfertas.jsx`, só na tela "Minhas Ofertas" (`type="list"`) — "Ativas" selecionado por padrão, opções Ativas/Pausadas/Fechadas/Todas. De quebra, corrigido o mesmo bug de sempre nesse componente: `onSubmit` sem `preventDefault` (recarregava a página).
+
+**Validado:** `npx tsc --noEmit` limpo; `npm test` 32/32; `npx eslint`/`npm run build` sem erro; contra API/Postgres reais em Docker + Playwright — confirmado enum do banco (`ativa, fechada, pausada`) e default da coluna (`'ativa'::"StatusOferta"`) corretos após a migration; oferta nova criada já nasce `ativa`; coluna "Status" mostra o texto certo (não mais "Atendendo"); filtro padrão "Ativas" esconde oferta pausada e mostra de novo ao trocar pra "Pausadas"; toggle "Pausar"/"Ativar" (da sessão anterior) continua funcionando com o novo valor. Dados de teste removidos ao final.

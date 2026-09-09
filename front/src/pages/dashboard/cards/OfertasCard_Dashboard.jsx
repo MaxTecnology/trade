@@ -35,7 +35,7 @@ const OfertasCard_Dashboard = () => {
     const { data: minhaLojaResp } = useQueryMinhaLoja()
 
     const outras = outrasResp?.data ?? []
-    const minhasAbertas = (minhaLojaResp?.data ?? []).filter((o) => o.status === 'aberta')
+    const minhasAbertas = (minhaLojaResp?.data ?? []).filter((o) => o.status === 'ativa')
 
     const geral = [...outras, ...minhasAbertas]
     const unidade = [...minhasAbertas, ...outras.filter(pertenceAoMeuGrupo)]

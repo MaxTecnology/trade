@@ -46,7 +46,7 @@ export async function list(query: ListOfferQuery, exceptContaId?: string) {
   const skip = (page - 1) * limit
 
   const where = {
-    status: 'aberta' as const,
+    status: 'ativa' as const,
     OR: [
       { conta: { entityType: 'matriz' as const } },
       { conta: { entityType: 'agencia' as const, agencia: { status: 'ativo' as const } } },
@@ -110,7 +110,7 @@ export async function update(id: string, input: UpdateOfferInput, contaId: strin
 
 export async function setStatus(
   id: string,
-  status: 'aberta' | 'fechada' | 'pausada',
+  status: 'ativa' | 'fechada' | 'pausada',
   contaId: string,
 ) {
   const oferta = await prisma.oferta.findUnique({ where: { id } })

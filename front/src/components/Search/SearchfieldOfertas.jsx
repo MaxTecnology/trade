@@ -5,9 +5,20 @@ import filters from '@/store/filters';
 import CategoriesOptions from '@/components/Options/CategoriesOptions';
 import { useEffect } from 'react';
 import ButtonMotion from '@/components/FramerMotion/ButtonMotion';
-const SearchfieldOfertas = () => {
+// type="list" (Minhas Ofertas) ganha o filtro de Status, com "Ativas" já
+// selecionado por padrão — nas outras telas que reaproveitam esse campo
+// (marketplace público, Excluir Ofertas) esse filtro não faz sentido
+// (marketplace só mostra ativa mesmo, Excluir Ofertas não tem essa noção).
+const STATUS_OPTIONS = [
+    { value: '', label: 'Todas' },
+    { value: 'ativa', label: 'Ativas' },
+    { value: 'pausada', label: 'Pausadas' },
+    { value: 'fechada', label: 'Fechadas' },
+]
+
+const SearchfieldOfertas = ({ type }) => {
     const navigate = useNavigate();
-    const handleclick = ({ type }) => {
+    const handleclick = () => {
         navigate("/ofertasCadastrar")
     }
 
@@ -16,11 +27,11 @@ const SearchfieldOfertas = () => {
     }
 
     useEffect(() => {
-        filters.table = {}
-    }, [])
+        filters.table = type === 'list' ? { status: 'ativa' } : {}
+    }, [type])
 
     return (
-        <form action="" className="containerSearch">
+        <form action="" onSubmit={(e) => e.preventDefault()} className="containerSearch">
             <div className="searchRow">
                 <SearchInput />
                 <div className="form-group f2">
@@ -39,6 +50,15 @@ const SearchfieldOfertas = () => {
                         <CategoriesOptions />
                     </select>
                 </div>
+                {type === 'list' && (
+                    <div className="form-group f2"><label htmlFor="status">Status</label>
+                        <select defaultValue={"ativa"} className="form-control" id="status" name="status" onChange={handleSearch}>
+                            {STATUS_OPTIONS.map((opt) => (
+                                <option value={opt.value} key={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
                 <div className="buttonContainer">
                     <ButtonMotion type="submit"><FaSearch /> Localizar</ButtonMotion>
                     <ButtonMotion onClick={handleclick} className="purpleBtn" type="button"><FaPlus /> Nova Oferta</ButtonMotion>

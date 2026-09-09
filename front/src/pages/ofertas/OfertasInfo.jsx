@@ -94,7 +94,7 @@ const OfertasInfo = () => {
                             <h3>Descrição da Oferta</h3>
                             <p>{storedData.descricao}</p>
                         </div>
-                        <h2 className={storedData.status === 'aberta' ? "associadoInfoStatus" : "associadoInfoStatus disabled"}>{storedData.status === 'aberta' ? "Oferta Ativa" : "Oferta Desativada"}</h2>
+                        <h2 className={storedData.status === 'ativa' ? "associadoInfoStatus" : "associadoInfoStatus disabled"}>{storedData.status === 'ativa' ? "Oferta Ativa" : "Oferta Desativada"}</h2>
                     </div>
                 </div>
             </div>

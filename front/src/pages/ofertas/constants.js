@@ -1,7 +1,14 @@
+const STATUS_LABEL = { ativa: 'Ativa', pausada: 'Pausada', fechada: 'Fechada' }
+
 export const columns = [
     {
         accessorKey: 'titulo',
         header: 'Titulo',
+    },
+    {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: (info) => STATUS_LABEL[info.getValue()] ?? info.getValue(),
     },
     {
         accessorKey: 'valorRT',

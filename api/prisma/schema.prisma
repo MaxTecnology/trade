@@ -43,7 +43,7 @@ enum StatusLoja {
 }
 
 enum StatusOferta {
-  aberta
+  ativa
   fechada
   pausada
 }
@@ -442,7 +442,7 @@ model Oferta {
   valorRT              Decimal           @db.Decimal(15, 2)
   quantidadeDisponivel Int
   quantidadeTotal      Int
-  status               StatusOferta      @default(aberta)
+  status               StatusOferta      @default(ativa)
   tipoAtendimento      TipoAtendimento[]
   categoriaId          String
   associadoId          String?

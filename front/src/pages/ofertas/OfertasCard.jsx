@@ -76,7 +76,7 @@ const OfertasCard = ({ associado, index }) => {
         navigate("/ofertasInfo")
     }
 
-    if (data.status === 'aberta') {
+    if (data.status === 'ativa') {
         return (
             <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
