@@ -20,6 +20,9 @@ const ResumoFinanceiro = () => {
   const { data: receberAssociados } = useQueryReceberAssociado(!isMatriz());
   const { data: pagarGerentes } = useQueryPagarGerentes(podeListarTodosAssociados());
   const { data: proximaFatura } = useQueryProximaFatura(!isMatriz());
+  // useQueryProximaFatura devolve o envelope de cobrancas/minhas?...&limit=1:
+  // {success, data: [cobranca]} — não um objeto {proximaFatura}.
+  const proximaCobranca = proximaFatura?.data?.[0];
 
   const type = getType();
   var taxa = 0;
@@ -134,8 +137,8 @@ const ResumoFinanceiro = () => {
           <div>
             Próxima fatura:{" "}
             <span>
-              {proximaFatura && proximaFatura.proximaFatura
-                ? formatDate(proximaFatura.proximaFatura)
+              {proximaCobranca
+                ? formatDate(proximaCobranca.vencimento)
                 : "Sem fatura pendente"}
             </span>
           </div>
@@ -143,7 +146,11 @@ const ResumoFinanceiro = () => {
         {isAssociado() && (
           <div>
             Data para Pagamento:
-            <span>Não há cobranças</span>
+            <span>
+              {proximaCobranca
+                ? formatDate(proximaCobranca.vencimento)
+                : "Não há cobranças"}
+            </span>
           </div>
         )}
       </div>

@@ -725,3 +725,18 @@ Já existia um precedente exatamente pra esse tipo de problema em `App.css:1895`
 **O que mudou:** `index.css` — `color-scheme: light dark` → `color-scheme: light`. Isso força os controles nativos (incluindo a lista de opções do select) a sempre renderizar em modo claro, batendo com o resto do app, independente da preferência de SO do usuário.
 
 **Validado:** `npm run build` sem erro; contra Docker real + Playwright, forçando o contexto do navegador pra `colorScheme: 'dark'` (reproduzindo o cenário de um usuário com SO em modo escuro) — confirmado que `getComputedStyle(document.documentElement).colorScheme` muda de `"light dark"` (antes) pra `"light"` (depois); screenshot da lista de opções aberta confirma fundo branco/texto escuro legível em todas as opções, incluindo a selecionada/destacada.
+
+## [RESOLVIDO 2026-09-09] Dashboard "Resumo Administrativo": "Próxima fatura" e "Data para Pagamento" quebrados + Matriz sem visão do que os associados devem
+Pedido do usuário: 3 achados juntos, com screenshots — (1) Matriz tinha a lista de cobranças pendentes de um associado (Inscrição/Comissão) certinha em "Contas a Pagar", mas o card do dashboard do próprio associado mostrava "Sem fatura pendente"/"Não há cobranças" mesmo tendo cobrança real em aberto; (2) confirmação de que "Matriz não tem de fato contas a pagar" (ela nunca é devedora — só emite/gerencia) e pedido pra Matriz conseguir ver o que os associados têm pra pagar.
+
+**Causa dos campos quebrados (`ResumoFinanceiro.jsx`):**
+- "Próxima fatura" lia `proximaFatura.proximaFatura` — mas `useQueryProximaFatura` chama `GET /cobrancas/minhas?pago=false&limit=1`, que devolve o envelope padrão `{success, data: [cobranca]}` (array), não um objeto com campo `proximaFatura`. Bug de shape-mismatch, mesma classe já vista antes nesta sessão.
+- "Data para Pagamento" nunca foi ligado a dado nenhum — `<span>Não há cobranças</span>` era texto fixo desde sempre.
+
+**O que mudou:**
+- `ResumoFinanceiro.jsx` — `proximaCobranca = proximaFatura?.data?.[0]` extraído uma vez; "Próxima fatura" e "Data para Pagamento" agora leem `proximaCobranca.vencimento` (mesma fonte, já que são conceitualmente a mesma informação pro Associado).
+- Nova visão consolidada pra Matriz em "Contas a Pagar": endpoint `GET /cobrancas` (`todasController`, superadmin-only) já existia mas não era usado por nenhuma tela — criado `useQueryTodasCobrancas.js` chamando ele, habilitado só quando `isMatriz()`. `ContasPagar.jsx` agora escolhe a fonte de dados (`useQueryContasPagar` pra quem tem cobrança própria, `useQueryTodasCobrancas` pra Matriz) e troca o título da página pra "Contas a pagar dos associados" quando é Matriz. `ContasTable`/`ContasSearch`/`constantsContas.js` reaproveitados sem alteração — mesmo shape de Cobranca (`conta`, `associado`, `agencia` inclusos) nos dois endpoints.
+
+**Decisão de escopo:** "Manutenção Anual" (`GET /cobrancas/manutencao-anual`) continua sendo um relatório 100% projetado/manual (não cria `Cobranca` real) — não fazia parte do problema relatado, que era sobre cobranças de Inscrição/Comissão já reais não aparecendo. Não alterado.
+
+**Validado:** `npx eslint`/`npm run build` (front) sem erro; `GET /cobrancas` confirmado ao vivo via curl como Matriz — envelope `{success, data: [], meta}` (banco de teste local está zerado, só Matriz cadastrada no momento, por isso lista vazia); `GET /cobrancas/minhas` confirmado retornando 403 pra Matriz (comportamento já esperado/existente). Não foi possível validar visualmente com dados reais nesta rodada (ambiente local sem associado/cobrança cadastrados) — recomendo conferir visualmente após o deploy, já que a Matriz de produção tem cobranças reais.
