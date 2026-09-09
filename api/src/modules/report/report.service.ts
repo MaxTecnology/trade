@@ -194,7 +194,7 @@ export async function relatorioPermutas(
   }
   if (role === 'associate_admin') {
     where = { ...where, compradorId: entityId }
-  } else if (role === 'agency_admin') {
+  } else if (role === 'agency_admin' || role === 'agency_operator') {
     const associados = await prisma.associado.findMany({
       where: { agenciaId: entityId },
       select: { id: true },

@@ -43,7 +43,11 @@ export async function reportRoutes(app: FastifyInstance) {
 
   app.get('/extrato', qualquerConta, extratoController)
   app.get('/extrato/saldo', qualquerConta, saldoController)
-  app.get('/relatorios/permutas', { preHandler: [authGuard, roleGuard('associate_admin', 'agency_admin', 'superadmin')] }, permutasController)
+  app.get(
+    '/relatorios/permutas',
+    { preHandler: [authGuard, roleGuard('associate_admin', 'agency_admin', 'agency_operator', 'superadmin')] },
+    permutasController,
+  )
   app.get('/relatorios/permutas-mes', qualquerContaOuGerente, permutasMesResumoController)
   app.get('/relatorios/fundo-permuta', qualquerContaOuGerente, fundoPermutaResumoController)
   app.get('/relatorios/comissoes', agencyOrSuper, comissoesController)

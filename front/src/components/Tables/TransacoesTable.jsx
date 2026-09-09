@@ -62,7 +62,7 @@ const TransacoesTable = ({
         getPaginationRowModel: getPaginationRowModel(),
     })
 
-    const invisibleFields = ["dataInicio", "dataTermino"]
+    const invisibleFields = ["dataInicio", "dataTermino", "agencia-filtro", "associado-filtro"]
 
     useEffect(() => {
         const filters = Object.entries(snap).map(([key, value]) => {

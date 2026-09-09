@@ -4,12 +4,16 @@ import Footer from "@/components/Footer";
 import SearchfieldTrade from "@/components/Search/SearchfieldTrade";
 import { activePage } from "@/utils/functions/setActivePage";
 import TransacoesTable from "@/components/Tables/TransacoesTable";
-import { columns } from "./constants";
-import { useQueryTransacoes } from "@/hooks/ReactQuery/useQueryTransacoes";
+import { columns } from "@/pages/estratos/constantsTransacoes";
+import { useQueryRelatorioTransacoes } from "@/hooks/ReactQuery/useQueryRelatorioTransacoes";
 import useModal from "@/hooks/useModal";
 
+// Visão ampla (Matriz vê tudo, Agência vê a própria conta + associados
+// geridos) — GET /relatorios/permutas, mesma fonte já usada em Extratos.jsx.
+// Diferente de "Minhas Transações" (TransaçõesMinhas.jsx), que usa
+// GET /transacoes, escopado só pela própria conta do requisitante.
 const Transações = () => {
-    const { data } = useQueryTransacoes()
+    const { data } = useQueryRelatorioTransacoes()
     const [modalIsOpen, modalToggle] = useModal();
     const [info, setInfo] = useState({})
     const [id, setId] = useState()
