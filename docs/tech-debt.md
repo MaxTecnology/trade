@@ -740,3 +740,12 @@ Pedido do usuário: 3 achados juntos, com screenshots — (1) Matriz tinha a lis
 **Decisão de escopo:** "Manutenção Anual" (`GET /cobrancas/manutencao-anual`) continua sendo um relatório 100% projetado/manual (não cria `Cobranca` real) — não fazia parte do problema relatado, que era sobre cobranças de Inscrição/Comissão já reais não aparecendo. Não alterado.
 
 **Validado:** `npx eslint`/`npm run build` (front) sem erro; `GET /cobrancas` confirmado ao vivo via curl como Matriz — envelope `{success, data: [], meta}` (banco de teste local está zerado, só Matriz cadastrada no momento, por isso lista vazia); `GET /cobrancas/minhas` confirmado retornando 403 pra Matriz (comportamento já esperado/existente). Não foi possível validar visualmente com dados reais nesta rodada (ambiente local sem associado/cobrança cadastrados) — recomendo conferir visualmente após o deploy, já que a Matriz de produção tem cobranças reais.
+
+## [RESOLVIDO 2026-09-11] Estorno bloqueado mesmo com limite de crédito suficiente
+Achado do usuário (teste manual): saldo da conta que receberia o débito do estorno estava negativo — estorno bloqueado por falta de saldo, como esperado. Liberou limite de crédito suficiente pro associado e mesmo assim o estorno continuou bloqueado, o que não deveria acontecer (regra do domínio: saldo nunca pode ficar abaixo de `-limiteCredito`, ver `CLAUDE.md`).
+
+**Causa:** `transactionService.estorno()` (`transaction.service.ts:486`) checava só `contaDestino.saldo < valorRT` — ignorava `limiteCredito` completamente. Toda outra operação de débito do sistema (permuta, negociada, transferência) já usa o helper `saldoSuficienteParaDebito(saldo, valor, limiteCredito)` (`shared/utils/limites.ts`), que é a regra correta; só o estorno tinha essa checagem duplicada e incompleta.
+
+**O que mudou:** `estorno()` agora busca o `limiteCredito` da conta de destino (`getLimiteCreditoDaConta`) e usa `saldoSuficienteParaDebito()`, igual as outras operações.
+
+**Validado:** `npx tsc --noEmit` e `npm test` (32/32) limpos; contra API/Postgres reais em Docker — reproduzido o cenário exato do usuário (associado B com saldo -150 e limite de crédito 500 após duas negociações de teste), solicitado e aprovado o estorno de uma transação de 100 RT como Matriz: sucesso, saldo final -250 (dentro do limite -500), confirmando que a validação agora considera saldo + limite de crédito corretamente. Dados de teste removidos ao final.

@@ -482,8 +482,10 @@ export async function estorno(transacaoId: string, usuarioId: string) {
   if (!contaOrigem || !contaDestino) throw Errors.notFound('Contas da transação')
 
   // contaDestino recebeu o valor original e é quem será debitado no estorno — se o saldo
-  // já foi movimentado (gasto/transferido) desde então, não há RT suficiente para reverter.
-  if (Number(contaDestino.saldo) < Number(original.valorRT)) {
+  // já foi movimentado (gasto/transferido) desde então, precisa de saldo + limite de
+  // crédito suficiente pra reverter, igual qualquer outro débito (permuta/negociada).
+  const limiteCreditoDestino = await getLimiteCreditoDaConta(original.contaDestinoId!)
+  if (!saldoSuficienteParaDebito(Number(contaDestino.saldo), Number(original.valorRT), limiteCreditoDestino)) {
     throw Errors.insufficientBalance()
   }
 
