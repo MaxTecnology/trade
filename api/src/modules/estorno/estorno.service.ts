@@ -20,7 +20,13 @@ const include = {
         select: { id: true, nome: true, agenciaId: true, agencia: { select: { nome: true } } },
       },
       contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
-      contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
+      // saldo/limiteCredito aqui são da conta que seria DEBITADA se o estorno
+      // for aprovado (transactionService.estorno() sempre debita contaDestino
+      // — ver saldoSuficienteParaDebito) — mostrados na tela de Estornos pra
+      // Matriz avaliar se há saldo+limite suficiente antes de aprovar.
+      contaDestino: {
+        select: { entityType: true, agenciaId: true, saldo: true, limiteCredito: true, agencia: { select: { nome: true } } },
+      },
     },
   },
 } as const

@@ -44,6 +44,21 @@ export const columns = [
         header: 'Valor',
         cell: (info) => `RT$ ${formatarNumeroParaRT(info.getValue() ?? 0)}`,
     },
+    // Saldo/Limite da conta que seria debitada se o estorno for aprovado
+    // (transacao.contaDestino — ver estorno.service.ts) — pra Matriz avaliar
+    // de cara se dá pra aprovar antes de abrir o detalhe.
+    {
+        id: 'saldoDevedor',
+        accessorKey: 'transacao.contaDestino.saldo',
+        header: 'Saldo (devedor)',
+        cell: (info) => `RT$ ${formatarNumeroParaRT(info.getValue() ?? 0)}`,
+    },
+    {
+        id: 'limiteDevedor',
+        accessorKey: 'transacao.contaDestino.limiteCredito',
+        header: 'Limite Crédito (devedor)',
+        cell: (info) => `RT$ ${formatarNumeroParaRT(info.getValue() ?? 0)}`,
+    },
     {
         accessorKey: 'motivo',
         header: 'Motivo',

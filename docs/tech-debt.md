@@ -776,3 +776,12 @@ O `db-migration-checker` apontou que `CREATE UNIQUE INDEX` (migration `202609112
 **Por quê:** a tabela `cobranca` tem volume pequeno nesta escala do produto (dezenas de linhas) — o lock dura milissegundos. `CREATE INDEX CONCURRENTLY` não roda dentro de transação, e o comportamento do Prisma Migrate 7.8 em desabilitar transação automaticamente pra isso não foi verificado — trocar sem testar contra esse cenário específico arrisca quebrar o `prisma migrate deploy` do `entrypoint.sh` (deploy automático, sem intervenção manual pra corrigir no meio). Mesmo padrão (sem `CONCURRENTLY`) já usado no índice único do estorno (`solicitacao_estorno_transacao_ativa_unica`), já em produção sem problema.
 
 **Revisitar quando:** o volume de `Cobranca` crescer a um ponto em que um lock de alguns segundos/minutos na tabela passe a ser sensível (hoje não é).
+
+## [RESOLVIDO 2026-09-11] Tela de Estornos sem saldo/limite da conta devedora
+Pedido do usuário: pra avaliar um pedido de estorno, a Matriz precisa saber se a conta que seria debitada tem saldo + limite de crédito suficiente (ver fix de 2026-09-08 sobre `saldoSuficienteParaDebito` no estorno) — antes disso só dava pra saber abrindo outra tela.
+
+**O que mudou:**
+- `estorno.service.ts` — o `include` compartilhado por todas as listagens de estorno (`listarMinhas`, `listarFilhas`, `listarMatriz`, `listarTodas`) passou a trazer `saldo`/`limiteCredito` de `transacao.contaDestino` (a conta debitada se o estorno for aprovado).
+- `pages/estratos/constantsEstorno.js` — duas colunas novas na tela "Estornos": "Saldo (devedor)" e "Limite Crédito (devedor)", lendo direto de `transacao.contaDestino.saldo`/`limiteCredito`.
+
+**Validado:** `npx tsc --noEmit` e `npm test` (32/32) limpos; `npx eslint` sem erro; contra API/Postgres reais em Docker — criados 2 associados, 1 negociada de 100 RT, solicitado estorno como Matriz: `GET /estornos/matriz` confirmado trazendo `contaDestino.saldo: "100"` e `contaDestino.limiteCredito: "500"` na resposta, exatamente os valores usados pelas novas colunas. Dados de teste removidos ao final.
