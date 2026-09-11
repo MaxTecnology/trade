@@ -143,6 +143,7 @@ const ModalContent = ({ modalItem, modalFunction }) => {
             }
             if (isMatriz()) {
                 component.push(
+                    { name: 'Comissões', icon: <FaMoneyCheckAlt />, route: "/comissoes" },
                     { name: 'Manutenção Anual', icon: <BsGraphUp />, route: "/manutencaoAnual" },
                     { name: 'Emissão de RT', icon: <BsPieChartFill />, route: "/emissaoMatriz" }
                 );

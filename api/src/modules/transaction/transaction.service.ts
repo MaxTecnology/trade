@@ -183,7 +183,6 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
 
   // Jobs assíncronos
   await queues.voucherGenerate.add('generate', { transacaoId: transacao.id })
-  await queues.commissionCalculate.add('calculate', { transacaoId: transacao.id })
   await queues.commissionGerente.add('gerente', { transacaoId: transacao.id })
 
   return transacao
@@ -342,7 +341,6 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
   })
 
   await queues.voucherGenerate.add('generate', { transacaoId: transacao.id })
-  await queues.commissionCalculate.add('calculate', { transacaoId: transacao.id })
   await queues.commissionGerente.add('gerente', { transacaoId: transacao.id })
 
   return transacao

@@ -1,7 +1,7 @@
 import { Queue, Worker, QueueEvents } from 'bullmq'
 import { getRedis } from '../../config/redis.js'
 import { prisma } from '../../config/prisma.js'
-import { calcularVencimento } from '../../shared/utils/data.js'
+import { gerarCobrancasComissaoMensal } from '../cobranca/cobranca.service.js'
 
 function conn() {
   return { connection: getRedis() }
@@ -23,18 +23,34 @@ export const dlq = new Queue('dead-letter', {
 // ── Queues ────────────────────────────────────────────────
 const QUEUE_NAMES = [
   'voucher.generate',
-  'commission.calculate',
   'commission.gerente',
+  'commission.consolidate',
   'notification.send',
   'offer.close',
 ] as const
 
 export const queues = {
   voucherGenerate: new Queue('voucher.generate', { ...conn(), defaultJobOptions }),
-  commissionCalculate: new Queue('commission.calculate', { ...conn(), defaultJobOptions }),
   commissionGerente: new Queue('commission.gerente', { ...conn(), defaultJobOptions }),
+  commissionConsolidate: new Queue('commission.consolidate', { ...conn(), defaultJobOptions }),
   notificationSend: new Queue('notification.send', { ...conn(), defaultJobOptions }),
   offerClose: new Queue('offer.close', { ...conn(), defaultJobOptions }),
+}
+
+// Job repetitivo (cron nativo do BullMQ) — todo dia 1 às 03h, horário de
+// Brasília, consolida a comissão da plataforma do mês que acabou de fechar
+// numa Cobranca por conta (ver gerarCobrancasComissaoMensal). jobId fixo faz
+// o BullMQ deduplicar — chamar isso de novo em todo boot do servidor não
+// cria agendamentos duplicados.
+export async function scheduleRecurringJobs() {
+  await queues.commissionConsolidate.add(
+    'consolidate-monthly',
+    {},
+    {
+      repeat: { pattern: '0 3 1 * *', tz: 'America/Sao_Paulo' },
+      jobId: 'commission-consolidate-monthly',
+    },
+  )
 }
 
 // Monitora falhas em todas as filas e envia para DLQ após esgotar tentativas
@@ -72,53 +88,17 @@ export function startWorkers() {
     conn(),
   )
 
+  // Consolida a comissão da plataforma do mês anterior numa Cobranca por
+  // conta (ver gerarCobrancasComissaoMensal) — substitui o worker antigo que
+  // criava uma Cobranca por transação. Job disparado pelo cron agendado em
+  // scheduleRecurringJobs(); aceita `referencia` opcional pra reprocessar um
+  // mês específico manualmente (enfileirando o job com esse dado), senão usa
+  // a data atual.
   new Worker(
-    'commission.calculate',
+    'commission.consolidate',
     async (job) => {
-      const { transacaoId } = job.data as { transacaoId: string }
-      const transacao = await prisma.transacao.findUnique({ where: { id: transacaoId } })
-      if (!transacao || !transacao.comissaoBRL || Number(transacao.comissaoBRL) <= 0) return
-      if (!transacao.contaOrigemId) return
-
-      const contaOrigem = await prisma.conta.findUnique({
-        where: { id: transacao.contaOrigemId },
-        include: { associado: true, agencia: true },
-      })
-      if (!contaOrigem) return
-
-      // A comissão calculada (comissaoBRL) só ficava guardada na própria transação, sem
-      // nenhum jeito de efetivamente ser cobrada de alguém. Vira uma Cobrança BRL no
-      // comprador, vinculada à transação, seguindo o mesmo padrão de cobrança de inscrição.
-      const jaExiste = await prisma.cobranca.findFirst({ where: { transacaoId } })
-      if (jaExiste) return
-
-      const diaVencimentoFatura =
-        contaOrigem.associado?.diaVencimentoFatura ?? contaOrigem.agencia?.diaVencimentoFatura ?? 10
-      const vencimento = calcularVencimento(diaVencimentoFatura)
-
-      // Conta.agenciaId só é preenchido quando a própria conta pertence a uma Agência
-      // (entityType: 'agencia'). Pra conta de Associado, a agência que gerencia o associado
-      // vem de Associado.agenciaId — mesmo padrão usado na cobrança de inscrição
-      // (associate.service.ts).
-      const agenciaId =
-        contaOrigem.entityType === 'associado'
-          ? (contaOrigem.associado?.agenciaId ?? null)
-          : contaOrigem.entityType === 'agencia'
-            ? contaOrigem.agenciaId
-            : null
-
-      await prisma.cobranca.create({
-        data: {
-          descricao: `Comissão da plataforma — transação #${transacaoId.slice(0, 8)}`,
-          valorBRL: transacao.comissaoBRL,
-          vencimento,
-          contaId: transacao.contaOrigemId,
-          associadoId: contaOrigem.associadoId,
-          agenciaId,
-          transacaoId,
-          tipo: 'comissao',
-        },
-      })
+      const { referencia } = (job.data ?? {}) as { referencia?: string }
+      await gerarCobrancasComissaoMensal(referencia ? new Date(referencia) : new Date())
     },
     conn(),
   )

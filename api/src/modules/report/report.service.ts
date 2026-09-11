@@ -245,7 +245,10 @@ export async function relatorioComissoes(
   const skip = (page - 1) * limit
 
   let where: Record<string, unknown> = {
-    tipo: 'permuta',
+    // negociada também gera comissaoBRL (ver resolverComissaoComprador em
+    // transaction.service.ts) — filtrar só permuta deixava de fora metade
+    // da comissão da plataforma gerada no mês.
+    tipo: { in: ['permuta', 'negociada'] },
     comissaoBRL: { not: null },
     ...dateRange(filters.dataInicio, filters.dataFim),
   }

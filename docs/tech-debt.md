@@ -749,3 +749,23 @@ Achado do usuário (teste manual): saldo da conta que receberia o débito do est
 **O que mudou:** `estorno()` agora busca o `limiteCredito` da conta de destino (`getLimiteCreditoDaConta`) e usa `saldoSuficienteParaDebito()`, igual as outras operações.
 
 **Validado:** `npx tsc --noEmit` e `npm test` (32/32) limpos; contra API/Postgres reais em Docker — reproduzido o cenário exato do usuário (associado B com saldo -150 e limite de crédito 500 após duas negociações de teste), solicitado e aprovado o estorno de uma transação de 100 RT como Matriz: sucesso, saldo final -250 (dentro do limite -500), confirmando que a validação agora considera saldo + limite de crédito corretamente. Dados de teste removidos ao final.
+
+## [Decisão de produto 2026-09-11] Comissão da plataforma: consolidação mensal + tela "Comissões" pra Matriz
+Pedido do usuário: analisar como a comissão (cobrada do comprador em toda permuta/negociação) funciona hoje. Achados da análise:
+- **Não era mensal, era por transação.** `commission.calculate` (worker BullMQ) criava uma `Cobranca` separada pra CADA permuta/negociada concluída, na hora — um associado com 15 transações no mês gerava 15 boletos distintos, não um consolidado.
+- **Sem tela.** Existia `/relatorios/comissoes` (agregado) mas nenhuma página do frontend consumia — endpoint morto.
+- **Bug de escopo:** `relatorioComissoes` filtrava só `tipo: 'permuta'`, ignorando `negociada` (que também gera `comissaoBRL`).
+
+Confirmado explicitamente com o usuário: comissão de gerente (`ComissaoGerente`, o que a Matriz *paga* pro gerente) é um fluxo totalmente separado e **não foi alterado** — só a comissão da plataforma (o que a Matriz *cobra* do comprador) mudou.
+
+**O que mudou:**
+- **Schema:** `Cobranca` ganhou `competencia` (`DateTime? @db.Date`, dia 1 do mês de referência) + índice único parcial `(contaId, competencia) WHERE tipo = 'comissao'` (migration `20260911201308_cobranca_competencia_comissao`) — chave de idempotência no banco, mesmo padrão já usado pro estorno (`solicitacao_estorno_transacao_ativa_unica`).
+- **Parou de gerar cobrança por transação:** removidos o worker/fila `commission.calculate` e as chamadas `queues.commissionCalculate.add(...)` em `transaction.service.ts` (permuta e negociada). `Transacao.comissaoBRL` continua gravado normalmente na hora — só parou de virar `Cobranca` imediata.
+- **Novo job mensal:** `commission.consolidate` (fila BullMQ nova, cron nativo `0 3 1 * *` horário de Brasília, agendado em `server.ts::scheduleRecurringJobs()`, chamado uma vez a cada boot — `jobId` fixo faz o BullMQ deduplicar, não empilha agendamento). Todo dia 1 de manhã, `gerarCobrancasComissaoMensal()` (`cobranca.service.ts`) agrupa as transações (`permuta`/`negociada`, `comissaoBRL > 0`) do mês que fechou por `contaOrigemId` e cria UMA `Cobranca` consolidada por conta compradora.
+- **Bug corrigido:** `relatorioComissoes` agora considera `tipo: { in: ['permuta', 'negociada'] }`.
+- **Backend de listagem:** `GET /cobrancas` ganhou filtro `?tipo=...` (schema + `listarTodasCobrancas`).
+- **Frontend:** nova tela "Comissões" (`/comissoes`, menu só pra Matriz, ao lado de "Manutenção Anual") — reaproveita `ContasTable`/`ContasSearch`/`ContasModal`/colunas de `constantsContas.js` sem alteração, só filtrando `tipo=comissao` (`useQueryComissoes.js`). Dar baixa usa o mesmo `PATCH /cobrancas/:id/quitar` que já existia.
+
+**Decisão explícita do usuário, não executada por mim:** zerar o banco de produção antes de subir essa mudança pra não conviver com cobranças antigas (uma-por-transação) misturadas com as novas (consolidadas). Isso fica por conta do usuário decidir quando/como fazer — recomendo backup antes.
+
+**Validado:** `npx tsc --noEmit` e `npm test` (32/32) limpos; `npm run build`/`npx eslint` (front) sem erro; contra API/Postgres/Redis reais em Docker — criados 2 associados de teste, 1 negociada gerando `comissaoBRL: 8`, confirmado que NENHUMA `Cobranca` nasce mais na hora; job `gerarCobrancasComissaoMensal()` chamado manualmente com referência do mês seguinte criou 1 `Cobranca` consolidada (`competencia: 2026-09-01`, `valorBRL: 8`, descrição "Comissão da plataforma — setembro de 2026"); chamado de novo pro mesmo mês, confirmado idempotente (`criadas: 0`, sem duplicar); `GET /cobrancas?tipo=comissao` lista corretamente; `PATCH /cobrancas/:id/quitar` dá baixa normalmente; `queues.commissionConsolidate.getRepeatableJobs()` confirma o cron agendado (`pattern: "0 3 1 * *"`, `tz: "America/Sao_Paulo"`). Dados de teste removidos ao final.

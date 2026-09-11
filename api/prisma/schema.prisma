@@ -593,6 +593,11 @@ model Cobranca {
   vencimento  DateTime
   pago        Boolean   @default(false)
   tipo        TipoCobranca @default(outro)
+  // Dia 1 do mês de referência — só preenchido em cobranças de comissão
+  // geradas pelo job mensal de consolidação (evita gerar duas cobranças pro
+  // mesmo mês/conta; ver índice único parcial na migration). Nula pra todo
+  // o resto (inscrição, manutenção, outro).
+  competencia DateTime? @db.Date
   contaId     String
   associadoId String?
   agenciaId   String?

@@ -577,7 +577,7 @@ Consultas financeiras e operacionais. O extrato reflete as movimentações da co
 | GET | `/relatorios/permutas` | Transações — todos os tipos por padrão, ou só um tipo via `?tipo=permuta`. `associate_admin` vê as próprias; `agency_admin`/`agency_operator` veem a agência + associados geridos; `superadmin` vê tudo, sem filtro | `associate_admin`, `agency_admin`, `agency_operator`, `superadmin` |
 | GET | `/relatorios/permutas-mes` | `{unidade, geral}` — soma de `valorRT` de `permuta`/`negociada` concluídas no mês corrente (Brasília). Card "Permutas Mês" do dashboard. | qualquer role autenticada |
 | GET | `/relatorios/fundo-permuta` | `{unidade, geral}` — soma de `limiteCredito` de agências + associados (exclui gerente). Card "Fundo Permuta" do dashboard. | qualquer role autenticada |
-| GET | `/relatorios/comissoes` | Relatório de comissões da plataforma (BRL) | `agency_admin`, `superadmin` |
+| GET | `/relatorios/comissoes` | Relatório de comissões da plataforma (BRL), `tipo` permuta OU negociada | `agency_admin`, `superadmin` |
 | GET | `/relatorios/comissoes-gerentes` | Relatório de comissões de todos os gerentes | `agency_admin`, `superadmin` |
 | GET | `/relatorios/uso-plano` | Quanto o associado já **vendeu** este mês vs. `limiteVendaMensal` (substituiu `plano.limiteRT`) | `associate_admin` |
 | GET | `/relatorios/associados` | Consolidado de associados | `agency_admin`, `superadmin`, `gerente` (apenas os próprios) |
@@ -699,14 +699,14 @@ em_analise → encaminhado → aprovado | negado
 
 ## 13. Cobranças / Faturas (BRL ou RT)
 
-Registro de cobranças associadas a contas — taxas de plano, manutenção, inscrição (BRL ou RT) e comissão da plataforma (BRL, gerada automaticamente após cada permuta/negociação).
+Registro de cobranças associadas a contas — taxas de plano, manutenção, inscrição (BRL ou RT) e comissão da plataforma (BRL, consolidada mensalmente por conta).
 
 ### Endpoints
 
 | Método | Rota | Descrição | Role |
 |---|---|---|---|
 | POST | `/cobrancas` | Criar cobrança | `superadmin` |
-| GET | `/cobrancas` | Todas as cobranças | `superadmin` |
+| GET | `/cobrancas` | Todas as cobranças (`?tipo=inscricao\|manutencao\|comissao\|outro` opcional) | `superadmin` |
 | GET | `/cobrancas/minhas` | Cobranças da entidade logada | qualquer autenticado |
 | GET | `/cobrancas/manutencao-anual` | Situação da taxa de manutenção anual (todo Associado/Agência com plano ativo) | `superadmin` |
 | PATCH | `/cobrancas/:id/quitar` | Quitar cobrança | `superadmin`, `agency_admin` |
@@ -720,8 +720,10 @@ Registro de cobranças associadas a contas — taxas de plano, manutenção, ins
 - Toda cobrança tem `valorBRL` OU `valorRT` preenchido (nunca os dois nulos — validado por CHECK no banco).
 - **Quitar cobrança em BRL**: apenas marca `pago: true`. O pagamento acontece fora do sistema (PIX/boleto) — o endpoint só reconcilia manualmente.
 - **Quitar cobrança em RT**: move o RT de verdade, de forma atômica. Debita `contaId` (valida saldo suficiente antes, considerando `limiteCredito` do associado/agência devedora — retorna `INSUFFICIENT_BALANCE` se ultrapassar), credita a conta de `agenciaId` se a cobrança tiver uma agência vinculada. Sem agência, credita a própria conta da Matriz (ela é quem emitiu esse RT no fluxo de inscrição — contraparte natural; toda quitação em RT sempre tem as duas pernas, débito e crédito).
-- **Comissão da plataforma**: gerada automaticamente pelo job `commission.calculate` após cada `permuta`/`negociada` concluída — cria uma `Cobranca` (BRL) vinculada à transação (`transacaoId`), cobrada do comprador. Idempotente (não duplica se o job reprocessar).
-- **`tipo`** (`inscricao | manutencao | comissao | outro`) — discrimina a origem da cobrança; `POST /cobrancas` aceita `tipo` no body (default `outro`). Cobranças de inscrição (`associate.service.ts`) e de comissão da plataforma (job `commission.calculate`) já se auto-classificam.
+- **Comissão da plataforma (consolidação mensal, 2026-09-11)**: `Transacao.comissaoBRL` é calculado e gravado na hora, em cada `permuta`/`negociada` concluída (`resolverComissaoComprador`), mas NÃO vira `Cobranca` na hora — isso mudou de "uma cobrança por transação" pra "uma cobrança consolidada por mês". Job repetitivo `commission.consolidate` (BullMQ, cron `0 3 1 * *` horário de Brasília, agendado em `server.ts::scheduleRecurringJobs()`) roda todo dia 1 de manhã e chama `gerarCobrancasComissaoMensal()`: agrupa `Transacao` (`tipo` permuta ou negociada, `comissaoBRL > 0`) do mês que acabou de fechar por `contaOrigemId` (a conta debitada — funciona igual pra Associado, Agência ou, em tese, Matriz, embora ela nunca gere comissão pra si mesma), soma o total e cria UMA `Cobranca` (`tipo: 'comissao'`, `competencia` = dia 1 do mês de referência, vencimento = `diaVencimentoFatura` do comprador). Idempotente por índice único parcial no banco (`contaId, competencia` WHERE `tipo = 'comissao'`) — reprocessar o mesmo mês não duplica.
+- **`competencia`** (`Cobranca`, `DateTime?`, só data) — dia 1 do mês de referência; só preenchido em cobranças de comissão geradas pelo job mensal, nulo pra todo o resto.
+- **`tipo`** (`inscricao | manutencao | comissao | outro`) — discrimina a origem da cobrança; `POST /cobrancas` aceita `tipo` no body (default `outro`), `GET /cobrancas` aceita `?tipo=...` pra filtrar. Cobranças de inscrição (`associate.service.ts`) e de comissão da plataforma (job `commission.consolidate`) já se auto-classificam.
+- Tela dedicada "Comissões" (`/comissoes`, só Matriz) lista `Cobranca` tipo `comissao` — reaproveita a mesma tabela/busca/modal de "Contas a Pagar", incluindo o botão de dar baixa (`PATCH /cobrancas/:id/quitar`).
 - **Manutenção anual (`GET /cobrancas/manutencao-anual`)**: sempre 100% manual — não existe job automático que cria a cobrança nem bloqueio automático por atraso. A Matriz cria manualmente via `POST /cobrancas` (com `tipo: 'manutencao'`) quando decide cobrar; o endpoint de leitura só calcula, pra cada Associado/Agência com `plano.taxaManutencaoAnual > 0`, qual o próximo vencimento esperado (1 ano após o cadastro, ou 1 ano após o vencimento da última cobrança de manutenção paga, no dia fixo de `diaVencimentoFatura`, clampado pro último dia do mês quando o dia não existe — ex: dia 30 em fevereiro) e se há uma pendência em aberto (`emAberto`, `diasAtraso`). Bloqueio do inadimplente continua manual (mudar `status` pra `suspenso`), sem automação — decisão explícita do produto.
 
 ---

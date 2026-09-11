@@ -1,7 +1,8 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
-import { getLimiteCreditoDaConta, saldoSuficienteParaDebito } from '../../shared/utils/limites.js'
-import { proximoVencimentoManutencao } from '../../shared/utils/data.js'
+import { getLimiteCreditoDaConta, saldoSuficienteParaDebito, inicioMesBrasilia } from '../../shared/utils/limites.js'
+import { proximoVencimentoManutencao, calcularVencimento } from '../../shared/utils/data.js'
 import type { CriarCobrancaInput, ListCobrancaQueryType } from './cobranca.schema.js'
 
 interface EntidadeComPlano {
@@ -110,6 +111,86 @@ const include = {
   agencia: { select: { nome: true } },
 }
 
+/**
+ * Consolida a comissão da plataforma (Transacao.comissaoBRL) de permutas e
+ * negociações concluídas no mês anterior numa única Cobranca por conta
+ * compradora — substitui a cobrança antiga, gerada uma por transação (que
+ * lotava o associado de boletos separados). Roda via job mensal
+ * (commission.consolidate, ver queues/bullmq.ts), sempre olhando pro mês que
+ * acabou de fechar, então não depende de quando exatamente o job dispara.
+ *
+ * Idempotente: o índice único parcial (contaId, competencia) WHERE tipo =
+ * 'comissao' garante que rodar duas vezes pro mesmo mês não duplica cobrança
+ * — a segunda tentativa de create cai no catch do P2002 e é ignorada.
+ */
+export async function gerarCobrancasComissaoMensal(referencia: Date = new Date()) {
+  const inicioMesAtual = inicioMesBrasilia(referencia)
+  const inicioMesAnterior = inicioMesBrasilia(new Date(inicioMesAtual.getTime() - 1))
+
+  const grupos = await prisma.transacao.groupBy({
+    by: ['contaOrigemId'],
+    where: {
+      tipo: { in: ['permuta', 'negociada'] },
+      comissaoBRL: { gt: 0 },
+      criadoEm: { gte: inicioMesAnterior, lt: inicioMesAtual },
+      contaOrigemId: { not: null },
+    },
+    _sum: { comissaoBRL: true },
+  })
+  if (grupos.length === 0) return { criadas: 0, competencia: inicioMesAnterior }
+
+  const contaIds = grupos.map((g) => g.contaOrigemId as string)
+  const contas = await prisma.conta.findMany({
+    where: { id: { in: contaIds } },
+    select: {
+      id: true,
+      associadoId: true,
+      agenciaId: true,
+      entityType: true,
+      associado: { select: { diaVencimentoFatura: true } },
+      agencia: { select: { diaVencimentoFatura: true } },
+    },
+  })
+  const contaPorId = new Map(contas.map((c) => [c.id, c]))
+
+  let criadas = 0
+  for (const grupo of grupos) {
+    const conta = contaPorId.get(grupo.contaOrigemId as string)
+    // Matriz nunca gera comissão de plataforma pra si mesma (resolverComissaoComprador
+    // retorna 0 pra ela) — se aparecer aqui mesmo assim, ignora por segurança.
+    if (!conta || conta.entityType === 'matriz') continue
+
+    const valor = Number(grupo._sum.comissaoBRL ?? 0)
+    if (valor <= 0) continue
+
+    const diaVencimentoFatura = conta.associado?.diaVencimentoFatura ?? conta.agencia?.diaVencimentoFatura ?? 10
+    const mesReferencia = inicioMesAnterior.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+    try {
+      await prisma.cobranca.create({
+        data: {
+          descricao: `Comissão da plataforma — ${mesReferencia}`,
+          valorBRL: valor,
+          vencimento: calcularVencimento(diaVencimentoFatura),
+          competencia: inicioMesAnterior,
+          contaId: conta.id,
+          associadoId: conta.associadoId,
+          agenciaId: conta.agenciaId,
+          tipo: 'comissao',
+        },
+      })
+      criadas++
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        continue
+      }
+      throw error
+    }
+  }
+
+  return { criadas, competencia: inicioMesAnterior }
+}
+
 export async function criarCobranca(input: CriarCobrancaInput) {
   return prisma.cobranca.create({ data: { ...input, vencimento: new Date(input.vencimento) }, include })
 }
@@ -187,8 +268,8 @@ export async function listarCobrancasPorAgencia(
 }
 
 export async function listarTodasCobrancas(query: ListCobrancaQueryType) {
-  const { page, limit, pago } = query
-  const where = pago !== undefined ? { pago } : {}
+  const { page, limit, pago, tipo } = query
+  const where = { ...(pago !== undefined ? { pago } : {}), ...(tipo ? { tipo } : {}) }
   const [items, total] = await prisma.$transaction([
     prisma.cobranca.findMany({
       where,

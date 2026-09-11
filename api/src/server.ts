@@ -2,7 +2,7 @@ import { buildApp } from './app.js'
 import { env } from './config/env.js'
 import { prisma } from './config/prisma.js'
 import { getRedis } from './config/redis.js'
-import { startWorkers } from './modules/queues/bullmq.js'
+import { startWorkers, scheduleRecurringJobs } from './modules/queues/bullmq.js'
 
 async function start() {
   const app = await buildApp()
@@ -26,6 +26,9 @@ async function start() {
 
   startWorkers()
   app.log.info('BullMQ workers iniciados.')
+
+  await scheduleRecurringJobs()
+  app.log.info('Jobs recorrentes agendados.')
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' })
 }
