@@ -296,10 +296,21 @@ export async function relatorioComissoesGerentes(
       orderBy: { criadoEm: 'desc' },
     }),
     prisma.comissaoGerente.count({ where }),
-    prisma.comissaoGerente.aggregate({ where, _sum: { comissaoBRL: true } }),
+    // comissaoBRL só é preenchido em tipoComissao='inscricao' (50% da taxaInscricao,
+    // dinheiro real); tipoComissao='transacao' (a maioria, ver commission.gerente
+    // em bullmq.ts) grava em comissaoRT — as duas moedas precisam ser somadas
+    // separadas, nunca combinadas num único número.
+    prisma.comissaoGerente.aggregate({ where, _sum: { comissaoBRL: true, comissaoRT: true } }),
   ])
 
-  return { items, total, page, limit, totalComissaoGerenteBRL: soma._sum?.comissaoBRL ?? 0 }
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalComissaoGerenteBRL: soma._sum?.comissaoBRL ?? 0,
+    totalComissaoGerenteRT: soma._sum?.comissaoRT ?? 0,
+  }
 }
 
 export async function relatorioUsoPlanoConta(associadoId: string) {

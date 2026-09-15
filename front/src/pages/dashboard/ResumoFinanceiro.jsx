@@ -1,28 +1,55 @@
 import state from "@/store";
 import StarRating from "@/components/Stars/StarRating";
 import { useSnapshot } from "valtio";
-import { useQueryReceberAgencia } from "@/hooks/ReactQuery/useQueryReceberAgencia";
-import { useQueryReceberAssociado } from "@/hooks/ReactQuery/useQueryReceberAssociado";
-import { getType, isAssociado, isMatriz, podeListarTodosAssociados } from "@/hooks/getId";
+import { useQueryContasReceberMatriz } from "@/hooks/ReactQuery/useQueryContasReceberMatriz";
+import { useQueryContasReceber } from "@/hooks/ReactQuery/contas/useQueryContasReceber";
+import { getType, isAgencia, isAssociado, isMatriz, podeListarTodosAssociados } from "@/hooks/getId";
 import { useQueryPlanos } from "@/hooks/ReactQuery/useQueryPlanos";
 import { useQueryPagarGerentes } from "@/hooks/ReactQuery/dashboard/useQueryPagarGerentes";
 import { useQueryProximaFatura } from "@/hooks/ReactQuery/dashboard/useQueryProximaFatura";
 import { formatDate } from "@/hooks/ListasHook";
-import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
+import { formatarNumeroParaRT, formatarNumeroParaReal } from "@/utils/functions/formartNumber";
 
 const ResumoFinanceiro = () => {
   const snap = useSnapshot(state);
   const { data: planos } = useQueryPlanos();
-  // GET /cobrancas/minhas só existe pra associado/agência (Matriz não tem
-  // "minhas cobranças"); GET /relatorios/comissoes-gerentes só pra
+  // Mesma fonte de dados da tela "Contas a Receber" (useQueryContasReceberMatriz/
+  // useQueryContasReceber) — dashboard e tela ficam sempre consistentes entre si,
+  // sem endpoint duplicado. GET /relatorios/comissoes-gerentes só pra
   // superadmin/agency_admin — evita 403 em loop pra quem não tem acesso.
-  const { data: receberAgencia } = useQueryReceberAgencia(!isMatriz());
-  const { data: receberAssociados } = useQueryReceberAssociado(!isMatriz());
+  const { data: receberMatrizResp } = useQueryContasReceberMatriz(isMatriz());
+  const { data: receberAgenciaResp } = useQueryContasReceber(isAgencia());
   const { data: pagarGerentes } = useQueryPagarGerentes(podeListarTodosAssociados());
   const { data: proximaFatura } = useQueryProximaFatura(!isMatriz());
   // useQueryProximaFatura devolve o envelope de cobrancas/minhas?...&limit=1:
   // {success, data: [cobranca]} — não um objeto {proximaFatura}.
   const proximaCobranca = proximaFatura?.data?.[0];
+
+  // Subtotais calculados a partir da mesma lista de cobranças pendentes que
+  // "Contas a Receber" já mostra — associadoId preenchido = dívida de
+  // associado; só agenciaId (sem associadoId) = dívida da própria agência
+  // (nunca dupla-conta, já que toda Cobranca de associado tem os dois campos).
+  const cobrancasReceber = (isMatriz() ? receberMatrizResp : receberAgenciaResp)?.data ?? [];
+  const pendentesReceber = cobrancasReceber.filter((c) => !c.pago);
+  // Cobranca pode ser BRL OU RT (nunca as duas) — soma cada moeda separada,
+  // igual "Contas a Receber" já faz linha a linha (constantsContas.js::valorCobranca).
+  const somarPorMoeda = (lista) =>
+    lista.reduce(
+      (totais, c) => ({
+        brl: totais.brl + Number(c.valorBRL ?? 0),
+        rt: totais.rt + Number(c.valorRT ?? 0),
+      }),
+      { brl: 0, rt: 0 },
+    );
+  const totalReceberAssociados = somarPorMoeda(pendentesReceber.filter((c) => c.associadoId));
+  const totalReceberAgencia = somarPorMoeda(pendentesReceber.filter((c) => !c.associadoId && c.agenciaId));
+
+  const formatarTotal = ({ brl, rt }) => {
+    const partes = [];
+    if (brl > 0) partes.push(`R$ ${formatarNumeroParaReal(brl)}`);
+    if (rt > 0) partes.push(`RT$ ${formatarNumeroParaRT(rt)}`);
+    return partes.length ? partes.join(" + ") : "R$ 0,00";
+  };
 
   const type = getType();
   var taxa = 0;
@@ -51,32 +78,7 @@ const ResumoFinanceiro = () => {
         {!isAssociado() ? (
           <div>
             A Receber Associados:
-            <span>
-              {receberAssociados && receberAssociados.valorTotalReceber ? (
-                <>
-                  RT${" "}
-                  {formatarNumeroParaRT(receberAssociados?.valorTotalReceber)}
-                </>
-              ) : (
-                " RT$ 0,00"
-              )}
-            </span>
-          </div>
-        ) : null}
-
-        {type === "Associado - faill" ? (
-          <div>
-            A Pagar Agência:
-            <span>
-              {receberAssociados && receberAssociados.valorTotalReceber ? (
-                <>
-                  RT${" "}
-                  {formatarNumeroParaRT(receberAssociados?.valorTotalReceber)}
-                </>
-              ) : (
-                " RT$ 0,00"
-              )}
-            </span>
+            <span> {formatarTotal(totalReceberAssociados)}</span>
           </div>
         ) : null}
 
@@ -84,53 +86,19 @@ const ResumoFinanceiro = () => {
           <div>
             A Pagar Gerentes:
             <span>
-              {pagarGerentes && pagarGerentes.valorTotalReceber
-                ? pagarGerentes.valorTotalReceber
-                : " RT$ 0,00"}
+              {" "}
+              {formatarTotal({
+                brl: Number(pagarGerentes?.totalComissaoGerenteBRL ?? 0),
+                rt: Number(pagarGerentes?.totalComissaoGerenteRT ?? 0),
+              })}
             </span>
           </div>
         )}
 
-        {type === "Franquia Comum" ? (
-          <div>
-            A Pagar Matriz:
-            <span>
-              {receberAgencia &&
-              receberAgencia?.aReceberRepasses?.valorTotalReceberMatriz
-                ? receberAgencia?.aReceberCobrancas?.valorTotalCobrancas
-                : " RT$ 0,00"}
-            </span>
-          </div>
-        ) : null}
-
-        {type === "Franquia Master" ? (
-          <div>
-            A Pagar Matriz:
-            <span>
-              {receberAgencia &&
-              receberAgencia?.aReceberRepasses?.valorTotalReceberMatriz
-                ? receberAgencia?.aReceberCobrancas?.valorTotalCobrancas
-                : " RT$ 0,00"}
-            </span>
-          </div>
-        ) : null}
-
         {isMatriz() ? (
           <div>
             A Receber Agência:
-            <span>
-              {receberAgencia && receberAgencia.aReceberRepasses ? (
-                <>
-                  RT${" "}
-                  {formatarNumeroParaRT(
-                    receberAgencia.aReceberRepasses.valorTotalReceberMatriz +
-                      receberAgencia.aReceberCobrancas.valorTotalCobrancas
-                  )}
-                </>
-              ) : (
-                " RT$ 0,00"
-              )}
-            </span>
+            <span> {formatarTotal(totalReceberAgencia)}</span>
           </div>
         ) : null}
         {!isMatriz() ? (

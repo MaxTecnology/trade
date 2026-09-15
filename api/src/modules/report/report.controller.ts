@@ -80,6 +80,7 @@ export async function comissoesGerentesController(request: FastifyRequest, reply
   return reply.send({
     ...paginated(result.items, result.page, result.limit, result.total),
     totalComissaoGerenteBRL: result.totalComissaoGerenteBRL,
+    totalComissaoGerenteRT: result.totalComissaoGerenteRT,
   })
 }
 
