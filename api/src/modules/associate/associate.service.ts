@@ -178,8 +178,8 @@ export async function create(input: CreateAssociateInput) {
 
     // Comissão de inscrição do gerente — taxaInscricao é R$ (dinheiro real
     // recebido pela Matriz), não RT. baseValorRT aqui guarda um valor em R$
-    // (nome do campo é histórico, compartilhado com comissão de transação,
-    // que continua sendo RT de verdade).
+    // (nome do campo é histórico, compartilhado com comissão de transação —
+    // ambas sempre em BRL, decisão de produto de 2026-09-18).
     if (input.gerenteId && Number(plano.taxaInscricao) > 0) {
       const base = Number(plano.taxaInscricao)
       await tx.comissaoGerente.create({
@@ -191,7 +191,6 @@ export async function create(input: CreateAssociateInput) {
           baseValorRT: base,
           percentual: 50,
           comissaoBRL: base * 0.5,
-          comissaoRT: 0,
         },
       })
     }
