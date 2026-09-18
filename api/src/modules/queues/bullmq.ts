@@ -2,6 +2,7 @@ import { Queue, Worker, QueueEvents } from 'bullmq'
 import { getRedis } from '../../config/redis.js'
 import { prisma } from '../../config/prisma.js'
 import { gerarCobrancasComissaoMensal } from '../cobranca/cobranca.service.js'
+import { registrarComissaoGerentePorTransacao, gerarPagamentosGerenteMensal } from '../manager/manager.service.js'
 
 function conn() {
   return { connection: getRedis() }
@@ -88,9 +89,10 @@ export function startWorkers() {
     conn(),
   )
 
-  // Consolida a comissão da plataforma do mês anterior numa Cobranca por
-  // conta (ver gerarCobrancasComissaoMensal) — substitui o worker antigo que
-  // criava uma Cobranca por transação. Job disparado pelo cron agendado em
+  // Consolida o mês que acabou de fechar em duas frentes: comissão da
+  // plataforma (Cobranca por conta compradora) e comissão de gerente
+  // (PagamentoGerente por gerente) — mesmo mês de referência pras duas, então
+  // roda junto no mesmo job. Disparado pelo cron agendado em
   // scheduleRecurringJobs(); aceita `referencia` opcional pra reprocessar um
   // mês específico manualmente (enfileirando o job com esse dado), senão usa
   // a data atual.
@@ -98,47 +100,21 @@ export function startWorkers() {
     'commission.consolidate',
     async (job) => {
       const { referencia } = (job.data ?? {}) as { referencia?: string }
-      await gerarCobrancasComissaoMensal(referencia ? new Date(referencia) : new Date())
+      const data = referencia ? new Date(referencia) : new Date()
+      await gerarCobrancasComissaoMensal(data)
+      await gerarPagamentosGerenteMensal(data)
     },
     conn(),
   )
 
+  // Registra a comissão de gerente da transação (ver
+  // registrarComissaoGerentePorTransacao) — avalia comprador e vendedor
+  // independentemente, respeitando Associado.tipoOperacao.
   new Worker(
     'commission.gerente',
     async (job) => {
       const { transacaoId } = job.data as { transacaoId: string }
-      const transacao = await prisma.transacao.findUnique({ where: { id: transacaoId } })
-      if (!transacao?.contaOrigemId) return
-
-      const contaOrigem = await prisma.conta.findUnique({
-        where: { id: transacao.contaOrigemId },
-        include: { associado: { include: { gerente: true } } },
-      })
-
-      // Comissão de gerente só existe quando quem comprou é um Associado cadastrado
-      // por um gerente — Agência e Matriz nunca geram essa comissão.
-      if (contaOrigem?.entityType !== 'associado') return
-      if (!contaOrigem.associado?.gerenteId || !contaOrigem.associado.gerente) return
-
-      const gerente = contaOrigem.associado.gerente
-      if (!gerente.percentualComissao) return
-
-      // Opção A: comissão é X% do valor RT da transação
-      const comissaoRT =
-        Number(transacao.valorRT) * (Number(gerente.percentualComissao) / 100)
-
-      await prisma.comissaoGerente.create({
-        data: {
-          gerenteId: gerente.id,
-          associadoId: contaOrigem.associado.id,
-          transacaoId,
-          tipoComissao: 'transacao',
-          baseValorRT: transacao.valorRT,
-          percentual: gerente.percentualComissao,
-          comissaoBRL: 0,
-          comissaoRT,
-        },
-      })
+      await registrarComissaoGerentePorTransacao(transacaoId)
     },
     conn(),
   )

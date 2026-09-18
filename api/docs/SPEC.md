@@ -232,14 +232,22 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
 | PATCH | `/gerentes/:id/status` | Ativar/desativar gerente | `superadmin`, `agency_admin` |
 | GET | `/gerentes/:id/associados` | Listar associados cadastrados pelo gerente | `superadmin`, `agency_admin`, próprio gerente |
 | GET | `/gerentes/:id/comissoes` | Extrato de comissões do gerente | `superadmin`, `agency_admin`, próprio gerente |
+| GET | `/gerentes/pagamentos` | Consolidado mensal do que a Matriz paga a cada gerente (`PagamentoGerente`) | `superadmin`, `agency_admin` (só dos gerentes da própria agência) |
+| PATCH | `/gerentes/pagamentos/:id/quitar` | Marcar um pagamento mensal como pago (não move saldo — pago sempre por fora do sistema) | `superadmin` |
 
 ### Regras de Negócio
 
 - O gerente é criado como um **usuário com role `gerente`** vinculado a uma entidade (Matriz, Agência Master ou Agência Comum).
 - Cada gerente possui um **percentual de comissão individual** (`percentualComissao`) definido no cadastro.
-- A comissão do gerente é calculada sobre a **comissão BRL da plataforma** gerada pelas transações dos Associados que ele cadastrou.
-  - Exemplo: plataforma cobra 5% BRL sobre uma transação → gerente recebe X% desse valor de comissão.
+- **Comissão sempre em BRL** (decisão de produto de 2026-09-18 — antes, comissão por transação era calculada em RT, `comissaoRT`; a coluna foi removida). Fórmula igual à comissão da plataforma: `valorRT da transação × percentual aplicado / 100`, resultado em reais.
+- **Quando a comissão é gerada** (regra de 2026-09-18, `registrarComissaoGerentePorTransacao` em `manager.service.ts`): depende do `tipoOperacao` do Associado (`compra | venda | compra_venda`), avaliado nos DOIS lados da transação (comprador e vendedor) independentemente:
+  - `tipoOperacao: 'compra'` → só comissiona quando esse associado for o **comprador**, com o `percentualComissao` cheio do gerente.
+  - `tipoOperacao: 'venda'` → só comissiona quando ele for o **vendedor**, percentual cheio.
+  - `tipoOperacao: 'compra_venda'` → comissiona nos dois lados, mas com **metade do percentual** em cada um (ex: 10% → 5% na compra + 5% na venda).
+  - Sem `tipoOperacao` configurado, ou `percentualComissao` do gerente em 0%, não gera comissão nenhuma.
+  - Um mesmo gerente pode receber DUAS linhas de comissão da mesma transação se ele gerencia tanto o comprador quanto o vendedor.
 - O registro de comissão é feito na tabela `comissao_gerente` via job assíncrono (`commission.gerente`) após cada transação concluída.
+- **Consolidação mensal e pagamento**: job repetitivo `commission.consolidate` (mesmo cron da comissão da plataforma, dia 1 às 03h horário de Brasília) soma `ComissaoGerente.comissaoBRL` do mês fechado por gerente e cria uma `PagamentoGerente` por gerente (idempotente — `@@unique([gerenteId, competencia])`). "Dar baixa" (`PATCH /gerentes/pagamentos/:id/quitar`) só marca `pago: true` + `pagoEm` — **nunca move saldo de conta**, já que o pagamento sempre acontece por fora do sistema (PIX/dinheiro).
 - O gerente **não pode suspender ou alterar dados** dos Associados — apenas visualiza.
 - O gerente **não realiza operações financeiras** — não movimenta RT, não cria ofertas.
 - O vínculo gerente → associado é **permanente** — mesmo que o gerente seja desativado, o histórico de comissões é preservado.
@@ -259,14 +267,13 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
 
 ### Resposta de Comissões (`GET /gerentes/:id/comissoes`)
 
-> Modelo atual (`ComissaoGerente`): `tipoComissao` (`inscricao | transacao`), `baseValorRT`, `percentual`, `comissaoBRL`, `comissaoRT`. Ver detalhes da regra em `AJUSTES.md` §Gerentes.
+> Modelo atual (`ComissaoGerente`): `tipoComissao` (`inscricao | transacao`), `baseValorRT`, `percentual`, `comissaoBRL` — sempre BRL, sem `comissaoRT` (coluna removida em 2026-09-18).
 
 ```json
 {
   "success": true,
   "data": {
     "totalComissaoBRL": 1250.50,
-    "totalComissaoRT": 300.00,
     "comissoes": [
       {
         "id": "uuid",
@@ -275,9 +282,8 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
         "associadoNome": "Padaria Central",
         "tipoComissao": "transacao",
         "baseValorRT": 200.00,
-        "percentual": 10.0,
-        "comissaoBRL": 0,
-        "comissaoRT": 20.00,
+        "percentual": 5.0,
+        "comissaoBRL": 10.00,
         "criadoEm": "2026-04-15T14:30:00Z"
       }
     ]
@@ -454,7 +460,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 - Pode ser parcelada (`parcelas`/`totalParcelas` na `Transacao`) sem juros — não é mais limitada pelo plano (`maxParcelas` foi removido, ver §Planos).
 - Toda permuta gera um voucher obrigatoriamente.
 - Operação atômica (ver fluxo em ARCHITECTURE.md §8).
-- `/transacoes/permuta` e `/transacoes/negociada` aceitam também `agency_admin`/`agency_operator`/`superadmin` — o comprador pode ser Associado, Agência ou Matriz, resolvido a partir do `contaId` do JWT. A comissão da plataforma (`comissaoBRL`) sempre usa o plano de **quem compra** (Associado ou Agência); quando o comprador é a Matriz, não há comissão (Matriz não tem plano). Comissão de gerente (`comissao_gerente`) só é gerada quando o comprador é um Associado com `gerenteId` vinculado — Agência e Matriz nunca geram comissão de gerente.
+- `/transacoes/permuta` e `/transacoes/negociada` aceitam também `agency_admin`/`agency_operator`/`superadmin` — o comprador pode ser Associado, Agência ou Matriz, resolvido a partir do `contaId` do JWT. A comissão da plataforma (`comissaoBRL`) sempre usa o plano de **quem compra** (Associado ou Agência); quando o comprador é a Matriz, não há comissão (Matriz não tem plano). Comissão de gerente (`comissao_gerente`) só é gerada pro lado (comprador e/ou vendedor) que for um Associado com `gerenteId` vinculado — Agência e Matriz nunca geram comissão de gerente; ver regra completa de `tipoOperacao` na seção 5 (Gerentes).
 
 **Transferência:**
 - Somente `associate_admin` pode iniciar transferências.

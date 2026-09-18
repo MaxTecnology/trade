@@ -9,6 +9,8 @@ import {
   setStatusController,
   getAssociadosController,
   getComissoesController,
+  listPagamentosController,
+  quitarPagamentoController,
 } from './manager.controller.js'
 
 export async function managerRoutes(app: FastifyInstance) {
@@ -18,9 +20,13 @@ export async function managerRoutes(app: FastifyInstance) {
   const viewManager = {
     preHandler: [authGuard, roleGuard('superadmin', 'agency_admin', 'gerente')],
   }
+  const superadmin = { preHandler: [authGuard, roleGuard('superadmin')] }
 
   app.post('/gerentes', adminOrSuper, createController)
   app.get('/gerentes', adminOrSuper, listController)
+  // Estático antes de "/gerentes/:id" — senão "pagamentos" seria capturado como :id.
+  app.get('/gerentes/pagamentos', adminOrSuper, listPagamentosController)
+  app.patch('/gerentes/pagamentos/:id/quitar', superadmin, quitarPagamentoController)
   app.get('/gerentes/:id', viewManager, getByIdController)
   app.put('/gerentes/:id', adminOrSuper, updateController)
   app.patch('/gerentes/:id/status', adminOrSuper, setStatusController)

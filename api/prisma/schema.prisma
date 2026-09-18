@@ -359,6 +359,7 @@ model Usuario {
   transacoesIniciadas   Transacao[]       @relation("UsuarioIniciador")
   associadosGerenciados Associado[]       @relation("GerenteAssociados")
   comissoesGerente      ComissaoGerente[]
+  pagamentosGerente     PagamentoGerente[]
   solicitacoesEstorno   SolicitacaoEstorno[]
 
   @@index([email])
@@ -396,9 +397,11 @@ model ComissaoGerente {
   tipoComissao TipoComissaoGerente @default(transacao)
   baseValorRT  Decimal             @db.Decimal(15, 2)
   percentual   Decimal             @db.Decimal(5, 2)
-  comissaoBRL  Decimal             @default(0) @db.Decimal(15, 2)
-  comissaoRT   Decimal             @db.Decimal(15, 2)
-  criadoEm    DateTime            @default(now())
+  // Comissão de gerente é sempre BRL, nunca RT — decisão de produto de
+  // 2026-09-18 (a coluna comissaoRT existiu antes disso e foi removida, sem
+  // dado histórico relevante pra preservar).
+  comissaoBRL Decimal  @default(0) @db.Decimal(15, 2)
+  criadoEm    DateTime @default(now())
 
   gerente   Usuario    @relation(fields: [gerenteId], references: [id])
   associado Associado  @relation(fields: [associadoId], references: [id])
@@ -407,6 +410,27 @@ model ComissaoGerente {
   @@index([gerenteId, criadoEm])
   @@index([transacaoId])
   @@map("comissao_gerente")
+}
+
+// Consolidação mensal do que a Matriz PAGA pro gerente (soma de ComissaoGerente
+// do mês) — modelo próprio, não reaproveita Cobranca: Cobranca é sempre
+// dívida PRA Matriz (tem vencimento, pode ser RT, mexe em conta quando
+// quitada); pagamento de gerente é sempre BRL, sempre pago por fora do
+// sistema (PIX/dinheiro) e "quitar" aqui é só uma flag, nunca movimenta saldo.
+model PagamentoGerente {
+  id          String    @id @default(uuid())
+  gerenteId   String
+  competencia DateTime  @db.Date
+  valorBRL    Decimal   @db.Decimal(15, 2)
+  pago        Boolean   @default(false)
+  pagoEm      DateTime?
+  criadoEm    DateTime  @default(now())
+
+  gerente Usuario @relation(fields: [gerenteId], references: [id])
+
+  @@unique([gerenteId, competencia])
+  @@index([gerenteId])
+  @@map("pagamento_gerente")
 }
 
 // ─────────────────────────────────────────

@@ -67,3 +67,17 @@ export async function getComissoesController(request: FastifyRequest, reply: Fas
   const result = await managerService.getComissoes(id, page, limit)
   return reply.send(success(result))
 }
+
+export async function listPagamentosController(request: FastifyRequest, reply: FastifyReply) {
+  const q = request.query as Query
+  const page = Number(q.page ?? 1)
+  const limit = Math.min(Number(q.limit ?? 20), 100)
+  const { items, total } = await managerService.listarPagamentosGerente(request.user, page, limit)
+  return reply.send(paginated(items, page, limit, total))
+}
+
+export async function quitarPagamentoController(request: FastifyRequest, reply: FastifyReply) {
+  const { id } = request.params as Params
+  const pagamento = await managerService.quitarPagamentoGerente(id)
+  return reply.send(success(pagamento))
+}

@@ -8,12 +8,16 @@ import { useQueryComissoes } from "@/hooks/ReactQuery/contas/useQueryComissoes";
 import ContasSearch from "@/components/Search/ContasSearch";
 import ContasModal from "@/Modals/ContasModal";
 import { exportContasPdf } from "@/utils/functions/exportContasPdf";
+import PagamentoGerenteTable from "@/components/Tables/PagamentoGerenteTable";
+import { useQueryPagarGerentes } from "@/hooks/ReactQuery/dashboard/useQueryPagarGerentes";
 
-// Comissão da plataforma, consolidada mensalmente pelo job commission.consolidate
-// (ver docs/tech-debt.md) — reaproveita a mesma tabela/busca/modal de Cobranca
-// já usada em "Contas a Pagar", só filtrando tipo=comissao.
+// Duas direções distintas de comissão, sempre visíveis juntas nessa tela:
+// o que a Matriz RECEBE (comissão da plataforma, Cobranca tipo=comissao,
+// consolidada mensalmente pelo job commission.consolidate) e o que ela PAGA
+// (comissão de gerente, PagamentoGerente, mesmo job) — ver docs/tech-debt.md.
 const Comissoes = () => {
     const { data, refetch } = useQueryComissoes();
+    const { data: pagamentosGerente, refetch: refetchGerentes } = useQueryPagarGerentes();
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState()
 
@@ -39,6 +43,13 @@ const Comissoes = () => {
                     setInfo={setInfo}
                     modaltoggle={modalToggle}
                     revalidate={refetch}
+                />
+            </div>
+            <div className="containerHeader">A Pagar Gerentes</div>
+            <div className="containerList">
+                <PagamentoGerenteTable
+                    data={pagamentosGerente?.data ?? []}
+                    revalidate={refetchGerentes}
                 />
             </div>
             <Footer />

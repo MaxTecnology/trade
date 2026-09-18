@@ -44,6 +44,13 @@ const ResumoFinanceiro = () => {
   const totalReceberAssociados = somarPorMoeda(pendentesReceber.filter((c) => c.associadoId));
   const totalReceberAgencia = somarPorMoeda(pendentesReceber.filter((c) => !c.associadoId && c.agenciaId));
 
+  // Comissão de gerente é sempre BRL (decisão de produto 2026-09-18) — soma só
+  // os PagamentoGerente ainda não pagos, mesma fonte da seção "A Pagar
+  // Gerentes" da tela "Comissões".
+  const totalPagarGerentes = (pagarGerentes?.data ?? [])
+    .filter((p) => !p.pago)
+    .reduce((soma, p) => soma + Number(p.valorBRL ?? 0), 0);
+
   const formatarTotal = ({ brl, rt }) => {
     const partes = [];
     if (brl > 0) partes.push(`R$ ${formatarNumeroParaReal(brl)}`);
@@ -85,13 +92,7 @@ const ResumoFinanceiro = () => {
         {!isAssociado() && (
           <div>
             A Pagar Gerentes:
-            <span>
-              {" "}
-              {formatarTotal({
-                brl: Number(pagarGerentes?.totalComissaoGerenteBRL ?? 0),
-                rt: Number(pagarGerentes?.totalComissaoGerenteRT ?? 0),
-              })}
-            </span>
+            <span> R$ {formatarNumeroParaReal(totalPagarGerentes)}</span>
           </div>
         )}
 
