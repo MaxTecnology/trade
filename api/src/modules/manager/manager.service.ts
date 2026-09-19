@@ -202,67 +202,58 @@ export async function getComissoes(id: string, page = 1, limit = 20) {
 // ─────────────────────────────────────────
 
 /**
- * Registra a comissão de gerente de uma transação concluída (permuta/negociada),
- * avaliando os dois lados — comprador E vendedor — independentemente. Antes só
- * olhava o lado comprador (contaOrigem), então um gerente nunca ganhava comissão
- * quando o associado dele era quem vendia.
+ * Registra a comissão de gerente de uma transação concluída, DERIVADA das
+ * linhas de ComissaoPlataforma já criadas pra ela (decisão de produto de
+ * 2026-09-18: a comissão do gerente é um percentual em cima da comissão da
+ * Agência/Matriz que o cadastrou, não mais um percentual direto sobre o
+ * valor da transação). O split de `compra_venda` já aconteceu na comissão
+ * da plataforma (percentual do plano pela metade); aqui o percentual do
+ * GERENTE é aplicado sempre cheio, sem dividir de novo — evita contar a
+ * divisão duas vezes.
  *
- * Regra (decisão de produto de 2026-09-18): comissão só é gerada quando
- * Associado.tipoOperacao cobre o lado em que ele participou nessa transação
- * (`compra` só comissiona compra, `venda` só venda, `compra_venda` comissiona
- * os dois lados mas com METADE do percentual em cada um — 10% vira 5%+5%).
- * Sem tipoOperacao configurado, ou percentual do gerente em 0%, não gera nada.
- * Sempre em BRL (comissaoBRL) — nunca RT.
+ * Chamado pelo worker `commission.gerente` (ver queues/bullmq.ts), depois
+ * que `registrarComissoesPlataforma` (transaction.service.ts) já criou as
+ * linhas de ComissaoPlataforma daquela transação, dentro da mesma $transaction
+ * do débito/crédito — a leitura aqui vê sempre dados já commitados.
  */
-export async function registrarComissaoGerentePorTransacao(transacaoId: string) {
-  const transacao = await prisma.transacao.findUnique({ where: { id: transacaoId } })
-  if (!transacao) return
+export async function registrarComissoesGerenteDaTransacao(transacaoId: string) {
+  const comissoesPlataforma = await prisma.comissaoPlataforma.findMany({
+    where: { transacaoId, status: 'ativa', associadoId: { not: null } },
+  })
 
-  const lados: Array<{ associadoId: string | null; operacao: 'compra' | 'venda' }> = [
-    { associadoId: transacao.compradorId, operacao: 'compra' },
-    { associadoId: transacao.vendedorId, operacao: 'venda' },
-  ]
-
-  for (const lado of lados) {
-    if (!lado.associadoId) continue
-    await registrarComissaoDoLado(transacao.id, Number(transacao.valorRT), lado.associadoId, lado.operacao)
+  for (const comissao of comissoesPlataforma) {
+    await registrarComissaoGerenteDeLinha(comissao)
   }
 }
 
-async function registrarComissaoDoLado(
-  transacaoId: string,
-  valorRT: number,
-  associadoId: string,
-  operacao: 'compra' | 'venda',
-) {
+async function registrarComissaoGerenteDeLinha(comissao: {
+  transacaoId: string
+  associadoId: string | null
+  comissaoBRL: Prisma.Decimal
+}) {
+  if (!comissao.associadoId) return
   const associado = await prisma.associado.findUnique({
-    where: { id: associadoId },
+    where: { id: comissao.associadoId },
     include: { gerente: true },
   })
   if (!associado?.gerenteId || !associado.gerente) return
-  if (!associado.tipoOperacao) return
 
-  const cobreEsseLado = associado.tipoOperacao === operacao || associado.tipoOperacao === 'compra_venda'
-  if (!cobreEsseLado) return
+  const percentualGerente = Number(associado.gerente.percentualComissao ?? 0)
+  if (percentualGerente <= 0) return
 
-  const percentualBase = Number(associado.gerente.percentualComissao ?? 0)
-  if (percentualBase <= 0) return
-
-  // compra_venda divide o percentual do gerente meio a meio entre os dois
-  // lados — o gerente ganha o percentual cheio no total, não em dobro.
-  const percentualAplicado = associado.tipoOperacao === 'compra_venda' ? percentualBase / 2 : percentualBase
-  const comissaoBRL = valorRT * (percentualAplicado / 100)
-  if (comissaoBRL <= 0) return
+  const baseBRL = Number(comissao.comissaoBRL)
+  const comissaoGerenteBRL = baseBRL * (percentualGerente / 100)
+  if (comissaoGerenteBRL <= 0) return
 
   await prisma.comissaoGerente.create({
     data: {
       gerenteId: associado.gerente.id,
       associadoId: associado.id,
-      transacaoId,
+      transacaoId: comissao.transacaoId,
       tipoComissao: 'transacao',
-      baseValorRT: valorRT,
-      percentual: percentualAplicado,
-      comissaoBRL,
+      baseValorRT: baseBRL,
+      percentual: percentualGerente,
+      comissaoBRL: comissaoGerenteBRL,
     },
   })
 }
@@ -279,21 +270,34 @@ export async function gerarPagamentosGerenteMensal(referencia: Date = new Date()
   const inicioMesAtual = inicioMesBrasilia(referencia)
   const inicioMesAnterior = inicioMesBrasilia(new Date(inicioMesAtual.getTime() - 1))
 
-  const grupos = await prisma.comissaoGerente.groupBy({
-    by: ['gerenteId'],
-    where: { criadoEm: { gte: inicioMesAnterior, lt: inicioMesAtual } },
-    _sum: { comissaoBRL: true },
+  const linhas = await prisma.comissaoGerente.findMany({
+    where: {
+      status: 'ativa',
+      pagamentoGerenteId: null,
+      criadoEm: { gte: inicioMesAnterior, lt: inicioMesAtual },
+    },
   })
-  if (grupos.length === 0) return { criadas: 0, competencia: inicioMesAnterior }
+  if (linhas.length === 0) return { criadas: 0, competencia: inicioMesAnterior }
+
+  const porGerente = new Map<string, typeof linhas>()
+  for (const linha of linhas) {
+    const lista = porGerente.get(linha.gerenteId) ?? []
+    lista.push(linha)
+    porGerente.set(linha.gerenteId, lista)
+  }
 
   let criadas = 0
-  for (const grupo of grupos) {
-    const valor = Number(grupo._sum.comissaoBRL ?? 0)
+  for (const [gerenteId, linhasDoGerente] of porGerente) {
+    const valor = linhasDoGerente.reduce((soma, l) => soma + Number(l.comissaoBRL), 0)
     if (valor <= 0) continue
 
     try {
-      await prisma.pagamentoGerente.create({
-        data: { gerenteId: grupo.gerenteId, competencia: inicioMesAnterior, valorBRL: valor },
+      const pagamento = await prisma.pagamentoGerente.create({
+        data: { gerenteId, competencia: inicioMesAnterior, valorBRL: valor },
+      })
+      await prisma.comissaoGerente.updateMany({
+        where: { id: { in: linhasDoGerente.map((l) => l.id) } },
+        data: { pagamentoGerenteId: pagamento.id },
       })
       criadas++
     } catch (error) {

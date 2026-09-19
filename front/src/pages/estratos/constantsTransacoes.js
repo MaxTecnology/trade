@@ -1,5 +1,5 @@
 import { formatDate } from "@/hooks/ListasHook";
-import { formatarNumeroParaRT } from "@/utils/functions/formartNumber";
+import { formatarNumeroParaRT, formatarNumeroParaReal } from "@/utils/functions/formartNumber";
 import { filterStart, filterEnd } from "@/utils/functions/tables/date";
 import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
 import { iniciadoPorLabel } from "@/utils/functions/tables/iniciadoPor";
@@ -58,9 +58,13 @@ export const columns = [
         cell: (info) => `RT$ ${formatarNumeroParaRT(info.getValue() ?? 0)}`,
     },
     {
-        accessorKey: 'comissaoBRL',
+        // Substitui o antigo campo único Transacao.comissaoBRL (removido em
+        // 2026-09-18) — soma as linhas ativas de ComissaoPlataforma da
+        // transação (pode ter uma do comprador, uma do vendedor, ou as duas).
+        id: 'comissao',
+        accessorFn: (row) => (row.comissoesPlataforma ?? []).reduce((soma, c) => soma + Number(c.comissaoBRL ?? 0), 0),
         header: 'Comissão',
-        cell: (info) => info.getValue() ? `R$ ${formatarNumeroParaRT(info.getValue())}` : '-',
+        cell: (info) => (info.getValue() > 0 ? `R$ ${formatarNumeroParaReal(info.getValue())}` : '-'),
     },
     {
         id: 'iniciadoPor',

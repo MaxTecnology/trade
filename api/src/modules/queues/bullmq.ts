@@ -2,7 +2,7 @@ import { Queue, Worker, QueueEvents } from 'bullmq'
 import { getRedis } from '../../config/redis.js'
 import { prisma } from '../../config/prisma.js'
 import { gerarCobrancasComissaoMensal } from '../cobranca/cobranca.service.js'
-import { registrarComissaoGerentePorTransacao, gerarPagamentosGerenteMensal } from '../manager/manager.service.js'
+import { registrarComissoesGerenteDaTransacao, gerarPagamentosGerenteMensal } from '../manager/manager.service.js'
 
 function conn() {
   return { connection: getRedis() }
@@ -107,14 +107,14 @@ export function startWorkers() {
     conn(),
   )
 
-  // Registra a comissão de gerente da transação (ver
-  // registrarComissaoGerentePorTransacao) — avalia comprador e vendedor
-  // independentemente, respeitando Associado.tipoOperacao.
+  // Registra a comissão de gerente da transação, derivada das linhas de
+  // ComissaoPlataforma já criadas sincronamente em transaction.service.ts
+  // (ver registrarComissoesGerenteDaTransacao).
   new Worker(
     'commission.gerente',
     async (job) => {
       const { transacaoId } = job.data as { transacaoId: string }
-      await registrarComissaoGerentePorTransacao(transacaoId)
+      await registrarComissoesGerenteDaTransacao(transacaoId)
     },
     conn(),
   )

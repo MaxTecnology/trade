@@ -47,6 +47,17 @@ export async function solicitarEstorno(
   const diasDesde = (Date.now() - transacao.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
   if (diasDesde > 30) throw Errors.estornoPrazoExpirado()
 
+  // Checagem antecipada (a definitiva acontece de novo em transactionService.estorno()
+  // na aprovação, caso a fatura feche no meio do caminho) — não faz sentido deixar
+  // um pedido "em análise" por dias pra só falhar na hora de aprovar.
+  if (await transactionService.comissaoJaFaturada(input.transacaoId)) {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      'Não é possível solicitar estorno: a comissão desta transação já foi incluída numa fatura fechada.',
+      422,
+    )
+  }
+
   // compradorId/vendedorId só são preenchidos quando a parte é um Associado —
   // Agência/Matriz participando diretamente (via Oferta) só aparecem em
   // contaOrigemId/contaDestinoId, que já cobrem os três tipos de conta.

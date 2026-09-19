@@ -227,6 +227,10 @@ export async function relatorioPermutas(
         contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
         solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
         usuarioIniciador: { select: { nome: true, codigoOperador: true } },
+        // Substitui o antigo campo único Transacao.comissaoBRL (removido em
+        // 2026-09-18) — uma transação pode ter 0, 1 ou 2 linhas (comprador
+        // e/ou vendedor); o front soma as ativas pra mostrar na coluna "Comissão".
+        comissoesPlataforma: { where: { status: 'ativa' }, select: { comissaoBRL: true, operacao: true } },
       },
     }),
     prisma.transacao.count({ where }),
@@ -244,12 +248,10 @@ export async function relatorioComissoes(
   const limit = Math.min(filters.limit ?? 20, 100)
   const skip = (page - 1) * limit
 
+  // Lê de ComissaoPlataforma (decisão de produto 2026-09-18) — substitui o
+  // antigo campo único Transacao.comissaoBRL. Só linhas ativas (não estornadas).
   let where: Record<string, unknown> = {
-    // negociada também gera comissaoBRL (ver resolverComissaoComprador em
-    // transaction.service.ts) — filtrar só permuta deixava de fora metade
-    // da comissão da plataforma gerada no mês.
-    tipo: { in: ['permuta', 'negociada'] },
-    comissaoBRL: { not: null },
+    status: 'ativa',
     ...dateRange(filters.dataInicio, filters.dataFim),
   }
 
@@ -258,17 +260,17 @@ export async function relatorioComissoes(
       where: { agenciaId: entityId },
       select: { id: true },
     })
-    // Comissão é sempre cobrada de quem compra — cobre os associados da
-    // agência (compradorId) e a própria agência comprando direto (contaOrigemId).
-    const condicoes: Record<string, unknown>[] = [{ compradorId: { in: associados.map((a) => a.id) } }]
-    if (contaId) condicoes.push({ contaOrigemId: contaId })
+    // Cobre os associados da agência e a própria agência gerando comissão
+    // na própria conta (comprando na própria conta).
+    const condicoes: Record<string, unknown>[] = [{ associadoId: { in: associados.map((a) => a.id) } }]
+    if (contaId) condicoes.push({ contaId })
     where = { ...where, OR: condicoes }
   }
 
   const [items, total, soma] = await prisma.$transaction([
-    prisma.transacao.findMany({ where, skip, take: limit, orderBy: { criadoEm: 'desc' } }),
-    prisma.transacao.count({ where }),
-    prisma.transacao.aggregate({ where, _sum: { comissaoBRL: true } }),
+    prisma.comissaoPlataforma.findMany({ where, skip, take: limit, orderBy: { criadoEm: 'desc' } }),
+    prisma.comissaoPlataforma.count({ where }),
+    prisma.comissaoPlataforma.aggregate({ where, _sum: { comissaoBRL: true } }),
   ])
 
   return { items, total, page, limit, totalComissaoBRL: soma._sum.comissaoBRL ?? 0 }

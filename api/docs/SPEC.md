@@ -239,15 +239,15 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
 
 - O gerente é criado como um **usuário com role `gerente`** vinculado a uma entidade (Matriz, Agência Master ou Agência Comum).
 - Cada gerente possui um **percentual de comissão individual** (`percentualComissao`) definido no cadastro.
-- **Comissão sempre em BRL** (decisão de produto de 2026-09-18 — antes, comissão por transação era calculada em RT, `comissaoRT`; a coluna foi removida). Fórmula igual à comissão da plataforma: `valorRT da transação × percentual aplicado / 100`, resultado em reais.
-- **Quando a comissão é gerada** (regra de 2026-09-18, `registrarComissaoGerentePorTransacao` em `manager.service.ts`): depende do `tipoOperacao` do Associado (`compra | venda | compra_venda`), avaliado nos DOIS lados da transação (comprador e vendedor) independentemente:
-  - `tipoOperacao: 'compra'` → só comissiona quando esse associado for o **comprador**, com o `percentualComissao` cheio do gerente.
-  - `tipoOperacao: 'venda'` → só comissiona quando ele for o **vendedor**, percentual cheio.
-  - `tipoOperacao: 'compra_venda'` → comissiona nos dois lados, mas com **metade do percentual** em cada um (ex: 10% → 5% na compra + 5% na venda).
-  - Sem `tipoOperacao` configurado, ou `percentualComissao` do gerente em 0%, não gera comissão nenhuma.
+- **Comissão sempre em BRL, calculada EM CIMA da comissão da plataforma — não do valor da transação diretamente** (decisão de produto de 2026-09-18, revisão da regra original). Fórmula: `comissao_gerente = comissao_da_plataforma_daquele_lado × percentualComissao_do_gerente / 100`. Não recalcula do valor bruto da transação — deriva das linhas de `ComissaoPlataforma` já geradas (ver seção 13, Cobranças/Comissões). Coluna `comissaoRT` foi removida (não existe mais comissão em RT, nem de gerente nem de plataforma).
+- **Quando a comissão é gerada**: uma linha de `ComissaoGerente` nasce pra cada linha de `ComissaoPlataforma` cujo associado tem `gerenteId` vinculado — ou seja, a regra de `tipoOperacao` (`compra | venda | compra_venda`) já foi aplicada NA COMISSÃO DA PLATAFORMA (ver seção 13); aqui só se aplica o percentual do gerente, sempre CHEIO, sobre o valor que já chegou pronto:
+  - Se o associado é `compra_venda`, o percentual que já foi dividido pela metade foi o da PLATAFORMA (a base), não o do gerente — o gerente sempre aplica o percentual dele inteiro sobre essa base menor. Não divide duas vezes.
+  - `percentualComissao` do gerente em 0% → não gera comissão nenhuma.
   - Um mesmo gerente pode receber DUAS linhas de comissão da mesma transação se ele gerencia tanto o comprador quanto o vendedor.
-- O registro de comissão é feito na tabela `comissao_gerente` via job assíncrono (`commission.gerente`) após cada transação concluída.
-- **Consolidação mensal e pagamento**: job repetitivo `commission.consolidate` (mesmo cron da comissão da plataforma, dia 1 às 03h horário de Brasília) soma `ComissaoGerente.comissaoBRL` do mês fechado por gerente e cria uma `PagamentoGerente` por gerente (idempotente — `@@unique([gerenteId, competencia])`). "Dar baixa" (`PATCH /gerentes/pagamentos/:id/quitar`) só marca `pago: true` + `pagoEm` — **nunca move saldo de conta**, já que o pagamento sempre acontece por fora do sistema (PIX/dinheiro).
+- Exemplo (do pedido original do usuário): Empresa A (`tipoOperacao: venda`, gerente A 5%) vende RT$1000 pra Empresa B (`tipoOperacao: compra`, gerente B 5%), ambas cadastradas direto pela Matriz (10%). Matriz ganha R$100 de cada uma (R$200 no total); gerente A ganha 5% dos R$100 de A = R$5; gerente B ganha 5% dos R$100 de B = R$5.
+- O registro de comissão é feito na tabela `comissao_gerente` via job assíncrono (`commission.gerente`, lê as linhas de `ComissaoPlataforma` já commitadas) após cada transação concluída.
+- **Consolidação mensal e pagamento**: job repetitivo `commission.consolidate` (mesmo cron da comissão da plataforma, dia 1 às 03h horário de Brasília) soma `ComissaoGerente.comissaoBRL` (só `status: 'ativa'`) do mês fechado por gerente e cria uma `PagamentoGerente` por gerente, vinculando cada linha consolidada via `pagamentoGerenteId` (idempotente — `@@unique([gerenteId, competencia])`). "Dar baixa" (`PATCH /gerentes/pagamentos/:id/quitar`) só marca `pago: true` + `pagoEm` — **nunca move saldo de conta**, já que o pagamento sempre acontece por fora do sistema (PIX/dinheiro), e só depois que a Matriz recebe a comissão real do cliente.
+- **Estorno bloqueado após faturamento**: uma vez que uma linha de `ComissaoGerente` (ou `ComissaoPlataforma`) já foi vinculada a um `PagamentoGerente`/`Cobranca` (fatura fechada), a transação de origem não pode mais ser estornada — ver seção de Estornos.
 - O gerente **não pode suspender ou alterar dados** dos Associados — apenas visualiza.
 - O gerente **não realiza operações financeiras** — não movimenta RT, não cria ofertas.
 - O vínculo gerente → associado é **permanente** — mesmo que o gerente seja desativado, o histórico de comissões é preservado.
@@ -267,7 +267,7 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
 
 ### Resposta de Comissões (`GET /gerentes/:id/comissoes`)
 
-> Modelo atual (`ComissaoGerente`): `tipoComissao` (`inscricao | transacao`), `baseValorRT`, `percentual`, `comissaoBRL` — sempre BRL, sem `comissaoRT` (coluna removida em 2026-09-18).
+> Modelo atual (`ComissaoGerente`): `tipoComissao` (`inscricao | transacao`), `baseValorRT`, `percentual`, `comissaoBRL`, `status` (`ativa | estornada`), `pagamentoGerenteId` — sempre BRL, sem `comissaoRT` (coluna removida em 2026-09-18). Pra `tipoComissao: 'transacao'`, **`baseValorRT` guarda o valor em BRL da comissão da plataforma daquele lado** (não o valor bruto da transação em RT, apesar do nome do campo ser histórico) — é sobre esse valor que `percentual` (o do gerente) foi aplicado.
 
 ```json
 {
@@ -281,9 +281,11 @@ O Gerente é um role de usuário que existe em qualquer nível da hierarquia (Ma
         "associadoId": "uuid-do-associado",
         "associadoNome": "Padaria Central",
         "tipoComissao": "transacao",
-        "baseValorRT": 200.00,
+        "baseValorRT": 100.00,
         "percentual": 5.0,
-        "comissaoBRL": 10.00,
+        "comissaoBRL": 5.00,
+        "status": "ativa",
+        "pagamentoGerenteId": null,
         "criadoEm": "2026-04-15T14:30:00Z"
       }
     ]
@@ -460,7 +462,12 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 - Pode ser parcelada (`parcelas`/`totalParcelas` na `Transacao`) sem juros — não é mais limitada pelo plano (`maxParcelas` foi removido, ver §Planos).
 - Toda permuta gera um voucher obrigatoriamente.
 - Operação atômica (ver fluxo em ARCHITECTURE.md §8).
-- `/transacoes/permuta` e `/transacoes/negociada` aceitam também `agency_admin`/`agency_operator`/`superadmin` — o comprador pode ser Associado, Agência ou Matriz, resolvido a partir do `contaId` do JWT. A comissão da plataforma (`comissaoBRL`) sempre usa o plano de **quem compra** (Associado ou Agência); quando o comprador é a Matriz, não há comissão (Matriz não tem plano). Comissão de gerente (`comissao_gerente`) só é gerada pro lado (comprador e/ou vendedor) que for um Associado com `gerenteId` vinculado — Agência e Matriz nunca geram comissão de gerente; ver regra completa de `tipoOperacao` na seção 5 (Gerentes).
+- `/transacoes/permuta` e `/transacoes/negociada` aceitam também `agency_admin`/`agency_operator`/`superadmin` — o comprador pode ser Associado, Agência ou Matriz, resolvido a partir do `contaId` do JWT.
+- **Comissão da plataforma (decisão de produto de 2026-09-18 — revisão completa da regra original)**: não é mais um valor único por transação (`Transacao.comissaoBRL`, campo removido) — cada TRANSAÇÃO avalia os DOIS lados (comprador e vendedor) independentemente, gerando 0, 1 ou 2 linhas em `ComissaoPlataforma` (ver seção 13, Cobranças):
+  - **Lado Associado**: só gera comissão se `Associado.tipoOperacao` cobrir o papel que ele exerceu nessa transação (`compra` cobre comprador, `venda` cobre vendedor, `compra_venda` cobre os dois — mas aí o percentual do PLANO já nasce pela METADE: 10% vira 5% em cada lado, não 10% nos dois). Percentual vem do plano do próprio associado; quem recebe é a agência que o cadastrou (`Associado.agenciaId`), ou Matriz se cadastrado direto.
+  - **Lado Agência** (ela mesma comprando/vendendo na própria conta, não através de associados): só gera comissão quando ELA COMPRA (nunca quando vende — Agência não tem `tipoOperacao`, mantém o comportamento anterior a essa mudança). Percentual vem do plano dela; quem recebe é a **agência pai** (`Agencia.agenciaParenteId`) — Agência Comum paga a Master que a cadastrou, Agência Master (sem pai) paga Matriz. Correção de bug: antes disso, a comissão de uma Agência comprando ia creditada pra ELA MESMA (`agenciaId` da própria conta), nunca pra Matriz nem pro pai.
+  - **Lado Matriz**: nunca gera comissão de plataforma pra si mesma.
+- Comissão de gerente (`comissao_gerente`) deriva da comissão da plataforma — ver regra completa na seção 5 (Gerentes).
 
 **Transferência:**
 - Somente `associate_admin` pode iniciar transferências.
@@ -726,7 +733,24 @@ Registro de cobranças associadas a contas — taxas de plano, manutenção, ins
 - Toda cobrança tem `valorBRL` OU `valorRT` preenchido (nunca os dois nulos — validado por CHECK no banco).
 - **Quitar cobrança em BRL**: apenas marca `pago: true`. O pagamento acontece fora do sistema (PIX/boleto) — o endpoint só reconcilia manualmente.
 - **Quitar cobrança em RT**: move o RT de verdade, de forma atômica. Debita `contaId` (valida saldo suficiente antes, considerando `limiteCredito` do associado/agência devedora — retorna `INSUFFICIENT_BALANCE` se ultrapassar), credita a conta de `agenciaId` se a cobrança tiver uma agência vinculada. Sem agência, credita a própria conta da Matriz (ela é quem emitiu esse RT no fluxo de inscrição — contraparte natural; toda quitação em RT sempre tem as duas pernas, débito e crédito).
-- **Comissão da plataforma (consolidação mensal, 2026-09-11)**: `Transacao.comissaoBRL` é calculado e gravado na hora, em cada `permuta`/`negociada` concluída (`resolverComissaoComprador`), mas NÃO vira `Cobranca` na hora — isso mudou de "uma cobrança por transação" pra "uma cobrança consolidada por mês". Job repetitivo `commission.consolidate` (BullMQ, cron `0 3 1 * *` horário de Brasília, agendado em `server.ts::scheduleRecurringJobs()`) roda todo dia 1 de manhã e chama `gerarCobrancasComissaoMensal()`: agrupa `Transacao` (`tipo` permuta ou negociada, `comissaoBRL > 0`) do mês que acabou de fechar por `contaOrigemId` (a conta debitada — funciona igual pra Associado, Agência ou, em tese, Matriz, embora ela nunca gere comissão pra si mesma), soma o total e cria UMA `Cobranca` (`tipo: 'comissao'`, `competencia` = dia 1 do mês de referência, vencimento = `diaVencimentoFatura` do comprador). Idempotente por índice único parcial no banco (`contaId, competencia` WHERE `tipo = 'comissao'`) — reprocessar o mesmo mês não duplica.
+- **Comissão da plataforma (consolidação mensal, 2026-09-11; regra de geração revisada em 2026-09-18)**: cada linha de `ComissaoPlataforma` (ver modelo abaixo) é criada SINCRONAMENTE dentro da mesma `$transaction` do débito/crédito de `permuta`/`negociada` — não vira `Cobranca` na hora, fica "solta" até a consolidação mensal. Job repetitivo `commission.consolidate` (BullMQ, cron `0 3 1 * *` horário de Brasília, agendado em `server.ts::scheduleRecurringJobs()`) roda todo dia 1 de manhã e chama `gerarCobrancasComissaoMensal()`: agrupa `ComissaoPlataforma` (`status: 'ativa'`, ainda `cobrancaId: null`) do mês que acabou de fechar por `contaId` (a conta pagadora — pode ser comprador OU vendedor, já que agora os dois lados podem gerar comissão independentemente), soma o total e cria UMA `Cobranca` (`tipo: 'comissao'`, `competencia` = dia 1 do mês de referência, vencimento = `diaVencimentoFatura` do pagador) — e marca as linhas de `ComissaoPlataforma` incluídas com `cobrancaId` (ver Estornos: uma vez faturada, a transação não pode mais ser estornada). Idempotente por índice único parcial no banco (`contaId, competencia` WHERE `tipo = 'comissao'`) — reprocessar o mesmo mês não duplica.
+
+### Modelo `ComissaoPlataforma` (decisão de produto 2026-09-18)
+
+Substitui o antigo campo único `Transacao.comissaoBRL` — uma transação pode gerar 0, 1 ou 2 linhas (uma por lado, comprador e/ou vendedor), cada uma avaliada e cobrada independentemente:
+
+| Campo | Descrição |
+|---|---|
+| `transacaoId` | Transação que gerou essa comissão |
+| `contaId` | Conta que PAGA essa comissão (comprador ou vendedor, conforme `operacao`) |
+| `associadoId` | Preenchido se quem paga é um Associado (identidade do devedor, igual `Cobranca.associadoId`) |
+| `agenciaId` | Quem RECEBE (agência que cadastrou o associado pagador, ou pai da agência pagadora, ou `null` = Matriz — igual `Cobranca.agenciaId`) |
+| `operacao` | `compra` ou `venda` — qual lado da transação gerou essa linha |
+| `baseValorRT`, `percentual`, `comissaoBRL` | Valor da transação, percentual aplicado (já considerando a metade de `compra_venda`), resultado em BRL |
+| `status` | `ativa \| estornada` |
+| `cobrancaId` | Preenchido quando consolidada numa `Cobranca` mensal — uma vez preenchido, a transação não pode mais ser estornada |
+
+Regra completa de quando cada lado gera comissão (Associado × Agência × Matriz, `tipoOperacao`, hierarquia de Agência) está na seção de Transações acima.
 - **`competencia`** (`Cobranca`, `DateTime?`, só data) — dia 1 do mês de referência; só preenchido em cobranças de comissão geradas pelo job mensal, nulo pra todo o resto.
 - **`tipo`** (`inscricao | manutencao | comissao | outro`) — discrimina a origem da cobrança; `POST /cobrancas` aceita `tipo` no body (default `outro`), `GET /cobrancas` aceita `?tipo=...` pra filtrar. Cobranças de inscrição (`associate.service.ts`) e de comissão da plataforma (job `commission.consolidate`) já se auto-classificam.
 - Tela dedicada "Comissões" (`/comissoes`, só Matriz) lista `Cobranca` tipo `comissao` — reaproveita a mesma tabela/busca/modal de "Contas a Pagar", incluindo o botão de dar baixa (`PATCH /cobrancas/:id/quitar`).
@@ -800,6 +824,8 @@ Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `n
 
 - Só pode solicitar quem é comprador/vendedor da transação, ou `agency_admin`/`superadmin`.
 - Apenas transações `permuta` ou `negociada`, ainda não `estornada`, dentro do prazo de 30 dias.
+- **Bloqueado se a comissão já foi faturada (decisão de produto de 2026-09-18)**: se qualquer linha de `ComissaoPlataforma`/`ComissaoGerente` dessa transação já tem `cobrancaId`/`pagamentoGerenteId` preenchido (já foi incluída numa `Cobranca`/`PagamentoGerente` mensal — "fatura fechada"), a solicitação é rejeitada (`transactionService.comissaoJaFaturada()`, checado tanto em `solicitarEstorno` quanto de novo em `estorno()` na aprovação, caso a fatura feche no meio do caminho). Comissão de gerente só é paga depois que a Matriz recebe do cliente, então a chance de precisar estornar depois disso é baixa; quando acontece mesmo assim, é tratado manualmente entre as partes, fora do sistema — não há ajuste automático retroativo numa fatura já fechada.
+- Ao aprovar (e a checagem de fatura acima passar), as linhas de `ComissaoPlataforma`/`ComissaoGerente` ainda soltas (`status: 'ativa'`) daquela transação viram `status: 'estornada'` — somem de qualquer consolidação mensal futura.
 - Não permite duas solicitações simultâneas em andamento (`em_analise`/`encaminhado`) para a mesma transação — checado na aplicação (`findFirst` antes do `create`) **e** garantido no banco por um índice único parcial (`solicitacao_estorno_transacao_ativa_unica`, `transacaoId` único onde `status IN (em_analise, encaminhado)`), que fecha a corrida entre duas requisições concorrentes pra mesma transação. A segunda tentativa concorrente recebe o mesmo erro amigável da checagem de aplicação (`VALIDATION_ERROR` 422), nunca um 500 — `estorno.service.ts::solicitarEstorno()` captura a violação de unicidade (`Prisma.PrismaClientKnownRequestError`, `code: 'P2002'`, `meta.modelName: 'SolicitacaoEstorno'`) e reconverte.
 - `agency_admin` só encaminha (`PATCH /estornos/:id/encaminhar`) solicitações da própria agência — outra agência recebe `404` (não `403`, pra não confirmar a existência do id). `superadmin` encaminha qualquer uma.
 - Ao aprovar, executa a mesma lógica de estorno direto (§9) — valida saldo suficiente na conta a ser debitada, reverte movimentações, restaura quantidade da oferta (se aplicável), gera voucher de estorno.

@@ -112,6 +112,16 @@ enum TipoOperacao {
   compra_venda
 }
 
+// Status de uma linha de comissão (plataforma ou gerente) — vira `estornada`
+// quando a transação de origem é estornada ANTES de a comissão ter sido
+// incluída numa fatura mensal (ver cobrancaId/pagamentoGerenteId). Uma vez
+// faturada, o estorno da transação é bloqueado (ver transaction.service.ts
+// ::estorno) — nunca existe comissão `estornada` com fatura vinculada.
+enum StatusComissao {
+  ativa
+  estornada
+}
+
 // ─────────────────────────────────────────
 // PLANO
 // ─────────────────────────────────────────
@@ -181,6 +191,7 @@ model Agencia {
   conta          Conta?
   cobranças      Cobranca[]
   solicitacoesCredito SolicitacaoCredito[]
+  comissoesPlataforma ComissaoPlataforma[]
 
   @@map("agencia")
 }
@@ -257,6 +268,7 @@ model Associado {
   solicitacoesCredito  SolicitacaoCredito[]
   cobranças            Cobranca[]
   comissoesGerente     ComissaoGerente[]
+  comissoesPlataforma  ComissaoPlataforma[]
 
   @@map("associado")
 }
@@ -297,11 +309,12 @@ model Conta {
   associado Associado? @relation(fields: [associadoId], references: [id])
   agencia   Agencia?   @relation(fields: [agenciaId], references: [id])
 
-  movimentacoes     MovimentacaoConta[]
-  transacoesOrigem  Transacao[]         @relation("ContaOrigem")
-  transacoesDestino Transacao[]         @relation("ContaDestino")
-  cobranças         Cobranca[]
-  ofertas           Oferta[]
+  movimentacoes       MovimentacaoConta[]
+  transacoesOrigem    Transacao[]          @relation("ContaOrigem")
+  transacoesDestino   Transacao[]          @relation("ContaDestino")
+  cobranças           Cobranca[]
+  ofertas             Oferta[]
+  comissoesPlataforma ComissaoPlataforma[]
 
   @@index([numero])
   @@map("conta")
@@ -400,12 +413,20 @@ model ComissaoGerente {
   // Comissão de gerente é sempre BRL, nunca RT — decisão de produto de
   // 2026-09-18 (a coluna comissaoRT existiu antes disso e foi removida, sem
   // dado histórico relevante pra preservar).
-  comissaoBRL Decimal  @default(0) @db.Decimal(15, 2)
-  criadoEm    DateTime @default(now())
+  comissaoBRL Decimal @default(0) @db.Decimal(15, 2)
+  // ativa -> estornada quando a transação de origem é estornada ANTES desta
+  // linha ter sido consolidada (pagamentoGerenteId ainda nulo). Uma vez
+  // vinculada a um PagamentoGerente, a transação não pode mais ser estornada
+  // (ver transaction.service.ts::estorno) — nunca fica estornada com
+  // pagamentoGerenteId preenchido.
+  status             StatusComissao @default(ativa)
+  pagamentoGerenteId String?
+  criadoEm           DateTime       @default(now())
 
-  gerente   Usuario    @relation(fields: [gerenteId], references: [id])
-  associado Associado  @relation(fields: [associadoId], references: [id])
-  transacao Transacao? @relation(fields: [transacaoId], references: [id])
+  gerente          Usuario           @relation(fields: [gerenteId], references: [id])
+  associado        Associado         @relation(fields: [associadoId], references: [id])
+  transacao        Transacao?        @relation(fields: [transacaoId], references: [id])
+  pagamentoGerente PagamentoGerente? @relation(fields: [pagamentoGerenteId], references: [id])
 
   @@index([gerenteId, criadoEm])
   @@index([transacaoId])
@@ -426,11 +447,53 @@ model PagamentoGerente {
   pagoEm      DateTime?
   criadoEm    DateTime  @default(now())
 
-  gerente Usuario @relation(fields: [gerenteId], references: [id])
+  gerente          Usuario           @relation(fields: [gerenteId], references: [id])
+  comissoesGerente ComissaoGerente[]
 
   @@unique([gerenteId, competencia])
   @@index([gerenteId])
   @@map("pagamento_gerente")
+}
+
+// ─────────────────────────────────────────
+// COMISSÃO DA PLATAFORMA (decisão de produto 2026-09-18)
+// ─────────────────────────────────────────
+
+// Substitui o antigo campo único Transacao.comissaoBRL — uma transação pode
+// gerar 0, 1 ou 2 linhas (uma por lado, comprador e/ou vendedor), cada uma
+// avaliada e cobrada independentemente. `operacao` diz qual lado gerou essa
+// linha (compra = esse lado era o comprador, venda = era o vendedor).
+// `contaId`/`associadoId`/`agenciaId` são de QUEM PAGA (o lado da transação
+// que gerou a comissão); `agenciaId` em Cobranca (não aqui) já resolve QUEM
+// RECEBE a partir do associado/agência pagador — ver gerarCobrancasComissaoMensal.
+model ComissaoPlataforma {
+  id          String       @id @default(uuid())
+  transacaoId String
+  contaId     String
+  associadoId String?
+  agenciaId   String?
+  operacao    TipoOperacao
+  baseValorRT Decimal      @db.Decimal(15, 2)
+  percentual  Decimal      @db.Decimal(5, 2)
+  comissaoBRL Decimal      @db.Decimal(15, 2)
+  // ativa -> estornada quando a transação de origem é estornada ANTES desta
+  // linha ter sido consolidada (cobrancaId ainda nulo). Uma vez vinculada a
+  // uma Cobranca, a transação não pode mais ser estornada (ver
+  // transaction.service.ts::estorno) — nunca fica estornada com cobrancaId
+  // preenchido.
+  status    StatusComissao @default(ativa)
+  cobrancaId String?
+  criadoEm  DateTime       @default(now())
+
+  transacao Transacao  @relation(fields: [transacaoId], references: [id])
+  conta     Conta      @relation(fields: [contaId], references: [id])
+  associado Associado? @relation(fields: [associadoId], references: [id])
+  agencia   Agencia?   @relation(fields: [agenciaId], references: [id])
+  cobranca  Cobranca?  @relation(fields: [cobrancaId], references: [id])
+
+  @@index([transacaoId])
+  @@index([contaId, status])
+  @@map("comissao_plataforma")
 }
 
 // ─────────────────────────────────────────
@@ -499,7 +562,6 @@ model Transacao {
   tipo                TipoTransacao
   status              StatusTransacao @default(pendente)
   valorRT             Decimal         @db.Decimal(15, 2)
-  comissaoBRL         Decimal?        @db.Decimal(15, 2)
   descricao           String?
   parcelas            Int             @default(1)
   quantidade          Int?            // unidades da oferta compradas (apenas tipo: permuta) — usado para restaurar estoque no estorno
@@ -524,10 +586,11 @@ model Transacao {
   transacaoOriginal Transacao?  @relation("Estorno", fields: [transacaoOriginalId], references: [id])
   estornos          Transacao[] @relation("Estorno")
 
-  movimentacoes       MovimentacaoConta[]
-  voucher             Voucher?
-  comissoesGerente    ComissaoGerente[]
-  solicitacoesEstorno SolicitacaoEstorno[]
+  movimentacoes        MovimentacaoConta[]
+  voucher              Voucher?
+  comissoesGerente     ComissaoGerente[]
+  comissoesPlataforma  ComissaoPlataforma[]
+  solicitacoesEstorno  SolicitacaoEstorno[]
 
   @@index([compradorId, criadoEm])
   @@index([vendedorId, criadoEm])
@@ -632,6 +695,7 @@ model Cobranca {
   conta     Conta      @relation(fields: [contaId], references: [id])
   associado Associado? @relation(fields: [associadoId], references: [id])
   agencia   Agencia?   @relation(fields: [agenciaId], references: [id])
+  comissoesPlataforma ComissaoPlataforma[]
 
   @@index([contaId, pago])
   @@index([vencimento])

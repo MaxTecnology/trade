@@ -18,32 +18,101 @@ const compradorContaInclude = {
 } satisfies Prisma.ContaInclude
 
 type CompradorConta = Prisma.ContaGetPayload<{ include: typeof compradorContaInclude }>
+type ContaComissaoPlataforma = {
+  entityType: string
+  associado: { id: string; tipoOperacao: string | null; agenciaId: string | null; plano: { percentualComissao: Prisma.Decimal } } | null
+  agencia: { id: string; agenciaParenteId: string | null; plano: { percentualComissao: Prisma.Decimal } | null } | null
+}
 
-/**
- * Valida se o comprador pode operar (Associado/Agência suspensos são
- * barrados) e resolve o percentual de comissão da plataforma, que sempre
- * vem do plano de quem compra. Matriz não tem plano — cai no `return 0`
- * (sem comissão de plataforma pra si mesma). Usado por permuta() e
- * negociada(), único ponto de resolução do comprador entre as duas.
- */
-function resolverComissaoComprador(compradorConta: CompradorConta): number {
+/** Valida se o comprador pode operar — Associado/Agência suspensos são barrados. */
+function validarCompradorAtivo(compradorConta: CompradorConta): void {
   if (compradorConta.entityType === 'associado') {
     if (!compradorConta.associado) throw Errors.notFound('Associado')
     if (compradorConta.associado.status !== 'ativo') throw Errors.associateSuspended()
-    return Number(compradorConta.associado.plano.percentualComissao)
-  }
-  if (compradorConta.entityType === 'agencia') {
+  } else if (compradorConta.entityType === 'agencia') {
     if (!compradorConta.agencia) throw Errors.notFound('Agência')
     if (compradorConta.agencia.status !== 'ativo') throw Errors.agencySuspended()
-    return Number(compradorConta.agencia.plano?.percentualComissao ?? 0)
   }
-  return 0
+}
+
+/**
+ * Comissão da plataforma de UM lado da transação (decisão de produto de
+ * 2026-09-18) — chamada duas vezes por transação (comprador e vendedor),
+ * cada lado avaliado e cobrado de forma independente:
+ * - Associado: só gera se `tipoOperacao` dele cobrir esse lado (`compra`
+ *   cobre comprador, `venda` cobre vendedor, `compra_venda` cobre os dois —
+ *   mas aí o percentual do PLANO já nasce pela metade, não o do gerente).
+ *   Percentual vem do plano do próprio associado; quem recebe é a agência
+ *   que o cadastrou (`associado.agenciaId`), ou Matriz se cadastrado direto.
+ * - Agência (operando na própria conta): só gera quando ELA compra (nunca
+ *   quando vende — sem tipoOperacao, mantém o comportamento já existente).
+ *   Percentual vem do plano dela; quem recebe é a agência PAI
+ *   (`agenciaParenteId`) — Agência Comum paga a Master que a cadastrou,
+ *   Master (sem pai) paga Matriz.
+ * - Matriz: nunca gera comissão de plataforma pra si mesma.
+ */
+function calcularComissaoPlataformaDoLado(
+  conta: ContaComissaoPlataforma,
+  operacao: 'compra' | 'venda',
+  valorRT: number,
+): { associadoId: string | null; agenciaId: string | null; percentual: number; comissaoBRL: number } | null {
+  let percentualAplicado = 0
+  let associadoId: string | null = null
+  let agenciaId: string | null = null
+
+  if (conta.entityType === 'associado' && conta.associado) {
+    const associado = conta.associado
+    if (!associado.tipoOperacao) return null
+    const cobreEsseLado = associado.tipoOperacao === operacao || associado.tipoOperacao === 'compra_venda'
+    if (!cobreEsseLado) return null
+    const percentualCheio = Number(associado.plano.percentualComissao ?? 0)
+    percentualAplicado = associado.tipoOperacao === 'compra_venda' ? percentualCheio / 2 : percentualCheio
+    associadoId = associado.id
+    agenciaId = associado.agenciaId ?? null
+  } else if (conta.entityType === 'agencia' && conta.agencia) {
+    if (operacao !== 'compra') return null
+    percentualAplicado = Number(conta.agencia.plano?.percentualComissao ?? 0)
+    agenciaId = conta.agencia.agenciaParenteId ?? null
+  } else {
+    return null
+  }
+
+  if (percentualAplicado <= 0) return null
+  const comissaoBRL = valorRT * (percentualAplicado / 100)
+  if (comissaoBRL <= 0) return null
+
+  return { associadoId, agenciaId, percentual: percentualAplicado, comissaoBRL }
+}
+
+/** Cria as linhas de ComissaoPlataforma (0, 1 ou 2) dos dois lados de uma transação, dentro da mesma `tx`. */
+async function registrarComissoesPlataforma(
+  tx: Prisma.TransactionClient,
+  transacaoId: string,
+  valorRT: number,
+  lados: Array<{ contaId: string; conta: ContaComissaoPlataforma; operacao: 'compra' | 'venda' }>,
+) {
+  for (const lado of lados) {
+    const calculo = calcularComissaoPlataformaDoLado(lado.conta, lado.operacao, valorRT)
+    if (!calculo) continue
+    await tx.comissaoPlataforma.create({
+      data: {
+        transacaoId,
+        contaId: lado.contaId,
+        associadoId: calculo.associadoId,
+        agenciaId: calculo.agenciaId,
+        operacao: lado.operacao,
+        baseValorRT: valorRT,
+        percentual: calculo.percentual,
+        comissaoBRL: calculo.comissaoBRL,
+      },
+    })
+  }
 }
 
 export async function permuta(input: PermutaInput, compradorContaId: string, usuarioId: string) {
   const oferta = await prisma.oferta.findUnique({
     where: { id: input.ofertaId },
-    include: { conta: { include: { associado: true, agencia: true } } },
+    include: { conta: { include: { associado: { include: { plano: true } }, agencia: { include: { plano: true } } } } },
   })
   if (!oferta || oferta.status !== 'ativa' || oferta.quantidadeDisponivel <= 0) {
     throw Errors.offerUnavailable()
@@ -55,7 +124,7 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
   })
   if (!compradorConta) throw Errors.notFound('Conta do comprador')
 
-  const percentualComissao = resolverComissaoComprador(compradorConta)
+  validarCompradorAtivo(compradorConta)
 
   const valorTotal = Number(oferta.valorRT) * input.quantidade
   const limiteCredito = Number(compradorConta.limiteCredito ?? 0)
@@ -104,7 +173,6 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
   const valorParcela = valorTotal / input.parcelas
   const compradorContaSaldo = Number(compradorConta.saldo)
   const vendedorContaSaldo = Number(vendedorConta.saldo)
-  const comissaoBRL = valorTotal * (percentualComissao / 100)
 
   const transacao = await prisma.$transaction(async (tx) => {
     const t = await tx.transacao.create({
@@ -112,7 +180,6 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
         tipo: 'permuta',
         status: 'concluida',
         valorRT: valorTotal,
-        comissaoBRL,
         parcelas: input.parcelas,
         quantidade: input.quantidade,
         compradorId: compradorConta.associado?.id ?? null,
@@ -123,6 +190,11 @@ export async function permuta(input: PermutaInput, compradorContaId: string, usu
         contaDestinoId: vendedorConta.id,
       },
     })
+
+    await registrarComissoesPlataforma(tx, t.id, valorTotal, [
+      { contaId: compradorConta.id, conta: compradorConta, operacao: 'compra' },
+      { contaId: vendedorConta.id, conta: vendedorConta, operacao: 'venda' },
+    ])
 
     const agora = new Date()
     for (let i = 1; i <= input.parcelas; i++) {
@@ -201,12 +273,12 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
     throw new AppError('VALIDATION_ERROR', 'Não é possível negociar consigo mesmo.', 422)
   }
 
-  const percentualComissao = resolverComissaoComprador(compradorConta)
+  validarCompradorAtivo(compradorConta)
 
   // Resolução genérica do vendedor — mesma lógica de permuta() (Associado,
   // Agência ou Matriz), só que partindo de vendedorId+vendedorTipo em vez de
   // uma oferta (negociada() é fora do marketplace, não tem oferta no meio).
-  let vendedorConta: { id: string; saldo: unknown; entityType: string }
+  let vendedorConta: { id: string; saldo: unknown; entityType: string } & ContaComissaoPlataforma
   let vendedorAssociadoId: string | null = null
   let limiteVendaMensalVendedor = 0
   let limiteVendaTotalVendedor = 0
@@ -215,11 +287,11 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
   if (input.vendedorTipo === 'agencia') {
     const vendedorAgencia = await prisma.agencia.findUnique({
       where: { id: input.vendedorId },
-      include: { conta: true },
+      include: { conta: true, plano: true },
     })
     if (!vendedorAgencia?.conta) throw Errors.notFound('Agência vendedora')
     if (vendedorAgencia.status !== 'ativo') throw Errors.agencySuspended()
-    vendedorConta = vendedorAgencia.conta
+    vendedorConta = { ...vendedorAgencia.conta, associado: null, agencia: vendedorAgencia }
     // Mesma regra de null usada em permuta(): agency.service.ts não exige
     // limiteVendaMensal/Total no cadastro — null é "sem teto configurado
     // ainda", não "zerado por esquecimento".
@@ -230,16 +302,17 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
       limiteVendaTotalVendedor = Number(vendedorAgencia.limiteVendaTotal)
     }
   } else if (input.vendedorTipo === 'matriz') {
-    vendedorConta = await prisma.conta.findFirstOrThrow({ where: { entityType: 'matriz' } })
+    const contaMatriz = await prisma.conta.findFirstOrThrow({ where: { entityType: 'matriz' } })
+    vendedorConta = { ...contaMatriz, associado: null, agencia: null }
     pularValidacaoLimiteVenda = true
   } else {
     const vendedorAssociado = await prisma.associado.findUnique({
       where: { id: input.vendedorId },
-      include: { conta: true },
+      include: { conta: true, plano: true },
     })
     if (!vendedorAssociado?.conta) throw Errors.notFound('Associado vendedor')
     if (vendedorAssociado.status !== 'ativo') throw Errors.associateSuspended()
-    vendedorConta = vendedorAssociado.conta
+    vendedorConta = { ...vendedorAssociado.conta, associado: vendedorAssociado, agencia: null }
     vendedorAssociadoId = vendedorAssociado.id
     limiteVendaMensalVendedor = Number(vendedorAssociado.limiteVendaMensal ?? 0)
     limiteVendaTotalVendedor = Number(vendedorAssociado.limiteVendaTotal ?? 0)
@@ -269,7 +342,6 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
   const valorParcela = valorTotal / input.parcelas
   const compradorContaSaldo = Number(compradorConta.saldo)
   const vendedorContaSaldo = Number(vendedorConta.saldo)
-  const comissaoBRL = valorTotal * (percentualComissao / 100)
 
   const transacao = await prisma.$transaction(async (tx) => {
     const t = await tx.transacao.create({
@@ -277,7 +349,6 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
         tipo: 'negociada',
         status: 'concluida',
         valorRT: valorTotal,
-        comissaoBRL,
         parcelas: input.parcelas,
         descricao: input.descricao,
         compradorId: compradorConta.associado?.id ?? null,
@@ -287,6 +358,11 @@ export async function negociada(input: NegociadaInput, compradorContaId: string,
         contaDestinoId: vendedorConta.id,
       },
     })
+
+    await registrarComissoesPlataforma(tx, t.id, valorTotal, [
+      { contaId: compradorConta.id, conta: compradorConta, operacao: 'compra' },
+      { contaId: vendedorConta.id, conta: vendedorConta, operacao: 'venda' },
+    ])
 
     const agora = new Date()
     for (let i = 1; i <= input.parcelas; i++) {
@@ -459,6 +535,24 @@ export async function credito(input: CreditoInput, usuarioId: string) {
   })
 }
 
+/**
+ * "Não podemos fazer estorno após o fechamento da fatura" (decisão de
+ * produto de 2026-09-18) — uma vez que a comissão (plataforma ou gerente) de
+ * uma transação já foi incluída numa Cobranca/PagamentoGerente mensal
+ * (`cobrancaId`/`pagamentoGerenteId` preenchidos), a transação não pode mais
+ * ser estornada. Comissão pago pra gerente só acontece depois que a Matriz
+ * recebe do cliente, então a chance de precisar reverter depois disso é
+ * baixa — quando acontece, é tratado manualmente entre as partes, fora do
+ * sistema.
+ */
+export async function comissaoJaFaturada(transacaoId: string): Promise<boolean> {
+  const [plataforma, gerente] = await Promise.all([
+    prisma.comissaoPlataforma.findFirst({ where: { transacaoId, cobrancaId: { not: null } } }),
+    prisma.comissaoGerente.findFirst({ where: { transacaoId, pagamentoGerenteId: { not: null } } }),
+  ])
+  return !!plataforma || !!gerente
+}
+
 export async function estorno(transacaoId: string, usuarioId: string) {
   const original = await prisma.transacao.findUnique({
     where: { id: transacaoId },
@@ -475,6 +569,14 @@ export async function estorno(transacaoId: string, usuarioId: string) {
   const diasDesde = (Date.now() - original.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
   if (diasDesde > 30) throw Errors.estornoPrazoExpirado()
 
+  if (await comissaoJaFaturada(transacaoId)) {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      'Não é possível estornar: a comissão desta transação já foi incluída numa fatura fechada.',
+      422,
+    )
+  }
+
   const contaOrigem = await prisma.conta.findUnique({ where: { id: original.contaOrigemId! } })
   const contaDestino = await prisma.conta.findUnique({ where: { id: original.contaDestinoId! } })
   if (!contaOrigem || !contaDestino) throw Errors.notFound('Contas da transação')
@@ -489,6 +591,17 @@ export async function estorno(transacaoId: string, usuarioId: string) {
 
   const transacaoEstorno = await prisma.$transaction(async (tx) => {
     await tx.transacao.update({ where: { id: transacaoId }, data: { status: 'estornada' } })
+
+    // Comissão ainda solta (não faturada, já garantido pela checagem acima)
+    // não deve mais entrar em nenhuma consolidação mensal futura.
+    await tx.comissaoPlataforma.updateMany({
+      where: { transacaoId, status: 'ativa' },
+      data: { status: 'estornada' },
+    })
+    await tx.comissaoGerente.updateMany({
+      where: { transacaoId, status: 'ativa' },
+      data: { status: 'estornada' },
+    })
 
     const t = await tx.transacao.create({
       data: {
