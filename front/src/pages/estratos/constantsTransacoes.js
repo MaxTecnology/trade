@@ -1,4 +1,4 @@
-import { formatDate } from "@/hooks/ListasHook";
+import { formatDateHora } from "@/hooks/ListasHook";
 import { formatarNumeroParaRT, formatarNumeroParaReal } from "@/utils/functions/formartNumber";
 import { filterStart, filterEnd } from "@/utils/functions/tables/date";
 import { StatusTransacaoCell } from "@/utils/functions/tables/statusTransacao";
@@ -34,7 +34,7 @@ export const columns = [
     {
         accessorKey: 'criadoEm',
         header: 'Data',
-        cell: (info) => formatDate(info.getValue()),
+        cell: (info) => formatDateHora(info.getValue()),
     },
     {
         accessorKey: 'tipo',

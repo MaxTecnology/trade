@@ -48,6 +48,9 @@ export async function extrato(contaId: string, filters: ReportFilters) {
             contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
             contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
             usuarioIniciador: { select: { nome: true, codigoOperador: true } },
+            // Substitui o antigo campo único Transacao.comissaoBRL (removido
+            // em 2026-09-18) — alimenta o campo "Comissão" no modal de detalhe.
+            comissoesPlataforma: { where: { status: 'ativa' }, select: { comissaoBRL: true, operacao: true } },
           },
         },
       },

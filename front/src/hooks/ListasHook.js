@@ -369,3 +369,15 @@ export const formatDate = (dataString, full) => {
     }
 
 }
+
+// Data + hora, pro fuso do navegador — só pra campos que são de fato um
+// INSTANTE (criadoEm de Transacao/MovimentacaoConta), nunca pra datas de
+// calendário como vencimento (essas usam formatDate, sem hora — mostrar
+// hora nelas seria só ruído, já que não representam um horário real).
+export const formatDateHora = (dataString) => {
+    const data = new Date(dataString);
+    const dataFormatada = formatDate(dataString);
+    const hora = String(data.getHours()).padStart(2, '0');
+    const minuto = String(data.getMinutes()).padStart(2, '0');
+    return `${dataFormatada} ${hora}:${minuto}`;
+}

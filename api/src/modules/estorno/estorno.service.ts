@@ -27,6 +27,9 @@ const include = {
       contaDestino: {
         select: { entityType: true, agenciaId: true, saldo: true, limiteCredito: true, agencia: { select: { nome: true } } },
       },
+      // Substitui o antigo campo único Transacao.comissaoBRL (removido em
+      // 2026-09-18) — alimenta o campo "Comissão" no modal de detalhe.
+      comissoesPlataforma: { where: { status: 'ativa' }, select: { comissaoBRL: true, operacao: true } },
     },
   },
 } as const

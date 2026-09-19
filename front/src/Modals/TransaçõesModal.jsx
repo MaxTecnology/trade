@@ -4,8 +4,8 @@ import { closeModal } from '../hooks/Functions';
 import { GrFormClose } from "react-icons/gr";
 import { toast } from 'sonner';
 import api from '@/services/api';
-import { formatDate } from '@/hooks/ListasHook';
-import { formatarNumeroParaRT } from '@/utils/functions/formartNumber';
+import { formatDateHora } from '@/hooks/ListasHook';
+import { formatarNumeroParaRT, formatarNumeroParaReal } from '@/utils/functions/formartNumber';
 import { iniciadoPorLabel } from '@/utils/functions/tables/iniciadoPor';
 import { compradorLabel, vendedorLabel } from '@/utils/functions/tables/compradorVendedor';
 import { exportVoucherPdf } from '@/utils/functions/exportVoucherPdf';
@@ -44,6 +44,17 @@ const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
     // — tem `.codigo` no topo) ou uma Transacao com `.voucher` aninhado
     // (Meus Vouchers/Solicitar Cancelamento, que listam GET /transacoes).
     const voucherData = voucher ? (info?.codigo ? info : transacao?.voucher) : null
+    // Data+hora do INSTANTE certo: numa MovimentacaoConta, o próprio
+    // lançamento (pode ser de uma parcela específica, criadoEm ligeiramente
+    // depois da transação); senão, a criação da transação em si — nos dois
+    // casos, antes só aparecia quando era MovimentacaoConta (bug: abrir
+    // detalhe a partir da tela "Transações" não mostrava data nenhuma).
+    const dataTransacao = isMovimentacao ? info?.criadoEm : transacao?.criadoEm
+    // Substitui o antigo campo único Transacao.comissaoBRL (removido em
+    // 2026-09-18) — soma as linhas ativas de ComissaoPlataforma (comprador
+    // e/ou vendedor) dessa transação.
+    const comissaoTotal = (transacao?.comissoesPlataforma ?? [])
+        .reduce((soma, c) => soma + Number(c.comissaoBRL ?? 0), 0)
 
     const baixarComprovante = () => {
         setBaixando(true)
@@ -80,10 +91,6 @@ const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
                                     <p>{info.id?.slice(0, 8)}</p>
                                 </div>
                                 <div className="modalTransacoesItem">
-                                    <span>Data</span>
-                                    <p>{formatDate(info.criadoEm)}</p>
-                                </div>
-                                <div className="modalTransacoesItem">
                                     <span>Operação</span>
                                     <p>{info.tipo === 'credito' ? 'Crédito' : 'Débito'}</p>
                                 </div>
@@ -96,6 +103,10 @@ const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
                         </>
                     )}
                     <div className="modalTransacoesSubContainer">
+                        <div className="modalTransacoesItem">
+                            <span>Data</span>
+                            <p>{dataTransacao ? formatDateHora(dataTransacao) : '-'}</p>
+                        </div>
                         <div className="modalTransacoesItem">
                             <span>Vendedor</span>
                             <p>{vendedorLabel(transacao)}</p>
@@ -123,6 +134,12 @@ const TransaçõesModal = ({ isOpen, modalToggle, info, voucher }) => {
                             <span>Parcelas</span>
                             <p>{transacao?.parcelas ?? '1'}</p>
                         </div>
+                        {comissaoTotal > 0 && (
+                            <div className="modalTransacoesItem">
+                                <span>Comissão</span>
+                                <p>{`R$ ${formatarNumeroParaReal(comissaoTotal)}`}</p>
+                            </div>
+                        )}
                         {tipoTransacao && (
                             <div className="modalTransacoesItem">
                                 <span>Tipo</span>

@@ -861,3 +861,24 @@ Seguimento do pedido anterior (bloqueio de estorno pós-fatura): o usuário pedi
 - **Novo endpoint `GET /gerentes/pagamentos/:id/comissoes`** — mesma coisa pro lado do gerente (`ComissaoGerente` vinculadas a um `PagamentoGerente`). Nova tela `PagamentoGerenteModal.jsx`, aberta por um botão "Ver detalhes" na tabela de pagamentos de gerente.
 
 **Validado:** `npx tsc --noEmit` e `npm test` (36/36) limpos; `npx eslint`/`npm run build` (front) sem erro; contra API/Postgres reais em Docker — associado com 2 transações no mês (R$100 + R$50 de comissão): confirmado `minha-comissao-acumulada` retornando R$150 em tempo real (crescendo a cada transação), e zerando pra R$0 assim que a fatura mensal foi gerada; `GET /cobrancas/:id/comissoes` da fatura resultante listou exatamente as 2 transações que a compuseram; `GET /gerentes/pagamentos/:id/comissoes` do pagamento do gerente (R$7,50) listou as 2 comissões (R$5 + R$2,50) que somaram esse valor. Dados de teste removidos ao final.
+
+## [RESOLVIDO 2026-09-19] Extratos/Transações: hora nunca aparecia, e Data sumia no modal de detalhe
+Pedido do usuário: auditoria de "as contas computam certinho as transações? em extratos trazemos certinho — quem comprou, quem vendeu, data e hora, detalhes da compra?". Achados:
+
+1. **Hora nunca era exibida em lugar nenhum** — `formatDate()` (usada em todo lugar que mostra data) só formata `dd/mm/aaaa`, mesmo pra campos que são um instante real (`criadoEm` de Transação/Movimentação). Se duas transações acontecessem no mesmo dia, não dava pra saber a ordem sem consultar o banco direto.
+2. **A Data nem aparecia no modal de detalhe, em alguns casos** — `TransaçõesModal.jsx` só renderizava o campo "Data" dentro do bloco exclusivo de `MovimentacaoConta` (tela "Meus Extratos"). Abrindo o detalhe a partir da tela "Transações"/"Extratos" (visão ampla comprador×vendedor) ou de "Estornos", **nenhuma data aparecia no modal**.
+3. **Comissão não aparecia no modal de detalhe** — só existia na coluna da tabela (`constantsTransacoes.js`), não no popup de detalhe de uma transação específica.
+
+**O que mudou:**
+- Nova função `formatDateHora()` (`ListasHook.js`) — `dd/mm/aaaa HH:mm`, só pra campos que são de fato um instante (não mexe em `formatDate`, usada em vencimento/competência, datas de calendário sem hora real).
+- Colunas "Data" de `constantsTransacoes.js` (Transações), `constantsMeuExtrato.js` (Meus Extratos) e `constantsEstorno.js` (Estornos) passam a usar `formatDateHora`.
+- `TransaçõesModal.jsx`: campo "Data" agora é sempre exibido (antes só existia dentro do bloco `isMovimentacao`), usando o instante certo em cada caso; novo campo "Comissão" (soma das linhas ativas de `ComissaoPlataforma` da transação, comprador+vendedor).
+- Backend: `report.service.ts::extrato()` (Meus Extratos) e `estorno.service.ts`'s `include` ganharam `comissoesPlataforma` na transação aninhada, pra alimentar o novo campo do modal nesses dois contextos também (já existia em `relatorioPermutas`).
+
+**Validado:** `npx tsc --noEmit` e `npm test` (36/36) limpos; `npx eslint`/`npm run build` (front) sem erro; contra API/Postgres reais em Docker — transação real criada e confirmado via `GET /relatorios/permutas` e `GET /extrato` que `criadoEm` (timestamp completo) e `comissoesPlataforma` (R$100+R$100) chegam corretos nos dois endpoints, prontos pro modal exibir data+hora e comissão. Dados de teste removidos ao final.
+
+## Auditoria de "Contas"/"Extratos" (2026-09-19) — o que já está correto
+Pedido do usuário: verificar se comprador/vendedor/detalhes vêm certos. Confirmado sem necessidade de mudança:
+- `compradorLabel`/`vendedorLabel` (`utils/functions/tables/compradorVendedor.js`) já tratam Associado, Agência e Matriz corretamente nos dois lados de qualquer transação.
+- `iniciadoPorLabel` já mostra o código do operador que efetivamente clicou.
+- Cobranças (Contas a Pagar/Receber, inscrição, manutenção) não foram afetadas por nenhuma mudança recente de comissão — continuam corretas.
