@@ -81,3 +81,9 @@ export async function quitarPagamentoController(request: FastifyRequest, reply: 
   const pagamento = await managerService.quitarPagamentoGerente(id)
   return reply.send(success(pagamento))
 }
+
+export async function comissoesDoPagamentoController(request: FastifyRequest, reply: FastifyReply) {
+  const { id } = request.params as Params
+  const data = await managerService.listarComissoesDoPagamento(id)
+  return reply.send(success(data))
+}

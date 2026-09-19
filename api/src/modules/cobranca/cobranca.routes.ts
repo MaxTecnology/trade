@@ -8,6 +8,8 @@ import {
   quitarController,
   deletarController,
   manutencaoAnualController,
+  comissaoAcumuladaController,
+  comissoesDaFaturaController,
 } from './cobranca.controller.js'
 
 export async function cobrancaRoutes(app: FastifyInstance) {
@@ -18,7 +20,11 @@ export async function cobrancaRoutes(app: FastifyInstance) {
   app.post('/cobrancas', superadmin, criarController)
   app.get('/cobrancas', superadmin, todasController)
   app.get('/cobrancas/minhas', auth, minhasController)
+  // Estático antes de "/cobrancas/:id/..." — senão "minha-comissao-acumulada"
+  // seria capturado como :id.
+  app.get('/cobrancas/minha-comissao-acumulada', auth, comissaoAcumuladaController)
   app.get('/cobrancas/manutencao-anual', superadmin, manutencaoAnualController)
   app.patch('/cobrancas/:id/quitar', adminOrSuper, quitarController)
   app.delete('/cobrancas/:id', superadmin, deletarController)
+  app.get('/cobrancas/:id/comissoes', superadmin, comissoesDaFaturaController)
 }

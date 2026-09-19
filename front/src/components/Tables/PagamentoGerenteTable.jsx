@@ -1,13 +1,16 @@
 import { flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
+import { useState } from "react";
 import PaginationTable from "./PaginationTable";
 import SortColumn from "./SortColumn";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 import { FaMoneyBill } from "react-icons/fa";
+import { TbEyeSearch } from "react-icons/tb";
 import api from "@/services/api";
 import { toast } from "sonner";
 import state from "@/store";
 import { popup } from "@/hooks/Popup";
 import { formatarNumeroParaReal } from "@/utils/functions/formartNumber";
+import PagamentoGerenteModal from "@/Modals/PagamentoGerenteModal";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const formatarCompetencia = (iso) => {
@@ -27,6 +30,7 @@ const columns = [
 // quitar Cobranca em RT). Endpoint próprio (gerentes/pagamentos/:id/quitar),
 // por isso não reaproveita Buttons type="Quitar" (hardcoded pra cobrancas).
 const PagamentoGerenteTable = ({ data, revalidate }) => {
+    const [detalheAberto, setDetalheAberto] = useState(null)
     const table = useReactTable({
         data,
         columns,
@@ -49,6 +53,11 @@ const PagamentoGerenteTable = ({ data, revalidate }) => {
 
     return (
         <div className="w-full">
+            <PagamentoGerenteModal
+                isOpen={!!detalheAberto}
+                onClose={() => setDetalheAberto(null)}
+                pagamento={detalheAberto}
+            />
             <table className="w-full border-separate border-spacing-y-1">
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
@@ -74,6 +83,13 @@ const PagamentoGerenteTable = ({ data, revalidate }) => {
                                 </td>
                             ))}
                             <td className="flex justify-end gap-2">
+                                <ButtonMotion
+                                    type="button"
+                                    title="Ver detalhes"
+                                    onClick={() => setDetalheAberto(row.original)}
+                                >
+                                    <TbEyeSearch />
+                                </ButtonMotion>
                                 {!row.original.pago ? (
                                     <ButtonMotion
                                         className="buttonQuitar"

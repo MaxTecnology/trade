@@ -342,3 +342,17 @@ export async function quitarPagamentoGerente(id: string) {
     include: { gerente: { select: { nome: true, email: true } } },
   })
 }
+
+/** Comissões (por transação/inscrição) que compõem um PagamentoGerente já consolidado. */
+export async function listarComissoesDoPagamento(pagamentoGerenteId: string) {
+  const pagamento = await prisma.pagamentoGerente.findUnique({ where: { id: pagamentoGerenteId } })
+  if (!pagamento) throw Errors.notFound('Pagamento de gerente')
+  return prisma.comissaoGerente.findMany({
+    where: { pagamentoGerenteId },
+    orderBy: { criadoEm: 'asc' },
+    include: {
+      associado: { select: { nome: true } },
+      transacao: { select: { id: true, tipo: true, valorRT: true, criadoEm: true } },
+    },
+  })
+}

@@ -8,6 +8,8 @@ import {
   quitarCobranca,
   deletarCobranca,
   relatorioManutencaoAnual,
+  comissaoAcumuladaDaConta,
+  listarComissoesDaFatura,
 } from './cobranca.service.js'
 import { success, paginated } from '../../shared/utils/response.js'
 import { Errors } from '../../shared/errors/AppError.js'
@@ -52,5 +54,17 @@ export async function deletarController(req: FastifyRequest, reply: FastifyReply
 
 export async function manutencaoAnualController(_req: FastifyRequest, reply: FastifyReply) {
   const data = await relatorioManutencaoAnual()
+  return reply.send(success(data))
+}
+
+export async function comissaoAcumuladaController(req: FastifyRequest, reply: FastifyReply) {
+  if (!req.user.contaId) throw Errors.forbidden()
+  const data = await comissaoAcumuladaDaConta(req.user.contaId)
+  return reply.send(success(data))
+}
+
+export async function comissoesDaFaturaController(req: FastifyRequest, reply: FastifyReply) {
+  const { id } = req.params as { id: string }
+  const data = await listarComissoesDaFatura(id)
   return reply.send(success(data))
 }

@@ -11,6 +11,7 @@ import {
   getComissoesController,
   listPagamentosController,
   quitarPagamentoController,
+  comissoesDoPagamentoController,
 } from './manager.controller.js'
 
 export async function managerRoutes(app: FastifyInstance) {
@@ -27,6 +28,7 @@ export async function managerRoutes(app: FastifyInstance) {
   // Estático antes de "/gerentes/:id" — senão "pagamentos" seria capturado como :id.
   app.get('/gerentes/pagamentos', adminOrSuper, listPagamentosController)
   app.patch('/gerentes/pagamentos/:id/quitar', superadmin, quitarPagamentoController)
+  app.get('/gerentes/pagamentos/:id/comissoes', adminOrSuper, comissoesDoPagamentoController)
   app.get('/gerentes/:id', viewManager, getByIdController)
   app.put('/gerentes/:id', adminOrSuper, updateController)
   app.patch('/gerentes/:id/status', adminOrSuper, setStatusController)

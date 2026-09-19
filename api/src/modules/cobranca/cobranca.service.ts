@@ -356,3 +356,44 @@ export async function deletarCobranca(id: string) {
   if (!cobranca) throw Errors.notFound('Cobrança')
   await prisma.cobranca.delete({ where: { id } })
 }
+
+/**
+ * Comissão da plataforma já gerada no mês corrente pela própria conta do
+ * requisitante, mas AINDA NÃO faturada (`status: 'ativa'`, `cobrancaId: null`)
+ * — soma em tempo real, cresce a cada transação nova, some quando o job
+ * mensal consolida numa Cobranca. Alimenta o "Próxima fatura" do dashboard
+ * (decisão de produto de 2026-09-19: esse campo virou VALOR, não mais a
+ * data — a data de vencimento já vem de "Data para Pagamento", que lê a
+ * última Cobranca real gerada).
+ */
+export async function comissaoAcumuladaDaConta(contaId: string) {
+  const soma = await prisma.comissaoPlataforma.aggregate({
+    where: { contaId, status: 'ativa', cobrancaId: null },
+    _sum: { comissaoBRL: true },
+  })
+  return { valorAcumulado: Number(soma._sum.comissaoBRL ?? 0) }
+}
+
+const includeComissaoDetalhe = {
+  transacao: {
+    select: {
+      id: true,
+      tipo: true,
+      valorRT: true,
+      criadoEm: true,
+      comprador: { select: { nome: true } },
+      vendedor: { select: { nome: true } },
+    },
+  },
+} as const
+
+/** Transações que compõem uma Cobranca de comissão da plataforma já consolidada. */
+export async function listarComissoesDaFatura(cobrancaId: string) {
+  const cobranca = await prisma.cobranca.findUnique({ where: { id: cobrancaId } })
+  if (!cobranca) throw Errors.notFound('Cobrança')
+  return prisma.comissaoPlataforma.findMany({
+    where: { cobrancaId },
+    orderBy: { criadoEm: 'asc' },
+    include: includeComissaoDetalhe,
+  })
+}
