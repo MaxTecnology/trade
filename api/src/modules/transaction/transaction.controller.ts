@@ -50,7 +50,7 @@ export async function estornoController(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const t = await txService.estorno((request.params as Params).id, request.user.id)
+  const t = await txService.estorno((request.params as Params).id, request.user.id, request.user.role)
   return reply.send(success(t))
 }
 

@@ -244,7 +244,10 @@ export async function finalizar(
   }
 
   if (status === 'aprovado') {
-    await transactionService.estorno(solicitacao.transacaoId, usuarioId)
+    // Rota de aprovação (`PATCH /estornos/:id/aprovar`) já é superadmin-only —
+    // e solicitarEstorno() nunca deixa um `credito` entrar nesse fluxo, mas o
+    // 3º argumento existe pra cobrir esse caso também se um dia mudar.
+    await transactionService.estorno(solicitacao.transacaoId, usuarioId, 'superadmin')
     await prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'aprovado', respostaMatriz } })
   } else {
     await prisma.solicitacaoEstorno.update({ where: { id }, data: { status: 'negado', respostaMatriz } })

@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, RoleUsuario } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import { saldoSuficienteParaDebito, validarLimiteVenda, getLimiteCreditoDaConta } from '../../shared/utils/limites.js'
@@ -553,14 +553,66 @@ export async function comissaoJaFaturada(transacaoId: string): Promise<boolean> 
   return !!plataforma || !!gerente
 }
 
-export async function estorno(transacaoId: string, usuarioId: string) {
+/**
+ * Estorno de um `credito` (emissão de RT da Matriz pra um associado/agência
+ * — ver `credito()` acima) — decisão de produto de 2026-09-26, depois de
+ * confirmar que não existia NENHUM jeito de desfazer uma injeção errada.
+ * Diferente de permuta/negociada: `credito` só tem `contaDestinoId` (a
+ * Matriz não debita nada de si mesma pra emitir RT, ela cria), então o
+ * estorno é assimétrico — só DEBITA de volta a conta que recebeu (destrói o
+ * RT, espelhando como foi criado), sem creditar nenhuma "conta origem"
+ * porque não existe uma real. Nunca passa por `comissaoJaFaturada` —
+ * `credito` nunca gera ComissaoPlataforma/ComissaoGerente.
+ */
+async function estornarCredito(original: Prisma.TransacaoGetPayload<object>, usuarioId: string) {
+  const contaDestino = await prisma.conta.findUnique({ where: { id: original.contaDestinoId! } })
+  if (!contaDestino) throw Errors.notFound('Conta de destino')
+
+  const valorRT = Number(original.valorRT)
+  const limiteCreditoDestino = await getLimiteCreditoDaConta(original.contaDestinoId!)
+  if (!saldoSuficienteParaDebito(Number(contaDestino.saldo), valorRT, limiteCreditoDestino)) {
+    throw Errors.insufficientBalance()
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.transacao.update({ where: { id: original.id }, data: { status: 'estornada' } })
+
+    const t = await tx.transacao.create({
+      data: {
+        tipo: 'estorno',
+        status: 'concluida',
+        valorRT: original.valorRT,
+        descricao: `Estorno de crédito da Matriz: ${original.id}`,
+        contaOrigemId: original.contaDestinoId,
+        transacaoOriginalId: original.id,
+        usuarioIniciadorId: usuarioId,
+      },
+    })
+
+    await tx.movimentacaoConta.create({
+      data: {
+        contaId: original.contaDestinoId!,
+        tipo: 'debito',
+        valor: valorRT,
+        saldoApos: Number(contaDestino.saldo) - valorRT,
+        descricao: `Estorno de crédito: ${original.id}`,
+        transacaoId: t.id,
+      },
+    })
+
+    await tx.conta.update({ where: { id: original.contaDestinoId! }, data: { saldo: { decrement: valorRT } } })
+    return t
+  })
+}
+
+export async function estorno(transacaoId: string, usuarioId: string, role: RoleUsuario) {
   const original = await prisma.transacao.findUnique({
     where: { id: transacaoId },
     include: { oferta: true },
   })
   if (!original) throw Errors.notFound('Transação')
-  if (original.tipo !== 'permuta' && original.tipo !== 'negociada') {
-    throw new AppError('VALIDATION_ERROR', 'Somente permutas ou negociações podem ser estornadas.', 422)
+  if (original.tipo !== 'permuta' && original.tipo !== 'negociada' && original.tipo !== 'credito') {
+    throw new AppError('VALIDATION_ERROR', 'Somente permutas, negociações ou créditos da Matriz podem ser estornados.', 422)
   }
   if (original.status === 'estornada') {
     throw new AppError('VALIDATION_ERROR', 'Transação já foi estornada.', 422)
@@ -568,6 +620,14 @@ export async function estorno(transacaoId: string, usuarioId: string) {
 
   const diasDesde = (Date.now() - original.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
   if (diasDesde > 30) throw Errors.estornoPrazoExpirado()
+
+  if (original.tipo === 'credito') {
+    // Só quem pode CRIAR um crédito da Matriz pode revertê-lo — agency_admin
+    // consegue chamar essa mesma rota pra permuta/negociada, mas não tem
+    // negócio nenhum revertendo uma emissão de RT que nem ele criou.
+    if (role !== 'superadmin') throw Errors.forbidden()
+    return estornarCredito(original, usuarioId)
+  }
 
   if (await comissaoJaFaturada(transacaoId)) {
     throw new AppError(
