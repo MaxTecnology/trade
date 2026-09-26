@@ -15,23 +15,24 @@ const proximoFechamento = () => {
 // Lista provisória (ComissaoPlataforma/ComissaoGerente ainda não consolidada
 // numa Cobranca/PagamentoGerente) — decisão de produto 2026-09-25, pra tela
 // "Comissões" não ficar vazia entre um fechamento mensal e o outro. Cresce
-// todo mês, então respeita os mesmos filtros de "Pesquisar" e "Associado"
-// que já existem na tela (ContasSearch), lendo direto do mesmo store global
-// — a linha não é resultado de nenhuma tabela react-table própria, então o
-// filtro é aplicado manualmente aqui (decisão de produto 2026-09-25).
-const ComissaoPendenteTable = ({ data, colunaNome }) => {
-    const snap = useSnapshot(filters.table);
+// todo mês, então respeita filtro de "Pesquisar" (+ "Associado" ou "Gerente",
+// conforme `namespace`) — a linha não é resultado de nenhuma tabela
+// react-table própria, então o filtro é aplicado manualmente aqui.
+//
+// `namespace`: "table" (comissão da plataforma, ContasSearch) ou "gerente"
+// (GerenteSearch) — dois filtros independentes na MESMA tela, cada um no seu
+// namespace do store global pra não colidir (ver store/filters.js).
+const ComissaoPendenteTable = ({ data, colunaNome, namespace = "table" }) => {
+    const snapTable = useSnapshot(filters.table);
+    const snapGerente = useSnapshot(filters.gerente);
+    const snap = namespace === "gerente" ? snapGerente : snapTable;
     const busca = (snap.search ?? '').toLowerCase();
-    const associadoFiltro = snap['associado-filtro'];
+    const entidadeFiltro = namespace === "gerente" ? snap['gerente-filtro'] : snap['associado-filtro'];
     const dataFiltrada = (data ?? []).filter((item) => {
         if (busca && !item.nome?.toLowerCase().includes(busca)) return false;
-        // "gerenteId" não tem associadoId/agenciaId — o filtro de Associado só
-        // se aplica à prévia de comissão da plataforma, não à de gerente.
-        if (associadoFiltro && item.contaId) {
-            const pertence = [item.associadoId, item.agenciaId].filter(Boolean).includes(associadoFiltro);
-            if (!pertence) return false;
-        }
-        return true;
+        if (!entidadeFiltro) return true;
+        if (namespace === "gerente") return item.gerenteId === entidadeFiltro;
+        return [item.associadoId, item.agenciaId].filter(Boolean).includes(entidadeFiltro);
     });
 
     if (dataFiltrada.length === 0) {

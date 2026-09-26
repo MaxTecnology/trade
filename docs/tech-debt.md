@@ -901,3 +901,18 @@ Seguimento do item anterior: o usuário apontou que a nova seção "Mês corrent
 - `ComissaoPendenteTable.jsx` passou a ler o mesmo store global (`filters.table`, valtio) que `ContasSearch` já escreve, e filtra a lista manualmente (não é uma tabela react-table própria): "Pesquisar" bate contra o nome, "Associado" bate contra `associadoId`/`agenciaId` (só se aplica à prévia de comissão da plataforma — a de gerente não tem esse conceito). "Vencimento" não se aplica a nenhuma das duas (ainda não existe data de vencimento real).
 
 **Validado:** `npx tsc --noEmit` e `npm test` (36/36) limpos; `npx eslint`/`npm run build` (front) sem erro; contra API real em Docker — confirmado que `GET /cobrancas/comissao-pendente` retorna `associadoId`/`agenciaId` corretos por linha, prontos pro filtro do front casar. Dados de teste removidos ao final.
+
+## [RESOLVIDO 2026-09-26] Filtro reorganizado no topo + filtro próprio pra gerentes
+Seguimento do item anterior. Dois pedidos do usuário: subir o filtro pro topo da seção (ficava entre a prévia e a fatura fechada, meio deslocado) e criar um filtro equivalente pra seção "A Pagar Gerentes" (não tinha nenhum).
+
+**O que mudou:**
+- `Comissoes.jsx`: `ContasSearch` movido pra logo abaixo do header "Comissões" (antes da seção "Mês corrente"), ficando no topo de tudo relacionado à comissão da plataforma.
+- Novo componente `GerenteSearch.jsx` — Pesquisar + dropdown "Gerente" (via `useQueryGerentes`), posicionado logo abaixo de "A Pagar Gerentes".
+- **Dois filtros na mesma tela precisam de namespaces separados**: `store/filters.js` ganhou `filters.gerente` (além do já existente `filters.table`) — sem isso, os dois campos "Pesquisar" colidiriam no mesmo objeto global (`filters.table.search` sendo sobrescrito por qualquer um dos dois formulários). `GerenteSearch` escreve em `filters.gerente`; `ContasSearch` continua em `filters.table`, sem nenhuma mudança nela.
+- `ComissaoPendenteTable.jsx` ganhou prop `namespace` (`"table"` ou `"gerente"`) pra saber de qual store ler.
+- `PagamentoGerenteTable.jsx` (a tabela de faturas de gerente já fechadas) passou a filtrar de verdade também — antes não tinha filtro nenhum conectado; agora usa o mesmo padrão de `columnFilters`/coluna oculta `gerente-filtro` que `ContasTable`/`ExtratosTable` já usam, lendo de `filters.gerente`.
+
+**Validado:** `npx eslint`/`npm run build` (front) sem erro; validado visualmente com Playwright contra Docker real — confirmado o novo layout (filtro no topo, filtro próprio de gerente antes da seção "A Pagar Gerentes"); criado 1 gerente + 2 associados + 1 transação real; confirmado as duas prévias populadas corretamente (R$90+R$90 na plataforma, R$4,50 no gerente); testado o campo "Pesquisar" da plataforma filtrando só "Zebra" (e confirmado que a prévia de gerente, filtro independente, não foi afetada); testado o dropdown "Associado" isolando só "Alfa Servicos"; testado o dropdown "Gerente" sem quebrar nada. Dados de teste removidos ao final.
+
+
+**Correção durante a implementação:** o componente novo foi criado inicialmente como `GerenteSearch.jsx`, sobrescrevendo por engano um componente JÁ EXISTENTE com esse nome (usado pela tela "Gerentes" — cadastro/busca de gerentes, sem relação com Comissões). Detectado pelo `git status` mostrando "M" (modificado) em vez de "??" (novo) pro arquivo. Corrigido: original restaurado via `git checkout`, componente novo recriado como `GerenteComissaoSearch.jsx` (nome que não colide). Validado com Playwright contra Docker real que as duas telas ("Gerentes" e "Comissões") funcionam independentemente depois da correção.

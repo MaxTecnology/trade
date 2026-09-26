@@ -13,6 +13,7 @@ import { useQueryPagarGerentes } from "@/hooks/ReactQuery/dashboard/useQueryPaga
 import ComissaoPendenteTable from "@/components/Tables/ComissaoPendenteTable";
 import { useQueryComissaoPendente } from "@/hooks/ReactQuery/contas/useQueryComissaoPendente";
 import { useQueryPagamentosGerentePendente } from "@/hooks/ReactQuery/contas/useQueryPagamentosGerentePendente";
+import GerenteComissaoSearch from "@/components/Search/GerenteComissaoSearch";
 
 // Duas direções distintas de comissão, sempre visíveis juntas nessa tela:
 // o que a Matriz RECEBE (comissão da plataforma, Cobranca tipo=comissao,
@@ -44,11 +45,11 @@ const Comissoes = () => {
                 />
                 : null}
             <div className="containerHeader">Comissões</div>
+            <ContasSearch onGerarPdf={() => exportContasPdf(data?.data ?? [], "Comissões")} />
             <div className="containerHeader">Mês corrente (ainda não fechado)</div>
             <div className="containerList">
-                <ComissaoPendenteTable data={comissaoPendente?.data ?? []} colunaNome="Associado/Agência" />
+                <ComissaoPendenteTable data={comissaoPendente?.data ?? []} colunaNome="Associado/Agência" namespace="table" />
             </div>
-            <ContasSearch onGerarPdf={() => exportContasPdf(data?.data ?? [], "Comissões")} />
             <div className="containerList">
                 <ContasTable
                     columns={columns}
@@ -59,9 +60,10 @@ const Comissoes = () => {
                 />
             </div>
             <div className="containerHeader">A Pagar Gerentes</div>
+            <GerenteComissaoSearch />
             <div className="containerHeader">Mês corrente (ainda não fechado)</div>
             <div className="containerList">
-                <ComissaoPendenteTable data={pagamentosGerentePendente?.data ?? []} colunaNome="Gerente" />
+                <ComissaoPendenteTable data={pagamentosGerentePendente?.data ?? []} colunaNome="Gerente" namespace="gerente" />
             </div>
             <div className="containerList">
                 <PagamentoGerenteTable
