@@ -892,3 +892,12 @@ Achado do usuário (screenshot de produção): as duas tabelas de "Comissões" a
 - `ComissaoPendenteTable.jsx` (novo componente, reaproveitado nas duas seções) — lista nome + valor acumulado + "Provisório — fecha em [próximo dia 1]", sem número de conta/vencimento real (não existem ainda) e sem botão de dar baixa.
 
 **Validado:** `npx tsc --noEmit` e `npm test` (36/36) limpos; `npx eslint`/`npm run build` (front) sem erro; contra API/Postgres reais em Docker — confirmado vazio antes de qualquer transação; criada 1 transação (R$70 de comissão pra cada empresa, R$3,50 pro gerente): prévia mostrou os valores exatos em tempo real; rodado o job de consolidação manualmente; confirmado que a prévia esvaziou (os dados "migraram" pra fatura de verdade). Dados de teste removidos ao final.
+
+## [RESOLVIDO 2026-09-25] Prévia "mês corrente" não respeitava o filtro da tela
+Seguimento do item anterior: o usuário apontou que a nova seção "Mês corrente (ainda não fechado)" não respeitava o filtro de Pesquisar/Associado já existente na tela — a lista só tende a crescer mês a mês, então sem filtro fica difícil de usar.
+
+**O que mudou:**
+- `previaComissaoPlataformaPendente()` (`cobranca.service.ts`) passou a devolver `associadoId`/`agenciaId` de cada linha (antes só tinha `nome`) — necessário pra bater com o valor selecionado no dropdown "Associado".
+- `ComissaoPendenteTable.jsx` passou a ler o mesmo store global (`filters.table`, valtio) que `ContasSearch` já escreve, e filtra a lista manualmente (não é uma tabela react-table própria): "Pesquisar" bate contra o nome, "Associado" bate contra `associadoId`/`agenciaId` (só se aplica à prévia de comissão da plataforma — a de gerente não tem esse conceito). "Vencimento" não se aplica a nenhuma das duas (ainda não existe data de vencimento real).
+
+**Validado:** `npx tsc --noEmit` e `npm test` (36/36) limpos; `npx eslint`/`npm run build` (front) sem erro; contra API real em Docker — confirmado que `GET /cobrancas/comissao-pendente` retorna `associadoId`/`agenciaId` corretos por linha, prontos pro filtro do front casar. Dados de teste removidos ao final.

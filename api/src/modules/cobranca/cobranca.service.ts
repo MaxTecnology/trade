@@ -424,6 +424,8 @@ export async function previaComissaoPlataformaPendente() {
     select: {
       id: true,
       numero: true,
+      associadoId: true,
+      agenciaId: true,
       associado: { select: { nome: true } },
       agencia: { select: { nome: true } },
     },
@@ -436,6 +438,10 @@ export async function previaComissaoPlataformaPendente() {
       return {
         contaId,
         contaNumero: conta?.numero ?? null,
+        // associadoId/agenciaId aqui alimentam o filtro "Associado" da tela
+        // (mesmo padrão de constantsContas.js::associado-filtro).
+        associadoId: conta?.associadoId ?? null,
+        agenciaId: conta?.agenciaId ?? null,
         nome: conta?.associado?.nome ?? conta?.agencia?.nome ?? '-',
         valorBRL: linhasDaConta.reduce((soma, l) => soma + Number(l.comissaoBRL), 0),
       }
