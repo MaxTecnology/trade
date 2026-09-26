@@ -4,7 +4,7 @@ import { prisma } from '../../config/prisma.js'
 import { env } from '../../config/env.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
 import { gerarNumeroConta } from '../../shared/utils/conta.js'
-import { inicioMesBrasilia } from '../../shared/utils/limites.js'
+import { hojeBrasilia, diaDoMesBateComVencimento } from '../../shared/utils/data.js'
 import type { CreateManagerInput, UpdateManagerInput } from './manager.schema.js'
 
 const managerSelect = {
@@ -259,33 +259,82 @@ async function registrarComissaoGerenteDeLinha(comissao: {
 }
 
 /**
- * Consolida a comissão de gerente (ComissaoGerente.comissaoBRL) do mês anterior
- * numa única PagamentoGerente por gerente — mesmo padrão de
- * gerarCobrancasComissaoMensal (cobranca.service.ts), rodando no mesmo job
- * mensal (commission.consolidate, ver queues/bullmq.ts). "Dar baixa" aqui é só
- * uma flag (pago sempre por fora do sistema, PIX/dinheiro) — nunca move saldo
- * de conta, diferente de quitarCobranca.
+ * Consolida a comissão de gerente (ComissaoGerente.comissaoBRL) ainda solta
+ * numa PagamentoGerente por gerente — roda todo dia (commission.consolidate,
+ * ver queues/bullmq.ts), junto com o fechamento da comissão da plataforma.
+ *
+ * Elegibilidade por linha (decisão de produto de 2026-09-26 — "gerente só
+ * recebe depois que o associado paga"):
+ * - `tipoComissao: 'inscricao'` — sempre elegível assim que existe: a
+ *   Cobranca de inscrição em RT já nasce `pago: true` (ver associate.service.ts),
+ *   não tem ciclo de vencimento pra esperar.
+ * - `tipoComissao: 'transacao'` — só elegível quando os DOIS critérios batem:
+ *   (a) já se passaram exatamente 2 dias do `diaVencimentoFatura` do
+ *   associado que gerou essa comissão (`Empresa X fecha dia 20` → gerente
+ *   fecha dia 22), e (b) a `Cobranca` de comissão da plataforma
+ *   correspondente já foi paga pelo associado. Sem (b), a linha continua
+ *   solta e é reconsiderada no próximo dia+2 (mês seguinte) — nunca paga
+ *   gerente em cima de comissão que o cliente ainda não pagou.
+ *
+ * "Dar baixa" (`quitarPagamentoGerente`) é só uma flag — pago sempre por
+ * fora do sistema (PIX/dinheiro), nunca move saldo de conta.
  */
-export async function gerarPagamentosGerenteMensal(referencia: Date = new Date()) {
-  const inicioMesAtual = inicioMesBrasilia(referencia)
-  const inicioMesAnterior = inicioMesBrasilia(new Date(inicioMesAtual.getTime() - 1))
-
+export async function gerarPagamentosGerenteDoDia(referencia: Date = new Date()) {
   const linhas = await prisma.comissaoGerente.findMany({
-    where: {
-      status: 'ativa',
-      pagamentoGerenteId: null,
-      criadoEm: { gte: inicioMesAnterior, lt: inicioMesAtual },
-    },
+    where: { status: 'ativa', pagamentoGerenteId: null },
+    include: { associado: { select: { diaVencimentoFatura: true } } },
   })
-  if (linhas.length === 0) return { criadas: 0, competencia: inicioMesAnterior }
+  if (linhas.length === 0) return { criadas: 0 }
 
-  const porGerente = new Map<string, typeof linhas>()
-  for (const linha of linhas) {
+  const doisDiasAtras = new Date(referencia.getTime() - 2 * 24 * 60 * 60 * 1000)
+
+  let elegiveis = linhas.filter((l) => l.tipoComissao === 'inscricao')
+
+  const candidatasTransacao = linhas.filter((l) => {
+    if (l.tipoComissao !== 'transacao') return false
+    const dia = l.associado.diaVencimentoFatura ?? 10
+    return diaDoMesBateComVencimento(dia, doisDiasAtras)
+  })
+
+  if (candidatasTransacao.length > 0) {
+    // Acha a Cobranca de comissão da plataforma correspondente a cada linha
+    // (mesma transacaoId + associadoId) e verifica se já foi paga.
+    const transacaoIds = candidatasTransacao.map((l) => l.transacaoId).filter((id): id is string => !!id)
+    const comissoesPlataforma = await prisma.comissaoPlataforma.findMany({
+      where: {
+        transacaoId: { in: transacaoIds },
+        associadoId: { in: candidatasTransacao.map((l) => l.associadoId) },
+      },
+      select: { transacaoId: true, associadoId: true, cobrancaId: true },
+    })
+    const cobrancaIdPorChave = new Map(
+      comissoesPlataforma.map((c) => [`${c.transacaoId}:${c.associadoId}`, c.cobrancaId]),
+    )
+    const cobrancaIds = [...new Set([...cobrancaIdPorChave.values()].filter((id): id is string => !!id))]
+    const cobrancasPagas = await prisma.cobranca.findMany({
+      where: { id: { in: cobrancaIds }, pago: true },
+      select: { id: true },
+    })
+    const pagasSet = new Set(cobrancasPagas.map((c) => c.id))
+
+    elegiveis = elegiveis.concat(
+      candidatasTransacao.filter((l) => {
+        const cobrancaId = cobrancaIdPorChave.get(`${l.transacaoId}:${l.associadoId}`)
+        return !!cobrancaId && pagasSet.has(cobrancaId)
+      }),
+    )
+  }
+
+  if (elegiveis.length === 0) return { criadas: 0 }
+
+  const porGerente = new Map<string, typeof elegiveis>()
+  for (const linha of elegiveis) {
     const lista = porGerente.get(linha.gerenteId) ?? []
     lista.push(linha)
     porGerente.set(linha.gerenteId, lista)
   }
 
+  const hoje = hojeBrasilia(referencia)
   let criadas = 0
   for (const [gerenteId, linhasDoGerente] of porGerente) {
     const valor = linhasDoGerente.reduce((soma, l) => soma + Number(l.comissaoBRL), 0)
@@ -293,7 +342,7 @@ export async function gerarPagamentosGerenteMensal(referencia: Date = new Date()
 
     try {
       const pagamento = await prisma.pagamentoGerente.create({
-        data: { gerenteId, competencia: inicioMesAnterior, valorBRL: valor },
+        data: { gerenteId, competencia: hoje, valorBRL: valor },
       })
       await prisma.comissaoGerente.updateMany({
         where: { id: { in: linhasDoGerente.map((l) => l.id) } },
@@ -306,7 +355,7 @@ export async function gerarPagamentosGerenteMensal(referencia: Date = new Date()
     }
   }
 
-  return { criadas, competencia: inicioMesAnterior }
+  return { criadas }
 }
 
 export async function listarPagamentosGerente(
@@ -358,9 +407,12 @@ export async function listarComissoesDoPagamento(pagamentoGerenteId: string) {
 }
 
 /**
- * Prévia do pagamento de gerente ainda NÃO consolidado (`status: 'ativa'`,
- * `pagamentoGerenteId: null`) — mesma lógica de `gerarPagamentosGerenteMensal`,
- * sem criar o `PagamentoGerente` de verdade. Ver comentário equivalente em
+ * Prévia de TUDO que ainda não foi consolidado num PagamentoGerente
+ * (`status: 'ativa'`, `pagamentoGerenteId: null`) — inclui linhas que ainda
+ * não são elegíveis pra fechar (associado não chegou nos +2 dias do
+ * vencimento, ou a Cobranca dele ainda não foi paga — ver critério completo
+ * em `gerarPagamentosGerenteDoDia`), de propósito: é "quanto ainda falta
+ * receber", não "quanto fecha hoje". Ver comentário equivalente em
  * cobranca.service.ts::previaComissaoPlataformaPendente (decisão de produto
  * de 2026-09-25).
  */

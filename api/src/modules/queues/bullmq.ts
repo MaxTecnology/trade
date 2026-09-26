@@ -1,8 +1,8 @@
 import { Queue, Worker, QueueEvents } from 'bullmq'
 import { getRedis } from '../../config/redis.js'
 import { prisma } from '../../config/prisma.js'
-import { gerarCobrancasComissaoMensal } from '../cobranca/cobranca.service.js'
-import { registrarComissoesGerenteDaTransacao, gerarPagamentosGerenteMensal } from '../manager/manager.service.js'
+import { gerarCobrancasComissaoDoDia } from '../cobranca/cobranca.service.js'
+import { registrarComissoesGerenteDaTransacao, gerarPagamentosGerenteDoDia } from '../manager/manager.service.js'
 
 function conn() {
   return { connection: getRedis() }
@@ -38,18 +38,30 @@ export const queues = {
   offerClose: new Queue('offer.close', { ...conn(), defaultJobOptions }),
 }
 
-// Job repetitivo (cron nativo do BullMQ) — todo dia 1 às 03h, horário de
-// Brasília, consolida a comissão da plataforma do mês que acabou de fechar
-// numa Cobranca por conta (ver gerarCobrancasComissaoMensal). jobId fixo faz
-// o BullMQ deduplicar — chamar isso de novo em todo boot do servidor não
-// cria agendamentos duplicados.
+// Job repetitivo (cron nativo do BullMQ) — TODO DIA às 03h, horário de
+// Brasília, fecha comissão da plataforma + comissão de gerente por conta
+// (cada conta fecha no seu próprio diaVencimentoFatura, não mais um dia 1
+// fixo pra todo mundo — decisão de produto 2026-09-26; ver
+// gerarCobrancasComissaoDoDia/gerarPagamentosGerenteDoDia). jobId fixo faz o
+// BullMQ deduplicar — chamar isso de novo em todo boot do servidor não cria
+// agendamentos duplicados.
 export async function scheduleRecurringJobs() {
+  // Remove o agendamento mensal antigo (jobId mudou de -monthly pra -daily,
+  // então o BullMQ não substitui sozinho — sem isso o job de dia 1 continua
+  // rodando em paralelo com o novo diário).
+  const repetiveis = await queues.commissionConsolidate.getRepeatableJobs()
+  for (const job of repetiveis) {
+    if (job.id === 'commission-consolidate-monthly') {
+      await queues.commissionConsolidate.removeRepeatableByKey(job.key)
+    }
+  }
+
   await queues.commissionConsolidate.add(
-    'consolidate-monthly',
+    'consolidate-daily',
     {},
     {
-      repeat: { pattern: '0 3 1 * *', tz: 'America/Sao_Paulo' },
-      jobId: 'commission-consolidate-monthly',
+      repeat: { pattern: '0 3 * * *', tz: 'America/Sao_Paulo' },
+      jobId: 'commission-consolidate-daily',
     },
   )
 }
@@ -89,20 +101,20 @@ export function startWorkers() {
     conn(),
   )
 
-  // Consolida o mês que acabou de fechar em duas frentes: comissão da
-  // plataforma (Cobranca por conta compradora) e comissão de gerente
-  // (PagamentoGerente por gerente) — mesmo mês de referência pras duas, então
-  // roda junto no mesmo job. Disparado pelo cron agendado em
-  // scheduleRecurringJobs(); aceita `referencia` opcional pra reprocessar um
-  // mês específico manualmente (enfileirando o job com esse dado), senão usa
-  // a data atual.
+  // Roda todo dia, em duas frentes: fecha a comissão da plataforma de cada
+  // conta cujo diaVencimentoFatura bate com hoje (Cobranca por conta) e
+  // consolida a comissão de gerente elegível (associado pagou + 2 dias do
+  // vencimento dele — ver gerarPagamentosGerenteDoDia). Disparado pelo cron
+  // agendado em scheduleRecurringJobs(); aceita `referencia` opcional pra
+  // reprocessar um dia específico manualmente (enfileirando o job com esse
+  // dado), senão usa a data atual.
   new Worker(
     'commission.consolidate',
     async (job) => {
       const { referencia } = (job.data ?? {}) as { referencia?: string }
       const data = referencia ? new Date(referencia) : new Date()
-      await gerarCobrancasComissaoMensal(data)
-      await gerarPagamentosGerenteMensal(data)
+      await gerarCobrancasComissaoDoDia(data)
+      await gerarPagamentosGerenteDoDia(data)
     },
     conn(),
   )

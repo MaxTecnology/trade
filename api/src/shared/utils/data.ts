@@ -17,6 +17,17 @@ function meiaNoiteBrasilia(ano: number, mes: number, dia: number): Date {
   return new Date(Date.UTC(ano, mes, dia, -OFFSET_BRASILIA_HORAS, 0, 0, 0))
 }
 
+/**
+ * Meia-noite de Brasília do dia de `referencia` (hoje, por padrão), como
+ * instante UTC — usado como `competencia` da Cobranca/PagamentoGerente no
+ * fechamento diário (representa a DATA do fechamento, não mais "o mês",
+ * já que cada conta fecha no seu próprio dia — decisão de produto 2026-09-26).
+ */
+export function hojeBrasilia(referencia: Date = new Date()): Date {
+  const brasilia = new Date(referencia.getTime() + OFFSET_BRASILIA_HORAS * 60 * 60 * 1000)
+  return meiaNoiteBrasilia(brasilia.getUTCFullYear(), brasilia.getUTCMonth(), brasilia.getUTCDate())
+}
+
 // Calcula a próxima data de vencimento a partir de um dia fixo do mês
 // (ex: diaVencimentoFatura do associado). Se o dia já passou neste mês, usa o mês seguinte.
 export function calcularVencimento(dia: number): Date {
@@ -36,6 +47,24 @@ export function calcularVencimento(dia: number): Date {
 function diaClamped(ano: number, mes: number, dia: number): Date {
   const ultimoDiaDoMes = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate()
   return meiaNoiteBrasilia(ano, mes, Math.min(dia, ultimoDiaDoMes))
+}
+
+/**
+ * Diz se `referencia` cai no dia de vencimento escolhido (`dia`), já
+ * considerando o fuso de Brasília e o "grudar" no último dia do mês quando
+ * `dia` não existe nele (ex: dia 30 num fevereiro de 28 dias -> bate no 28).
+ * Base do fechamento diário de comissão — cada conta fecha no PRÓPRIO dia
+ * escolhido no cadastro, não mais um dia 1 fixo pra todo mundo (decisão de
+ * produto de 2026-09-26). Chamado uma vez por conta a cada execução diária
+ * do job (`commission.consolidate`), não uma vez por mês.
+ */
+export function diaDoMesBateComVencimento(dia: number, referencia: Date): boolean {
+  const brasilia = new Date(referencia.getTime() + OFFSET_BRASILIA_HORAS * 60 * 60 * 1000)
+  const ano = brasilia.getUTCFullYear()
+  const mes = brasilia.getUTCMonth()
+  const ultimoDiaDoMes = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate()
+  const diaEsperado = Math.min(dia, ultimoDiaDoMes)
+  return brasilia.getUTCDate() === diaEsperado
 }
 
 /**

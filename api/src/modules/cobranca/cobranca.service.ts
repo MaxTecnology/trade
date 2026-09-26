@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { AppError, Errors } from '../../shared/errors/AppError.js'
-import { getLimiteCreditoDaConta, saldoSuficienteParaDebito, inicioMesBrasilia } from '../../shared/utils/limites.js'
-import { proximoVencimentoManutencao, calcularVencimento } from '../../shared/utils/data.js'
+import { getLimiteCreditoDaConta, saldoSuficienteParaDebito } from '../../shared/utils/limites.js'
+import { proximoVencimentoManutencao, calcularVencimento, hojeBrasilia, diaDoMesBateComVencimento } from '../../shared/utils/data.js'
 import type { CriarCobrancaInput, ListCobrancaQueryType } from './cobranca.schema.js'
 
 interface EntidadeComPlano {
@@ -113,33 +113,33 @@ const include = {
 
 /**
  * Consolida a comissão da plataforma (ComissaoPlataforma, decisão de produto
- * de 2026-09-18 — substitui o antigo campo único Transacao.comissaoBRL) do
- * mês anterior numa única Cobranca por conta pagadora — uma transação pode
- * gerar linhas de dois lados (comprador e/ou vendedor), cada `contaId`
- * consolidado separadamente. Roda via job mensal (commission.consolidate,
- * ver queues/bullmq.ts), sempre olhando pro mês que acabou de fechar.
+ * de 2026-09-18 — substitui o antigo campo único Transacao.comissaoBRL) numa
+ * Cobranca por conta pagadora — uma transação pode gerar linhas de dois
+ * lados (comprador e/ou vendedor), cada `contaId` consolidado separadamente.
+ *
+ * Fechamento é DIÁRIO E POR CONTA (decisão de produto de 2026-09-26) — cada
+ * associado/agência fecha no PRÓPRIO `diaVencimentoFatura` escolhido no
+ * cadastro (10, 20, 30...), não mais um dia 1 fixo pra todo mundo. O job
+ * roda todo dia (commission.consolidate, ver queues/bullmq.ts) e, pra cada
+ * conta com comissão solta, só fecha se hoje bater com o dia dela
+ * (`diaDoMesBateComVencimento`, já com o ajuste de fim de mês curto). Como
+ * cada conta só fecha uma vez por ciclo, a soma é sempre "tudo que ainda não
+ * foi faturado dessa conta" — sem precisar de um intervalo de datas.
  *
  * Só pega linhas `status: 'ativa'` e ainda soltas (`cobrancaId: null`) — uma
  * vez consolidada, a linha ganha `cobrancaId` e a transação de origem não
  * pode mais ser estornada (ver transaction.service.ts::estorno).
  *
  * Idempotente: o índice único parcial (contaId, competencia) WHERE tipo =
- * 'comissao' garante que rodar duas vezes pro mesmo mês não duplica cobrança
+ * 'comissao' garante que rodar duas vezes no mesmo dia não duplica cobrança
  * — a segunda tentativa de create cai no catch do P2002 e é ignorada (nesse
- * caso as linhas ficam soltas, reprocessadas no próximo run bem-sucedido).
+ * caso as linhas ficam soltas, reprocessadas no próximo fechamento dessa conta).
  */
-export async function gerarCobrancasComissaoMensal(referencia: Date = new Date()) {
-  const inicioMesAtual = inicioMesBrasilia(referencia)
-  const inicioMesAnterior = inicioMesBrasilia(new Date(inicioMesAtual.getTime() - 1))
-
+export async function gerarCobrancasComissaoDoDia(referencia: Date = new Date()) {
   const linhas = await prisma.comissaoPlataforma.findMany({
-    where: {
-      status: 'ativa',
-      cobrancaId: null,
-      criadoEm: { gte: inicioMesAnterior, lt: inicioMesAtual },
-    },
+    where: { status: 'ativa', cobrancaId: null },
   })
-  if (linhas.length === 0) return { criadas: 0, competencia: inicioMesAnterior }
+  if (linhas.length === 0) return { criadas: 0 }
 
   const porConta = new Map<string, typeof linhas>()
   for (const linha of linhas) {
@@ -157,11 +157,15 @@ export async function gerarCobrancasComissaoMensal(referencia: Date = new Date()
     },
   })
   const contaPorId = new Map(contas.map((c) => [c.id, c]))
+  const hoje = hojeBrasilia(referencia)
 
   let criadas = 0
   for (const [contaId, linhasDaConta] of porConta) {
     const conta = contaPorId.get(contaId)
     if (!conta) continue
+
+    const diaVencimentoFatura = conta.associado?.diaVencimentoFatura ?? conta.agencia?.diaVencimentoFatura ?? 10
+    if (!diaDoMesBateComVencimento(diaVencimentoFatura, referencia)) continue
 
     const valor = linhasDaConta.reduce((soma, l) => soma + Number(l.comissaoBRL), 0)
     if (valor <= 0) continue
@@ -171,17 +175,15 @@ export async function gerarCobrancasComissaoMensal(referencia: Date = new Date()
     // ComissaoPlataforma (calcularComissaoPlataformaDoLado), não precisa
     // re-derivar aqui.
     const { associadoId, agenciaId } = linhasDaConta[0]
-
-    const diaVencimentoFatura = conta.associado?.diaVencimentoFatura ?? conta.agencia?.diaVencimentoFatura ?? 10
-    const mesReferencia = inicioMesAnterior.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    const dataFechamento = hoje.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 
     try {
       const cobranca = await prisma.cobranca.create({
         data: {
-          descricao: `Comissão da plataforma — ${mesReferencia}`,
+          descricao: `Comissão da plataforma — fechamento ${dataFechamento}`,
           valorBRL: valor,
           vencimento: calcularVencimento(diaVencimentoFatura),
-          competencia: inicioMesAnterior,
+          competencia: hoje,
           contaId,
           associadoId,
           agenciaId,
@@ -201,7 +203,7 @@ export async function gerarCobrancasComissaoMensal(referencia: Date = new Date()
     }
   }
 
-  return { criadas, competencia: inicioMesAnterior }
+  return { criadas }
 }
 
 export async function criarCobranca(input: CriarCobrancaInput) {
@@ -401,10 +403,10 @@ export async function listarComissoesDaFatura(cobrancaId: string) {
 /**
  * Prévia da comissão da plataforma ainda NÃO consolidada (`status: 'ativa'`,
  * `cobrancaId: null`) — mesma lógica de agrupamento de
- * `gerarCobrancasComissaoMensal`, só que sem criar a `Cobranca` de verdade.
- * Alimenta a seção "ainda não fechada" da tela Comissões, resolvendo a tela
- * vazia entre o dia 1 (quando o mês anterior fecha) e o fim do mês corrente
- * (decisão de produto de 2026-09-25).
+ * `gerarCobrancasComissaoDoDia`, só que sem criar a `Cobranca` de verdade.
+ * Alimenta a seção "ainda não fechada" da tela Comissões: com o fechamento
+ * agora diário e por conta (decisão de produto de 2026-09-26), essa prévia
+ * mostra o que ainda não bateu o dia de vencimento daquela conta específica.
  */
 export async function previaComissaoPlataformaPendente() {
   const linhas = await prisma.comissaoPlataforma.findMany({
