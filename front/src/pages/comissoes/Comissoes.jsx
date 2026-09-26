@@ -10,14 +10,23 @@ import ContasModal from "@/Modals/ContasModal";
 import { exportContasPdf } from "@/utils/functions/exportContasPdf";
 import PagamentoGerenteTable from "@/components/Tables/PagamentoGerenteTable";
 import { useQueryPagarGerentes } from "@/hooks/ReactQuery/dashboard/useQueryPagarGerentes";
+import ComissaoPendenteTable from "@/components/Tables/ComissaoPendenteTable";
+import { useQueryComissaoPendente } from "@/hooks/ReactQuery/contas/useQueryComissaoPendente";
+import { useQueryPagamentosGerentePendente } from "@/hooks/ReactQuery/contas/useQueryPagamentosGerentePendente";
 
 // Duas direções distintas de comissão, sempre visíveis juntas nessa tela:
 // o que a Matriz RECEBE (comissão da plataforma, Cobranca tipo=comissao,
 // consolidada mensalmente pelo job commission.consolidate) e o que ela PAGA
 // (comissão de gerente, PagamentoGerente, mesmo job) — ver docs/tech-debt.md.
+// Cada uma ganha uma seção "ainda não fechada" ACIMA da tabela de faturas
+// reais, lendo direto de ComissaoPlataforma/ComissaoGerente ainda soltas —
+// sem isso a tela fica vazia o mês inteiro até o job rodar no dia 1
+// (decisão de produto 2026-09-25).
 const Comissoes = () => {
     const { data, refetch } = useQueryComissoes();
     const { data: pagamentosGerente, refetch: refetchGerentes } = useQueryPagarGerentes();
+    const { data: comissaoPendente } = useQueryComissaoPendente();
+    const { data: pagamentosGerentePendente } = useQueryPagamentosGerentePendente();
     const [modalIsOpen, modalToggle] = useModal(false);
     const [info, setInfo] = useState()
 
@@ -35,6 +44,10 @@ const Comissoes = () => {
                 />
                 : null}
             <div className="containerHeader">Comissões</div>
+            <div className="containerHeader">Mês corrente (ainda não fechado)</div>
+            <div className="containerList">
+                <ComissaoPendenteTable data={comissaoPendente?.data ?? []} colunaNome="Associado/Agência" />
+            </div>
             <ContasSearch onGerarPdf={() => exportContasPdf(data?.data ?? [], "Comissões")} />
             <div className="containerList">
                 <ContasTable
@@ -46,6 +59,10 @@ const Comissoes = () => {
                 />
             </div>
             <div className="containerHeader">A Pagar Gerentes</div>
+            <div className="containerHeader">Mês corrente (ainda não fechado)</div>
+            <div className="containerList">
+                <ComissaoPendenteTable data={pagamentosGerentePendente?.data ?? []} colunaNome="Gerente" />
+            </div>
             <div className="containerList">
                 <PagamentoGerenteTable
                     data={pagamentosGerente?.data ?? []}

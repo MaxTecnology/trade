@@ -10,6 +10,7 @@ import {
   manutencaoAnualController,
   comissaoAcumuladaController,
   comissoesDaFaturaController,
+  comissaoPendenteController,
 } from './cobranca.controller.js'
 
 export async function cobrancaRoutes(app: FastifyInstance) {
@@ -19,6 +20,7 @@ export async function cobrancaRoutes(app: FastifyInstance) {
 
   app.post('/cobrancas', superadmin, criarController)
   app.get('/cobrancas', superadmin, todasController)
+  app.get('/cobrancas/comissao-pendente', superadmin, comissaoPendenteController)
   app.get('/cobrancas/minhas', auth, minhasController)
   // Estático antes de "/cobrancas/:id/..." — senão "minha-comissao-acumulada"
   // seria capturado como :id.

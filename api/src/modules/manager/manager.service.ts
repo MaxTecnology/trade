@@ -356,3 +356,42 @@ export async function listarComissoesDoPagamento(pagamentoGerenteId: string) {
     },
   })
 }
+
+/**
+ * Prévia do pagamento de gerente ainda NÃO consolidado (`status: 'ativa'`,
+ * `pagamentoGerenteId: null`) — mesma lógica de `gerarPagamentosGerenteMensal`,
+ * sem criar o `PagamentoGerente` de verdade. Ver comentário equivalente em
+ * cobranca.service.ts::previaComissaoPlataformaPendente (decisão de produto
+ * de 2026-09-25).
+ */
+export async function previaPagamentosGerentePendente(requester: { role: string; entityId: string }) {
+  const where =
+    requester.role === 'agency_admin' ? { gerente: { agenciaId: requester.entityId } } : {}
+
+  const linhas = await prisma.comissaoGerente.findMany({
+    where: { status: 'ativa', pagamentoGerenteId: null, gerente: where.gerente },
+    select: { gerenteId: true, comissaoBRL: true },
+  })
+  if (linhas.length === 0) return []
+
+  const porGerente = new Map<string, typeof linhas>()
+  for (const linha of linhas) {
+    const lista = porGerente.get(linha.gerenteId) ?? []
+    lista.push(linha)
+    porGerente.set(linha.gerenteId, lista)
+  }
+
+  const gerentes = await prisma.usuario.findMany({
+    where: { id: { in: [...porGerente.keys()] } },
+    select: { id: true, nome: true },
+  })
+  const gerentePorId = new Map(gerentes.map((g) => [g.id, g]))
+
+  return [...porGerente.entries()]
+    .map(([gerenteId, linhasDoGerente]) => ({
+      gerenteId,
+      nome: gerentePorId.get(gerenteId)?.nome ?? '-',
+      valorBRL: linhasDoGerente.reduce((soma, l) => soma + Number(l.comissaoBRL), 0),
+    }))
+    .sort((a, b) => b.valorBRL - a.valorBRL)
+}

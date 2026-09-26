@@ -882,3 +882,13 @@ Pedido do usuário: verificar se comprador/vendedor/detalhes vêm certos. Confir
 - `compradorLabel`/`vendedorLabel` (`utils/functions/tables/compradorVendedor.js`) já tratam Associado, Agência e Matriz corretamente nos dois lados de qualquer transação.
 - `iniciadoPorLabel` já mostra o código do operador que efetivamente clicou.
 - Cobranças (Contas a Pagar/Receber, inscrição, manutenção) não foram afetadas por nenhuma mudança recente de comissão — continuam corretas.
+
+## [RESOLVIDO 2026-09-25] Tela "Comissões" vazia até o dia 1 — prévia em tempo real do mês corrente
+Achado do usuário (screenshot de produção): as duas tabelas de "Comissões" apareciam vazias. Causa raiz: **não era bug** — a tela só mostra faturas já consolidadas (`Cobranca`/`PagamentoGerente`), e a consolidação só acontece uma vez por mês (dia 1, 03h Brasília). Como o recurso tinha acabado de ir pro ar, a tela ficaria vazia até o próximo fechamento — mas o usuário apontou, corretamente, que o dado já existe no banco desde o momento da transação (`ComissaoPlataforma`/`ComissaoGerente`), só não tinha virado fatura ainda.
+
+**O que mudou:** cada tabela ganhou uma seção "Mês corrente (ainda não fechado)" ACIMA da tabela de faturas reais:
+- `previaComissaoPlataformaPendente()` (`cobranca.service.ts`) e `previaPagamentosGerentePendente()` (`manager.service.ts`) — mesma lógica de agrupamento que `gerarCobrancasComissaoMensal`/`gerarPagamentosGerenteMensal` já usam pra fechar o mês, só que somando `ComissaoPlataforma`/`ComissaoGerente` ainda soltas (`status: ativa`, sem `cobrancaId`/`pagamentoGerenteId`) sem criar nada — uma prévia read-only.
+- Novos endpoints `GET /cobrancas/comissao-pendente` (superadmin) e `GET /gerentes/pagamentos-pendentes` (superadmin + agency_admin, mesma restrição por agência de `/gerentes/pagamentos`).
+- `ComissaoPendenteTable.jsx` (novo componente, reaproveitado nas duas seções) — lista nome + valor acumulado + "Provisório — fecha em [próximo dia 1]", sem número de conta/vencimento real (não existem ainda) e sem botão de dar baixa.
+
+**Validado:** `npx tsc --noEmit` e `npm test` (36/36) limpos; `npx eslint`/`npm run build` (front) sem erro; contra API/Postgres reais em Docker — confirmado vazio antes de qualquer transação; criada 1 transação (R$70 de comissão pra cada empresa, R$3,50 pro gerente): prévia mostrou os valores exatos em tempo real; rodado o job de consolidação manualmente; confirmado que a prévia esvaziou (os dados "migraram" pra fatura de verdade). Dados de teste removidos ao final.

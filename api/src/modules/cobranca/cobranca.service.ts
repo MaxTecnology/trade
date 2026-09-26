@@ -397,3 +397,48 @@ export async function listarComissoesDaFatura(cobrancaId: string) {
     include: includeComissaoDetalhe,
   })
 }
+
+/**
+ * Prévia da comissão da plataforma ainda NÃO consolidada (`status: 'ativa'`,
+ * `cobrancaId: null`) — mesma lógica de agrupamento de
+ * `gerarCobrancasComissaoMensal`, só que sem criar a `Cobranca` de verdade.
+ * Alimenta a seção "ainda não fechada" da tela Comissões, resolvendo a tela
+ * vazia entre o dia 1 (quando o mês anterior fecha) e o fim do mês corrente
+ * (decisão de produto de 2026-09-25).
+ */
+export async function previaComissaoPlataformaPendente() {
+  const linhas = await prisma.comissaoPlataforma.findMany({
+    where: { status: 'ativa', cobrancaId: null },
+  })
+  if (linhas.length === 0) return []
+
+  const porConta = new Map<string, typeof linhas>()
+  for (const linha of linhas) {
+    const lista = porConta.get(linha.contaId) ?? []
+    lista.push(linha)
+    porConta.set(linha.contaId, lista)
+  }
+
+  const contas = await prisma.conta.findMany({
+    where: { id: { in: [...porConta.keys()] } },
+    select: {
+      id: true,
+      numero: true,
+      associado: { select: { nome: true } },
+      agencia: { select: { nome: true } },
+    },
+  })
+  const contaPorId = new Map(contas.map((c) => [c.id, c]))
+
+  return [...porConta.entries()]
+    .map(([contaId, linhasDaConta]) => {
+      const conta = contaPorId.get(contaId)
+      return {
+        contaId,
+        contaNumero: conta?.numero ?? null,
+        nome: conta?.associado?.nome ?? conta?.agencia?.nome ?? '-',
+        valorBRL: linhasDaConta.reduce((soma, l) => soma + Number(l.comissaoBRL), 0),
+      }
+    })
+    .sort((a, b) => b.valorBRL - a.valorBRL)
+}

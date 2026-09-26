@@ -87,3 +87,8 @@ export async function comissoesDoPagamentoController(request: FastifyRequest, re
   const data = await managerService.listarComissoesDoPagamento(id)
   return reply.send(success(data))
 }
+
+export async function pagamentosPendentesController(request: FastifyRequest, reply: FastifyReply) {
+  const data = await managerService.previaPagamentosGerentePendente(request.user)
+  return reply.send(success(data))
+}

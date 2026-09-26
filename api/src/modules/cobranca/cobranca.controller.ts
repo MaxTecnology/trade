@@ -10,6 +10,7 @@ import {
   relatorioManutencaoAnual,
   comissaoAcumuladaDaConta,
   listarComissoesDaFatura,
+  previaComissaoPlataformaPendente,
 } from './cobranca.service.js'
 import { success, paginated } from '../../shared/utils/response.js'
 import { Errors } from '../../shared/errors/AppError.js'
@@ -66,5 +67,10 @@ export async function comissaoAcumuladaController(req: FastifyRequest, reply: Fa
 export async function comissoesDaFaturaController(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string }
   const data = await listarComissoesDaFatura(id)
+  return reply.send(success(data))
+}
+
+export async function comissaoPendenteController(_req: FastifyRequest, reply: FastifyReply) {
+  const data = await previaComissaoPlataformaPendente()
   return reply.send(success(data))
 }
