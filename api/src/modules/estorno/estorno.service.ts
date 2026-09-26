@@ -19,13 +19,25 @@ const include = {
       vendedor: {
         select: { id: true, nome: true, agenciaId: true, agencia: { select: { nome: true } } },
       },
-      contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
+      // associado incluído pra resolver o nome quando comprador/vendedor (FK
+      // direta) ficou null mas a conta em si é de um Associado (achado do
+      // usuário, 2026-09-26).
+      contaOrigem: {
+        select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } },
+      },
       // saldo/limiteCredito aqui são da conta que seria DEBITADA se o estorno
       // for aprovado (transactionService.estorno() sempre debita contaDestino
       // — ver saldoSuficienteParaDebito) — mostrados na tela de Estornos pra
       // Matriz avaliar se há saldo+limite suficiente antes de aprovar.
       contaDestino: {
-        select: { entityType: true, agenciaId: true, saldo: true, limiteCredito: true, agencia: { select: { nome: true } } },
+        select: {
+          entityType: true,
+          agenciaId: true,
+          saldo: true,
+          limiteCredito: true,
+          agencia: { select: { nome: true } },
+          associado: { select: { nome: true } },
+        },
       },
       // Substitui o antigo campo único Transacao.comissaoBRL (removido em
       // 2026-09-18) — alimenta o campo "Comissão" no modal de detalhe.

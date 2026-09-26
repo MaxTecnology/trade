@@ -45,8 +45,12 @@ export async function extrato(contaId: string, filters: ReportFilters) {
             solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
             comprador: { select: { id: true, nome: true, agenciaId: true } },
             vendedor: { select: { id: true, nome: true, agenciaId: true } },
-            contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
-            contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
+            // associado incluído pra resolver o nome quando comprador/vendedor
+            // (FK direta) ficou null mas a conta em si é de um Associado —
+            // caso do estorno de uma transação onde Matriz/Agência foi a
+            // parte SEM FK própria (achado do usuário, 2026-09-26).
+            contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
+            contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
             usuarioIniciador: { select: { nome: true, codigoOperador: true } },
             // Substitui o antigo campo único Transacao.comissaoBRL (removido
             // em 2026-09-18) — alimenta o campo "Comissão" no modal de detalhe.
@@ -226,8 +230,12 @@ export async function relatorioPermutas(
         // caso da própria Agência ser a parte direta (sem Associado no meio).
         comprador: { select: { id: true, nome: true, agenciaId: true } },
         vendedor: { select: { id: true, nome: true, agenciaId: true } },
-        contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
-        contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } } } },
+        // associado incluído pra resolver o nome quando comprador/vendedor
+        // (FK direta) ficou null mas a conta em si é de um Associado — caso
+        // do estorno de uma transação onde Matriz/Agência foi a parte SEM
+        // FK própria (achado do usuário, 2026-09-26).
+        contaOrigem: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
+        contaDestino: { select: { entityType: true, agenciaId: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
         solicitacoesEstorno: { select: { status: true }, orderBy: { criadoEm: 'desc' }, take: 1 },
         usuarioIniciador: { select: { nome: true, codigoOperador: true } },
         // Substitui o antigo campo único Transacao.comissaoBRL (removido em

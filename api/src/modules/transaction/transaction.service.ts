@@ -751,8 +751,15 @@ export async function list(query: ListTransactionQuery, contaId: string) {
         // Agência/Matriz participando direto (via Oferta ou negociação) não
         // preenchem essas FKs, só aparecem aqui pro front resolver o nome
         // (mesmo padrão já usado em report.service.ts/estorno.service.ts).
-        contaOrigem: { select: { entityType: true, agencia: { select: { nome: true } } } },
-        contaDestino: { select: { entityType: true, agencia: { select: { nome: true } } } },
+        // associado incluído pra resolver o nome quando comprador/vendedor
+        // (FK direta) ficou null mas a conta em si é de um Associado — caso
+        // do estorno de uma transação onde Matriz/Agência foi a parte SEM
+        // FK própria: a conta "origem"/"destino" na reversão passa a ser a
+        // do Associado do outro lado, mas o campo comprador/vendedorId
+        // continua null (copiado da original) — sem isso, front mostra "-"
+        // em vez do nome (achado do usuário, 2026-09-26).
+        contaOrigem: { select: { entityType: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
+        contaDestino: { select: { entityType: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
         voucher: true,
         // Última solicitação de estorno, pra UI mostrar "Estorno em análise" etc.
         // mesmo com transacao.status ainda concluida (só vira 'estornada' quando
@@ -772,8 +779,8 @@ export async function getById(id: string, contaId: string) {
     include: {
       comprador: { select: { nome: true } },
       vendedor: { select: { nome: true } },
-      contaOrigem: { select: { entityType: true, agencia: { select: { nome: true } } } },
-      contaDestino: { select: { entityType: true, agencia: { select: { nome: true } } } },
+      contaOrigem: { select: { entityType: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
+      contaDestino: { select: { entityType: true, agencia: { select: { nome: true } }, associado: { select: { nome: true } } } },
       voucher: true,
       movimentacoes: true,
       usuarioIniciador: { select: { nome: true, codigoOperador: true } },
