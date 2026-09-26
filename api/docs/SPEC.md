@@ -505,7 +505,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 - A quantidade da oferta é restaurada de acordo com `Transacao.quantidade` da permuta original (não é sempre +1 — reflete exatamente quantas unidades foram compradas). Não se aplica a `negociada` (sem oferta).
 - Este endpoint executa a reversão **imediatamente**. Para o fluxo de solicitação/aprovação (usado pelas telas de "Solicitar estorno"/"Cancelar voucher"), ver §12.
 
-**Estorno de `credito` (decisão de produto de 2026-09-26):** mesmo endpoint (`POST /transacoes/:id/estorno`), mas com uma reversão assimétrica — `credito` só tem `contaDestinoId` (a Matriz não debita de si mesma, ela emite RT), então o estorno só **debita** de volta a conta que recebeu (destrói o RT, sem creditar nenhuma "conta origem", que não existe de verdade). Restrito a `superadmin` — `agency_admin` recebe `403 FORBIDDEN` tentando estornar um `credito` (mesmo endpoint que ele usa pra permuta/negociada). Continua valendo prazo de 30 dias e checagem de saldo+limite suficiente pra cobrir o débito; fica de fora da checagem de `comissaoJaFaturada` (`credito` nunca gera `ComissaoPlataforma`/`ComissaoGerente`). Não passa pelo fluxo de solicitação/aprovação (§17) — `solicitarEstorno()` rejeita `credito` de propósito, já que só superadmin cria e só superadmin reverte.
+**Estorno de `credito` (decisão de produto de 2026-09-26):** reversão assimétrica em relação à de permuta/negociada — `credito` só tem `contaDestinoId` (a Matriz não debita de si mesma, ela emite RT), então o estorno só **debita** de volta a conta que recebeu (destrói o RT, sem creditar nenhuma "conta origem", que não existe de verdade). Continua valendo prazo de 30 dias e checagem de saldo+limite suficiente pra cobrir o débito; fica de fora da checagem de `comissaoJaFaturada` (`credito` nunca gera `ComissaoPlataforma`/`ComissaoGerente`). Passa pelo MESMO fluxo de solicitação/aprovação usado por permuta/negociada (§17) — `solicitarEstorno()` aceita `credito`, mas só quando o solicitante é `superadmin` (`agency_admin` recebe `403 FORBIDDEN`); a própria Matriz solicita e depois aprova em "Solicitações de Estorno" (não existe atalho de auto-aprovação). Como `credito` nunca tem uma Agência no meio, a solicitação chega em `em_analise` já visível pra Matriz (`GET /estornos/matriz`), sem precisar de `encaminhar`.
 
 ### Payload de Permuta
 ```json
@@ -810,7 +810,7 @@ Campos adicionados ao model `Oferta`:
 
 ### Contexto
 
-Fluxo de solicitação/aprovação para estorno de transações (`permuta` ou `negociada`), mesmo padrão de `SolicitacaoCredito` (§12): `em_analise → encaminhado → aprovado | negado`. Complementa o estorno direto (§9), usado pelas telas "Solicitar estorno" (Transações) e "Cancelar voucher" (Vouchers) — cancelar um voucher é, na prática, estornar a transação por trás dele.
+Fluxo de solicitação/aprovação para estorno de transações (`permuta`, `negociada` ou `credito` — este último só solicitável por `superadmin`, ver §9), mesmo padrão de `SolicitacaoCredito` (§12): `em_analise → encaminhado → aprovado | negado`. Complementa o estorno direto (§9), usado pelas telas "Solicitar estorno" (Transações) e "Cancelar voucher" (Vouchers) — cancelar um voucher é, na prática, estornar a transação por trás dele. Pra `credito`, não existe Agência no meio, então a solicitação já nasce visível pra Matriz em `em_analise`, sem passar por `encaminhado`.
 
 ### Endpoints
 

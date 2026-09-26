@@ -110,7 +110,7 @@ const TransacoesTable = ({
                                 </td>
                             ))}
                             <td className="flex justify-end gap-2">
-                                {type ?
+                                {(typeof type === 'function' ? type(row.original) : type) ?
                                     <Buttons
                                         type="Undo"
                                         url={row.original.id}

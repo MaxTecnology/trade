@@ -40,12 +40,20 @@ export async function solicitarEstorno(
 ) {
   const transacao = await prisma.transacao.findUnique({ where: { id: input.transacaoId } })
   if (!transacao) throw Errors.notFound('Transação')
-  if (!['permuta', 'negociada'].includes(transacao.tipo)) {
-    throw new AppError('VALIDATION_ERROR', 'Apenas permutas ou negociações podem ter estorno solicitado.', 422)
+  if (!['permuta', 'negociada', 'credito'].includes(transacao.tipo)) {
+    throw new AppError('VALIDATION_ERROR', 'Apenas permutas, negociações ou créditos da Matriz podem ter estorno solicitado.', 422)
   }
   if (transacao.status === 'estornada') {
     throw new AppError('VALIDATION_ERROR', 'Transação já foi estornada.', 422)
   }
+
+  // Só quem pode CRIAR um crédito da Matriz pode pedir a reversão dele —
+  // mesma regra do estorno direto (transactionService.estorno) — decisão de
+  // produto de 2026-09-26: passa pelo MESMO fluxo de solicitação/aprovação
+  // dos outros tipos (a Matriz solicita e depois aprova a própria
+  // solicitação em "Solicitações de Estorno"), em vez de um atalho
+  // separado — reaproveita a UI e a auditoria que já existem.
+  if (transacao.tipo === 'credito' && requester.role !== 'superadmin') throw Errors.forbidden()
 
   const diasDesde = (Date.now() - transacao.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
   if (diasDesde > 30) throw Errors.estornoPrazoExpirado()
@@ -145,11 +153,14 @@ export async function listarFilhas(agenciaId: string, query: ListEstornoQueryTyp
 // Nenhuma das partes (comprador/vendedor Associado, ou a própria Agência via
 // contaOrigem/contaDestino) pertence a uma Agência — não existe quem encaminhar,
 // então a solicitação tem que chegar em_analise mesmo pra fila da Matriz.
+// contaOrigemId nulo (caso de `credito` — a Matriz não debita nada de si
+// mesma pra emitir) também conta como "sem agência": não tem relação nenhuma
+// pra checar, então não pode exigir `encaminhar` de ninguém.
 const semAgencia = {
   AND: [
     { OR: [{ compradorId: null }, { comprador: { agenciaId: null } }] },
     { OR: [{ vendedorId: null }, { vendedor: { agenciaId: null } }] },
-    { contaOrigem: { agenciaId: null } },
+    { OR: [{ contaOrigemId: null }, { contaOrigem: { agenciaId: null } }] },
     { contaDestino: { agenciaId: null } },
   ],
 }

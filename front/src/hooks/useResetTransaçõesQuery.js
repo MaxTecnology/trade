@@ -9,6 +9,7 @@ const useResetTransaçõesQuery = () => {
         revalidate("login");
         revalidate("encaminhadasExtorno");
         revalidate("extornoMatriz");
+        revalidate("relatorios");
     };
 
     return resetQuery
