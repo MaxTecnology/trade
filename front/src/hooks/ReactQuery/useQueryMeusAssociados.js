@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { isGerente } from '../getId';
-import { getApiData } from '../ListasHook';
+import { getApiDataAllPages } from '../ListasHook';
 import state from '../../store';
 
 // gerentes/:id/associados espera o Associado.id do próprio gerente
@@ -14,7 +14,7 @@ export const useQueryMeusAssociados = (enabled = true) => {
         : `agencias/${state.user?.entityId}/associados`
     return useQuery({
         queryKey: ['meusAssociados', state.user?.entityId],
-        queryFn: async () => getApiData(`${url}?limit=100`),
+        queryFn: async () => getApiDataAllPages(`${url}?limit=100`),
         enabled: enabled && !!state.user?.entityId,
     });
 };

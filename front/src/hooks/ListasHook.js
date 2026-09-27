@@ -59,6 +59,53 @@ export const getApiData = async (url, setState) => {
             return error
         })
 }
+
+// Busca TODAS as páginas de um endpoint paginado e junta num só array —
+// resolve o bug de "dado invisível" (achado do usuário, 2026-09-26): as
+// telas de listagem sempre buscavam limit=100 fixo e nunca pediam a página
+// 2+ pro backend, então registros além do 100º sumiam sem nenhum aviso.
+// Mantém a mesma busca/filtro 100% client-side que já existe em cada tela
+// (não move nada pro backend) — só garante que TODOS os registros cheguem
+// no navegador antes de filtrar/paginar. Dimensionado pra um painel
+// administrativo interno (centenas a poucos milhares de linhas por lista),
+// não um feed público ilimitado — pra esse porte, paginação de servidor de
+// verdade exigiria mover cada filtro (Pesquisar, Associado, Período etc.)
+// pro backend também, tela por tela, sem necessidade real no tamanho atual.
+export const getApiDataAllPages = async (url, setState) => {
+    const [path, queryString] = url.split('?')
+    const baseParams = new URLSearchParams(queryString ?? '')
+    const buildUrl = (pagina, limite) => {
+        const params = new URLSearchParams(baseParams)
+        params.set('page', pagina)
+        params.set('limit', limite)
+        return `${path}?${params.toString()}`
+    }
+
+    try {
+        const primeiraPagina = baseParams.get('page') ?? '1'
+        const limite = baseParams.get('limit') ?? '100'
+        const primeira = await api.get(buildUrl(primeiraPagina, limite))
+        const envelope = primeira.data
+        const meta = envelope?.meta
+
+        if (!meta || meta.totalPages <= 1) {
+            if (setState) setState(envelope)
+            return envelope
+        }
+
+        const restante = await Promise.all(
+            Array.from({ length: meta.totalPages - 1 }, (_, i) => api.get(buildUrl(i + 2, meta.limit)))
+        )
+
+        const todosOsDados = [...envelope.data, ...restante.flatMap((resposta) => resposta.data.data)]
+        const resultado = { ...envelope, data: todosOsDados, meta: { ...meta, page: 1, totalPages: 1 } }
+        if (setState) setState(resultado)
+        return resultado
+    } catch (error) {
+        console.log(error)
+        return error
+    }
+}
 export const postItem = async (url, body, setData) => {
     return api.post(url, body)
         .then((response) => {

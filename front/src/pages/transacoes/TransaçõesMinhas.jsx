@@ -22,10 +22,6 @@ const columns = [
         header: 'Vendedor',
     },
     {
-        accessorKey: 'descricao',
-        header: 'Descrição',
-    },
-    {
         accessorKey: 'criadoEm',
         header: 'Data',
     },

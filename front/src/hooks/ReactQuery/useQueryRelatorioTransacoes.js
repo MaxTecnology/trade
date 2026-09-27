@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiData } from '../ListasHook';
+import { getApiDataAllPages } from '../ListasHook';
 
 // Visão ampla de transações — GET /relatorios/permutas sem filtro de tipo
 // mostra todos os tipos (não só permuta). Agência vê a própria conta +
@@ -7,6 +7,6 @@ import { getApiData } from '../ListasHook';
 export const useQueryRelatorioTransacoes = () => {
     return useQuery({
         queryKey: ['relatorios', 'permutas'],
-        queryFn: async () => getApiData('relatorios/permutas?page=1&limit=100'),
+        queryFn: async () => getApiDataAllPages('relatorios/permutas?page=1&limit=100'),
     });
 };

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiData } from '../ListasHook';
+import { getApiDataAllPages } from '../ListasHook';
 
 // Visão consolidada (Agência vê os próprios + dos seus associados, Matriz vê
 // tudo) via GET /vouchers — diferente de useQueryVoucher.js, que lista as
@@ -7,6 +7,6 @@ import { getApiData } from '../ListasHook';
 export const useQueryVouchersConsolidado = () => {
     return useQuery({
         queryKey: ['vouchersConsolidado'],
-        queryFn: async () => getApiData('vouchers?page=1&limit=100'),
+        queryFn: async () => getApiDataAllPages('vouchers?page=1&limit=100'),
     });
 };

@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiData } from '../ListasHook';
+import { getApiDataAllPages } from '../ListasHook';
 
 export const useQueryContasReceberMatriz = (enabled = true) => {
     return useQuery({
         queryKey: ['receberMatriz'],
-        queryFn: async () => getApiData('cobrancas?page=1&limit=100'),
+        queryFn: async () => getApiDataAllPages('cobrancas?page=1&limit=100'),
         enabled,
     });
 };

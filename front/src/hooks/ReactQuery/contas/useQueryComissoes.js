@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiData } from '@/hooks/ListasHook';
+import { getApiDataAllPages } from '@/hooks/ListasHook';
 import { isMatriz } from '@/hooks/getId';
 
 // Comissão da plataforma consolidada mensalmente (ver
@@ -8,7 +8,7 @@ import { isMatriz } from '@/hooks/getId';
 export const useQueryComissoes = () => {
     return useQuery({
         queryKey: ['cobrancasComissoes'],
-        queryFn: async () => getApiData('cobrancas?tipo=comissao&page=1&limit=100'),
+        queryFn: async () => getApiDataAllPages('cobrancas?tipo=comissao&page=1&limit=100'),
         enabled: isMatriz(),
     });
 };

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiData } from '@/hooks/ListasHook';
+import { getApiDataAllPages } from '@/hooks/ListasHook';
 import { isMatriz } from '@/hooks/getId';
 
 // Matriz nunca é devedora (ver useQueryContasPagar.js), então "Contas a
@@ -9,7 +9,7 @@ import { isMatriz } from '@/hooks/getId';
 export const useQueryTodasCobrancas = () => {
     return useQuery({
         queryKey: ['cobrancasTodas'],
-        queryFn: async () => getApiData('cobrancas?page=1&limit=100'),
+        queryFn: async () => getApiDataAllPages('cobrancas?page=1&limit=100'),
         enabled: isMatriz(),
     });
 };

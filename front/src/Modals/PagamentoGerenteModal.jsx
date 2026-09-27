@@ -1,8 +1,10 @@
 import Modal from 'react-modal';
 import { useQuery } from '@tanstack/react-query';
+import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { GrFormClose } from "react-icons/gr";
 import { formatDate, getApiData } from '@/hooks/ListasHook';
 import { formatarNumeroParaReal } from '@/utils/functions/formartNumber';
+import PaginationTable from '@/components/Tables/PaginationTable';
 
 const appElement = document.getElementById('root');
 Modal.setAppElement(appElement);
@@ -13,6 +15,17 @@ const formatarCompetencia = (iso) => {
     return `${MESES[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
 };
 
+const colunasDetalhe = [
+    { id: "data", header: "Data", cell: (info) => formatDate(info.row.original.criadoEm) },
+    { id: "associado", header: "Associado", cell: (info) => info.row.original.associado?.nome ?? '-' },
+    { id: "tipo", header: "Tipo", cell: (info) => (info.row.original.tipoComissao === 'inscricao' ? 'Inscrição' : 'Transação') },
+    {
+        id: "comissao",
+        header: "Comissão",
+        cell: (info) => `R$ ${formatarNumeroParaReal(Number(info.row.original.comissaoBRL ?? 0))}`,
+    },
+];
+
 // Mostra as comissões (por transação ou inscrição) que somaram o valor
 // consolidado desse pagamento de gerente (decisão de produto 2026-09-19).
 const PagamentoGerenteModal = ({ isOpen, onClose, pagamento }) => {
@@ -22,6 +35,16 @@ const PagamentoGerenteModal = ({ isOpen, onClose, pagamento }) => {
         enabled: isOpen && !!pagamento?.id,
     });
     const detalhe = detalheResp?.data ?? [];
+    // Antes renderizava `detalhe` inteira num .map() sem paginação — numa
+    // fatura com muitas comissões, o modal (janela pequena) virava um scroll
+    // interno enorme (achado do usuário, 2026-09-26).
+    const tabelaDetalhe = useReactTable({
+        data: detalhe,
+        columns: colunasDetalhe,
+        getRowId: (c) => c.id,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+    })
 
     return (
         <Modal
@@ -60,26 +83,27 @@ const PagamentoGerenteModal = ({ isOpen, onClose, pagamento }) => {
                         ) : detalhe.length === 0 ? (
                             <p>Nenhuma comissão encontrada.</p>
                         ) : (
-                            <table className="w-full border-separate border-spacing-y-1">
-                                <thead>
-                                    <tr className="text-left">
-                                        <th>Data</th>
-                                        <th>Associado</th>
-                                        <th>Tipo</th>
-                                        <th>Comissão</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {detalhe.map((c) => (
-                                        <tr key={c.id}>
-                                            <td>{formatDate(c.criadoEm)}</td>
-                                            <td>{c.associado?.nome ?? '-'}</td>
-                                            <td>{c.tipoComissao === 'inscricao' ? 'Inscrição' : 'Transação'}</td>
-                                            <td>R$ {formatarNumeroParaReal(Number(c.comissaoBRL ?? 0))}</td>
+                            <>
+                                <table className="w-full border-separate border-spacing-y-1">
+                                    <thead>
+                                        <tr className="text-left">
+                                            {tabelaDetalhe.getHeaderGroups()[0].headers.map((header) => (
+                                                <th key={header.id}>{header.column.columnDef.header}</th>
+                                            ))}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {tabelaDetalhe.getRowModel().rows.map((row) => (
+                                            <tr key={row.id}>
+                                                {row.getVisibleCells().map((cell) => (
+                                                    <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <PaginationTable table={tabelaDetalhe} />
+                            </>
                         )}
                     </div>
                 </div>
