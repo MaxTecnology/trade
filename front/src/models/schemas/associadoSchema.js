@@ -71,7 +71,6 @@ const associadoSchemaBase = z.object({
     planoId: z.string().optional(),
 
     // INVISIBLE
-    reputacao: z.number().optional(),
     usuarioCriadorId: z.any().optional(),
     tipoDeMoeda: z.string().optional(),
     statusConta: z.boolean().optional(),

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import state from "@/store";
 import logoBrazil from "@/assets/images/flagofBrazil.png"
 import { activePage } from "@/utils/functions/setActivePage";
-import StarRating from "@/components/Stars/StarRating";
+import ScoreAtendimento from "@/components/Stars/ScoreAtendimento";
 import ButtonMotion from "@/components/FramerMotion/ButtonMotion";
 import { motion } from "framer-motion";
 import { useQueryCategorias } from "@/hooks/ReactQuery/useQueryCategorias";
@@ -94,7 +94,7 @@ const AssociadosCard = ({ associado, index }) => {
                     </Tooltip>
                 </TooltipProvider>
                 <div className="shrink-0">
-                    <StarRating rating={data.reputacao} />
+                    <ScoreAtendimento media={data.reputacaoMedia} total={data.totalAvaliacoes} />
                 </div>
             </div>
 

@@ -243,6 +243,14 @@ model Associado {
   limiteCredito       Decimal?      @db.Decimal(15, 2)
   limiteVendaMensal Decimal?        @db.Decimal(15, 2)
   limiteVendaTotal  Decimal?        @db.Decimal(15, 2)
+  // Score de atendimento — média de Transacao.notaAtendimento das
+  // transações em que este associado foi o vendedor. Denormalizado (igual
+  // conta.saldo) e mantido por média incremental dentro da mesma
+  // $transaction de avaliar() — nunca recalculado via agregação em
+  // produção. reputacaoMedia null + totalAvaliacoes 0 = "sem avaliações
+  // ainda" (decisão de produto 2026-09-27).
+  reputacaoMedia  Decimal? @db.Decimal(2, 1)
+  totalAvaliacoes Int      @default(0)
   criadoEm       DateTime          @default(now())
   atualizadoEm   DateTime          @updatedAt
 

@@ -256,6 +256,8 @@ export async function listDiretorio(exceptAssociadoId?: string) {
       descricao: true,
       restricao: true,
       imagemUrl: true,
+      reputacaoMedia: true,
+      totalAvaliacoes: true,
       categoriaId: true,
       agenciaId: true,
       contatos: true,

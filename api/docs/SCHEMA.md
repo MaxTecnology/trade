@@ -253,6 +253,8 @@ model Associado {
   limiteCredito       Decimal?      @db.Decimal(15, 2) // teto de saldo negativo — validado em app (limites.ts), não há mais CHECK de banco
   limiteVendaMensal Decimal?        @db.Decimal(15, 2) // teto de volume debitado no mês corrente — substitui plano.limiteRT nas validações
   limiteVendaTotal  Decimal?        @db.Decimal(15, 2) // teto de volume debitado histórico total — substitui plano.limiteRT nas validações
+  reputacaoMedia  Decimal? @db.Decimal(2, 1) // média de Transacao.notaAtendimento das vendas — null = sem avaliações ainda, nunca "nota 0"
+  totalAvaliacoes Int      @default(0) // mantido por média incremental dentro de avaliar() (transaction.service.ts), nunca recalculado via agregação
   criadoEm       DateTime          @default(now())
   atualizadoEm   DateTime          @updatedAt
 

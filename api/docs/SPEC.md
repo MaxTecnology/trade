@@ -495,6 +495,7 @@ Toda movimentação de RT entre contas. Tipos: `permuta` (compra de oferta do ma
 - Apenas o `usuarioIniciador` (quem fez a compra) pode avaliar, e só uma vez por transação.
 - Aplica-se a `permuta` e `negociada`, apenas em transações `concluida`.
 - Nota de 1 a 5 (`notaAtendimento`) + comentário opcional (`comentarioAvaliacao`).
+- **Score do Associado (decisão de produto 2026-09-27):** toda avaliação atualiza `Associado.reputacaoMedia`/`totalAvaliacoes` do **vendedor** (`transacao.vendedorId`) dentro da mesma `$transaction` — média incremental (`(mediaAtual × total + novaNota) / (total + 1)`, arredondada a 1 casa), nunca recalculada via agregação em produção (mesmo padrão de `conta.saldo`). Não se aplica quando o vendedor é Agência/Matriz (sem `vendedorId`, `reputacaoMedia` só existe em `Associado`). `reputacaoMedia: null` + `totalAvaliacoes: 0` = "sem avaliações ainda" — distinto de nota baixa, nunca tratado como zero na UI. Exposto em `GET /associados/diretorio` (select) e `GET /auth/me` (associado logado, campo achatado na raiz da resposta).
 
 **Estorno direto:**
 - Reverte os movimentos de uma permuta ou negociada (débito volta para comprador, crédito volta para vendedor).

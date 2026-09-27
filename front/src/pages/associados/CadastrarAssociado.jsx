@@ -60,7 +60,6 @@ const CadastrarAssociado = () => {
             planoId: "",
 
             // INVISIBLE
-            reputacao: 0,
             nomeFranquia: snap.user.nomeFantasia,
             usuarioCriadorId: snap.user.idUsuario,
             tipoDeMoeda: "R$",

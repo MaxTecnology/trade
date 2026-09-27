@@ -157,6 +157,8 @@ export async function me(userId: string) {
 
   let entityName = 'Matriz'
   let conta: { id: string; numero: string; saldo: number; limiteCredito: number } | null = null
+  let reputacaoMedia: number | null = null
+  let totalAvaliacoes = 0
 
   if (usuario.entityType === 'associado' && usuario.associadoId) {
     const associado = await prisma.associado.findUnique({
@@ -165,11 +167,15 @@ export async function me(userId: string) {
         nome: true,
         nomeFantasia: true,
         limiteCredito: true,
+        reputacaoMedia: true,
+        totalAvaliacoes: true,
         conta: { select: { id: true, numero: true, saldo: true } },
       },
     })
     if (associado) {
       entityName = associado.nomeFantasia ?? associado.nome
+      reputacaoMedia = associado.reputacaoMedia ? Number(associado.reputacaoMedia) : null
+      totalAvaliacoes = associado.totalAvaliacoes
       if (associado.conta) {
         conta = {
           id: associado.conta.id,
@@ -228,5 +234,9 @@ export async function me(userId: string) {
     // lógica que já existe no diretório.
     agenciaId: usuario.agenciaId,
     conta,
+    // Só preenchido pra associado — reputacaoMedia null = "sem avaliações
+    // ainda", distinto de uma nota baixa (ver Associado.reputacaoMedia).
+    reputacaoMedia,
+    totalAvaliacoes,
   }
 }

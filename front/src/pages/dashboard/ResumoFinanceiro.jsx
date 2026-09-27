@@ -1,5 +1,5 @@
 import state from "@/store";
-import StarRating from "@/components/Stars/StarRating";
+import ScoreAtendimento from "@/components/Stars/ScoreAtendimento";
 import { useSnapshot } from "valtio";
 import { useQueryContasReceberMatriz } from "@/hooks/ReactQuery/useQueryContasReceberMatriz";
 import { useQueryContasReceber } from "@/hooks/ReactQuery/contas/useQueryContasReceber";
@@ -81,7 +81,8 @@ const ResumoFinanceiro = () => {
       <div>
         {isAssociado() ? (
           <div>
-            Score de Atendimento: <StarRating rating={snap.reputacao} />
+            Score de Atendimento:{" "}
+            <ScoreAtendimento media={snap.user?.reputacaoMedia} total={snap.user?.totalAvaliacoes} showCount />
           </div>
         ) : null}
         {type === "Associado - faill" ? (

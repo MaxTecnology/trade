@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import Footer from '../../components/Footer';
 import { activePage } from '../../utils/functions/setActivePage';
 import { useQueryCategorias } from '@/hooks/ReactQuery/useQueryCategorias';
-import StarRating from '@/components/Stars/StarRating';
+import ScoreAtendimento from '@/components/Stars/ScoreAtendimento';
 import defaultImg from '@/assets/images/default_img.png';
 const AssociadoInfo = () => {
     const { data: categorias } = useQueryCategorias()
@@ -33,7 +33,7 @@ const AssociadoInfo = () => {
                             <h3>Informações</h3>
                             <div className='flex items-center gap-2'>
                                 <span>Score: </span>
-                                <StarRating rating={storedData.reputacao} />
+                                <ScoreAtendimento media={storedData.reputacaoMedia} total={storedData.totalAvaliacoes} showCount />
                             </div>
                             <p><span>Nome de Contato:</span> {contato.nomeContato}</p>
                             <p><span>Telefone:</span> {storedData.telefone || contato.celular}</p>

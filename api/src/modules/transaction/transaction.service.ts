@@ -438,12 +438,35 @@ export async function avaliar(transacaoId: string, input: AvaliarInput, usuarioI
     throw new AppError('VALIDATION_ERROR', 'Esta transação já foi avaliada.', 422)
   }
 
-  return prisma.transacao.update({
-    where: { id: transacaoId },
-    data: {
-      notaAtendimento: input.notaAtendimento,
-      comentarioAvaliacao: input.comentarioAvaliacao,
-    },
+  return prisma.$transaction(async (tx) => {
+    const t = await tx.transacao.update({
+      where: { id: transacaoId },
+      data: {
+        notaAtendimento: input.notaAtendimento,
+        comentarioAvaliacao: input.comentarioAvaliacao,
+      },
+    })
+
+    // Vendedor pode ser Agência/Matriz direto (via Oferta), sem vendedorId —
+    // reputacaoMedia só existe em Associado, não se aplica nesse caso.
+    if (t.vendedorId) {
+      const vendedor = await tx.associado.findUniqueOrThrow({
+        where: { id: t.vendedorId },
+        select: { reputacaoMedia: true, totalAvaliacoes: true },
+      })
+      const totalAnterior = vendedor.totalAvaliacoes
+      const mediaAnterior = Number(vendedor.reputacaoMedia ?? 0)
+      const novaMedia = (mediaAnterior * totalAnterior + input.notaAtendimento) / (totalAnterior + 1)
+      await tx.associado.update({
+        where: { id: t.vendedorId },
+        data: {
+          reputacaoMedia: Math.round(novaMedia * 10) / 10,
+          totalAvaliacoes: { increment: 1 },
+        },
+      })
+    }
+
+    return t
   })
 }
 
